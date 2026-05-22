@@ -1,0 +1,29 @@
+# security
+.env
+.env.*
+
+# virtual env
+venv/
+env/
+.venv/
+
+# cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node, React, Vercel 
+node_modules/
+.next/
+out/
+build/
+dist/
+.vercel/
+
+# some generated files
+.DS_Store
+Thumbs.db
+
+# jupyter 
+.ipynb_checkpoints/
