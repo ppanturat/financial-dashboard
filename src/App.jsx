@@ -42,7 +42,6 @@ export default function App() {
   const [currentPrice, setCurrentPrice] = useState(null)
   const [aiScan, setAiScan] = useState(null)
   const [description, setDescription] = useState('')
-  const [descExpanded, setDescExpanded] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -53,7 +52,6 @@ export default function App() {
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null })
 
   const searchRef = useRef(null)
-  const newFolderRef = useRef(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
@@ -70,6 +68,8 @@ export default function App() {
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
+  // To test locally, use http://localhost:8000/api
+  // When deploying to Vercel, change base_url to just "/api"
   const BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8000/api" : "/api";
 
   useEffect(() => {
@@ -95,7 +95,6 @@ export default function App() {
       setAiScan(null)
       setCurrentPrice(null)
       setDescription('')
-      setDescExpanded(false)
 
       try {
         const res = await fetch(`${BASE_URL}/data/${activeTicker}?timeframe=${timeframe}`)
@@ -405,25 +404,10 @@ export default function App() {
             )}
           </div>
 
-          {description && (
-            <div className="desc-card">
-              <h3 className="desc-title">Company Profile</h3>
-              <p className="desc-text">
-                {descExpanded || description.length <= 180 
-                  ? description 
-                  : `${description.substring(0, 180)}...`
-                }
-                {description.length > 180 && (
-                  <button 
-                    className="desc-toggle-btn" 
-                    onClick={() => setDescExpanded(!descExpanded)}
-                  >
-                    {descExpanded ? "Show Less" : "Show More"}
-                  </button>
-                )}
-              </p>
-            </div>
-          )}
+          <div className="desc-card">
+            <h4 className="desc-title">About {activeTicker}</h4>
+            <p className="desc-text">{loadingData ? 'Loading description...' : description}</p>
+          </div>
 
           <div className="section-header">
             <span className="section-title">Key Metrics</span>
