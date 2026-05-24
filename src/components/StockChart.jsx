@@ -4,13 +4,13 @@ import { formatXAxis, formatTooltipLabel } from '../lib/formatters'
 export function StockChart({ chartData, graphColor, timeframe, loading }) {
   if (loading) return (
     <div className="chart-card">
-      <div className="chart-empty"><span className="spinner" /> fetching chart...</div>
+      <div className="chart-empty"><span className="spinner" /> Fetching Market Data...</div>
     </div>
   )
 
   if (!chartData.length) return (
     <div className="chart-card">
-      <div className="chart-empty">no chart data available</div>
+      <div className="chart-empty">No Data Available</div>
     </div>
   )
 
@@ -37,7 +37,7 @@ export function StockChart({ chartData, graphColor, timeframe, loading }) {
             contentStyle={{ background: '#111', border: 'none', borderRadius: '8px', padding: '8px 12px' }}
             labelStyle={{ color: '#9ca3af', fontSize: '11px', marginBottom: '2px' }}
             itemStyle={{ color: graphColor, fontSize: '13px', fontFamily: 'DM Mono, monospace' }}
-            formatter={v => [`$${v.toFixed(2)}`, 'price']}
+            formatter={v => [`$${v.toFixed(2)}`, 'Price']}
           />
           <Line
             type="monotone" dataKey="price"

@@ -1,12 +1,12 @@
 export const fmt = (num, type) => {
-  if (num == null) return 'n/a'
+  if (num == null) return 'N/A'
   if (type === 'pct') return `${(num * 100).toFixed(1)}%`
   if (type === 'raw') return num >= 999 ? '∞' : num.toFixed(2)
   if (type === 'curr') {
     const abs = Math.abs(num)
     const sign = num < 0 ? '-' : ''
-    if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}b`
-    if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(2)}m`
+    if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}B`
+    if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(2)}M`
     return `${sign}$${abs.toLocaleString()}`
   }
   return String(num)
@@ -36,11 +36,15 @@ export const formatTooltipLabel = (label) => {
 }
 
 export const cleanDescription = (raw = '') => {
-  let s = raw.trim()
-  s = s.split('...')[0].split('…')[0].split('Read more')[0].trim()
-  if (/[^.!?]$/.test(s)) {
-    const last = Math.max(s.lastIndexOf('.'), s.lastIndexOf('!'), s.lastIndexOf('?'))
-    s = last !== -1 ? s.substring(0, last + 1).trim() : s + '.'
-  }
-  return s
+  // strip everything from the first ellipsis or truncation marker onward
+  let s = raw
+    .split('...')[0]
+    .split('\u2026')[0]
+    .split('Read more')[0]
+    .split('&#8230;')[0]
+    .trim()
+
+  // cut at the last clean sentence boundary — never leave a dangling fragment
+  const last = Math.max(s.lastIndexOf('.'), s.lastIndexOf('!'), s.lastIndexOf('?'))
+  return last !== -1 ? s.substring(0, last + 1).trim() : s
 }

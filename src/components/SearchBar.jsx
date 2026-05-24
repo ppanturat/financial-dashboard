@@ -1,5 +1,3 @@
-import { useRef, useEffect } from 'react'
-
 export function SearchBar({ query, results, open, selectedIndex, onQueryChange, onFocus, onKey, onSelect, onClear, searchRef }) {
   return (
     <div className="search-wrap" ref={searchRef}>
@@ -7,25 +5,20 @@ export function SearchBar({ query, results, open, selectedIndex, onQueryChange, 
         <span className="search-icon">⌕</span>
         <input
           type="text"
-          placeholder="search ticker..."
+          placeholder="Search Ticker..."
           value={query}
           onChange={e => onQueryChange(e.target.value)}
           onFocus={onFocus}
           onKeyDown={e => onKey(e, onSelect)}
         />
-        {query && (
-          <button className="search-clear" onClick={onClear}>✕</button>
-        )}
+        {query && <button className="search-clear" onClick={onClear}>✕</button>}
       </div>
 
       {open && query && (
         <ul className="search-drop">
           {results.length === 0 ? (
-            <li
-              className="drop-empty"
-              onClick={() => { onSelect(query.trim()); onClear() }}
-            >
-              press enter to add "{query.toUpperCase()}"
+            <li className="drop-empty" onClick={() => { onSelect(query.trim()); onClear() }}>
+              Press Enter to add "{query.toUpperCase()}"
             </li>
           ) : (
             results.map((r, i) => (

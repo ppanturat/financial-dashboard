@@ -23,7 +23,7 @@ function MetricCard({ def, value, isEtf, loading, tooltipOpen, onToggleTip }) {
         {loading
           ? <span className="skeleton-val">—</span>
           : isEtf
-            ? <span className="skeleton-val">n/a</span>
+            ? <span className="skeleton-val">N/A</span>
             : fmt(value, def.type)
         }
       </div>
@@ -33,15 +33,13 @@ function MetricCard({ def, value, isEtf, loading, tooltipOpen, onToggleTip }) {
 
 export function MetricsGrid({ metrics, isEtf, loading }) {
   const [tooltipOpen, setTooltipOpen] = useState(null)
-
-  // close tooltip on outside click (delegated from App's mousedown handler via prop)
   const toggleTip = (key) => setTooltipOpen(p => p === key ? null : key)
 
   return (
     <>
       <div className="section-header">
-        <span className="section-title">key metrics</span>
-        {isEtf && <span className="etf-notice">etf — financial metrics not applicable</span>}
+        <span className="section-title">Key Metrics</span>
+        {isEtf && <span className="etf-notice">ETF — Individual financial metrics not applicable</span>}
       </div>
       <div className="metrics-grid">
         {METRIC_DEFS.map(def => (

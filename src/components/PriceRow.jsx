@@ -5,7 +5,7 @@ export function PriceRow({ ticker, isEtf, currentPrice, priceChange, timeframe, 
     <div className="price-row">
       <div className="price-left">
         <span className="price-ticker">{ticker}</span>
-        {isEtf && <span className="etf-badge">etf</span>}
+        {isEtf && <span className="etf-badge">ETF</span>}
         {currentPrice != null ? (
           <span className="price-value">
             ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

@@ -12,7 +12,6 @@ export function Sidebar({ session, folders, activeFolderId, fetchingFolders, onS
     if (editName.trim()) onRenameFolder(id, editName.trim())
     setEditingId(null)
   }
-
   const commitNew = () => {
     if (newName.trim()) onCreateFolder(newName.trim())
     setNewMode(false)
@@ -23,14 +22,14 @@ export function Sidebar({ session, folders, activeFolderId, fetchingFolders, onS
     <aside className="sidebar">
       <div className="sidebar-brand">
         <span className="brand-mark">◈</span>
-        <span className="brand-name">vaultwatch</span>
+        <span className="brand-name">STOCK CHECKER</span>
       </div>
 
-      <p className="sidebar-label">folders</p>
+      <p className="sidebar-label">Folders</p>
 
       <nav className="sidebar-nav">
         {fetchingFolders ? (
-          <p className="sidebar-loading">loading...</p>
+          <p className="sidebar-loading">Loading...</p>
         ) : (
           <>
             {folders.map(f => (
@@ -49,17 +48,14 @@ export function Sidebar({ session, folders, activeFolderId, fetchingFolders, onS
                   />
                 ) : (
                   <>
-                    <button
-                      className="vault-btn"
-                      onClick={() => onSelectFolder(f)}
-                    >
+                    <button className="vault-btn" onClick={() => onSelectFolder(f)}>
                       <span className="vault-dot" />
                       <span className="vault-label">{f.name}</span>
                       <span className="vault-count">{f.tickers?.length ?? 0}</span>
                     </button>
                     <div className="vault-actions">
-                      <button title="rename" onClick={() => startEdit(f)}>✎</button>
-                      <button title="delete" onClick={() => onDeleteFolder(f.id)}>✕</button>
+                      <button title="Rename" onClick={() => startEdit(f)}>✎</button>
+                      <button title="Delete" onClick={() => onDeleteFolder(f.id)}>✕</button>
                     </div>
                   </>
                 )}
@@ -72,7 +68,7 @@ export function Sidebar({ session, folders, activeFolderId, fetchingFolders, onS
                   ref={newRef}
                   className="vault-edit-input"
                   autoFocus
-                  placeholder="folder name..."
+                  placeholder="Folder name..."
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   onBlur={commitNew}
@@ -83,9 +79,7 @@ export function Sidebar({ session, folders, activeFolderId, fetchingFolders, onS
                 />
               </div>
             ) : (
-              <button className="new-vault-btn" onClick={() => setNewMode(true)}>
-                + new folder
-              </button>
+              <button className="new-vault-btn" onClick={() => setNewMode(true)}>+ New Folder</button>
             )}
           </>
         )}
@@ -93,7 +87,7 @@ export function Sidebar({ session, folders, activeFolderId, fetchingFolders, onS
 
       <div className="sidebar-footer">
         <span className="user-email">{session?.user?.email}</span>
-        <button className="signout-btn" onClick={onSignOut}>sign out</button>
+        <button className="signout-btn" onClick={onSignOut}>Sign Out</button>
       </div>
     </aside>
   )
