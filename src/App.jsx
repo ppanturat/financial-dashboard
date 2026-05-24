@@ -23,41 +23,88 @@ export default function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
+  const [fetchingFolders, setFetchingFolders] = useState(true)
 
-  const [folders, setFolders] = useState([
-    { id: 1, name: 'Shield Folder', tickers: ['VOO'] },
-    { id: 2, name: 'Satellite Folder', tickers: ['PACB', 'SDGR', 'ADBE'] }
-  ])
-  const [activeFolderId, setActiveFolderId] = useState(1)
+  const [folders, setFolders] = useState([])
+  const [activeFolderId, setActiveFolderId] = useState(null)
   const [editingFolderId, setEditingFolderId] = useState(null)
   const [editName, setEditName] = useState('')
   const [newFolderMode, setNewFolderMode] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
 
-  const [activeTicker, setActiveTicker] = useState('VOO')
-  const [quoteType, setQuoteType] = useState('ETF')
+  const [activeTicker, setActiveTicker] = useState('')
+  const [quoteType, setQuoteType] = useState('EQUITY')
   const [timeframe, setTimeframe] = useState('1M')
   const [chartData, setChartData] = useState([])
   const [metrics, setMetrics] = useState(null)
   const [currentPrice, setCurrentPrice] = useState(null)
   const [aiScan, setAiScan] = useState(null)
   const [description, setDescription] = useState('')
+  const [descExpanded, setDescExpanded] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [tooltipOpen, setTooltipOpen] = useState(null)
 
-  // Custom Modal State
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null })
 
   const searchRef = useRef(null)
+  const newFolderRef = useRef(null)
 
+  const BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8000/api" : "/api";
+
+  // --- AUTH SUBSCRIPTION ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setSession(s))
     return () => subscription.unsubscribe()
   }, [])
+
+  // --- COMPREHENSIVE RELATION LOAD ---
+  useEffect(() => {
+    if (!session) {
+      setFolders([])
+      setActiveFolderId(null)
+      setActiveTicker('')
+      return
+    }
+
+    const fetchWorkspaceData = async () => {
+      setFetchingFolders(true)
+      
+      // Use standard Supabase sub-resource filtering to fetch folders and nested items cleanly
+      const { data, error } = await supabase
+        .from('folders')
+        .select(`
+          id,
+          name,
+          portfolio_items (
+            ticker
+          )
+        `)
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: true })
+
+      if (data && data.length > 0) {
+        // Flatten portfolio_items nested structure into a basic ticker array for matching local states
+        const formattedFolders = data.map(folder => ({
+          id: folder.id,
+          name: folder.name,
+          tickers: folder.portfolio_items ? folder.portfolio_items.map(item => item.ticker) : []
+        }))
+
+        setFolders(formattedFolders)
+        setActiveFolderId(formattedFolders[0].id)
+        setActiveTicker(formattedFolders[0].tickers[0] || '')
+      } else {
+        setFolders([])
+      }
+      setFetchingFolders(false)
+    }
+
+    fetchWorkspaceData()
+  }, [session])
 
   useEffect(() => {
     const fn = (e) => {
@@ -68,10 +115,7 @@ export default function App() {
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
-  // To test locally, use http://localhost:8000/api
-  // When deploying to Vercel, change base_url to just "/api"
-  const BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8000/api" : "/api";
-
+  // --- API CONSUMPTION ---
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return }
     const q = searchQuery.toUpperCase().trim()
@@ -95,6 +139,7 @@ export default function App() {
       setAiScan(null)
       setCurrentPrice(null)
       setDescription('')
+      setDescExpanded(false)
 
       try {
         const res = await fetch(`${BASE_URL}/data/${activeTicker}?timeframe=${timeframe}`)
@@ -125,7 +170,7 @@ export default function App() {
     return () => { cancelled = true }
   }, [activeTicker, timeframe])
 
-  // Chart Formatters
+  // --- DISPLAY LOGIC ---
   const formatXAxis = (tickItem) => {
     if (!tickItem) return '';
     const d = new Date(tickItem);
@@ -163,7 +208,6 @@ export default function App() {
   const graphColor = isUp ? '#16a34a' : '#dc2626'
   const priceChange = chartData.length > 1 ? ((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price * 100) : null
 
-  // Custom Modal Triggers
   const openConfirmModal = (title, message, onConfirmAction) => {
     setModal({
       isOpen: true,
@@ -176,61 +220,140 @@ export default function App() {
     });
   }
 
-  const saveNewFolder = () => {
+  // --- REAL RELATION MUTATIONS ---
+
+  const saveNewFolder = async () => {
     const name = newFolderName.trim()
-    if (name) setFolders(f => [...f, { id: Date.now(), name, tickers: [] }])
+    if (!name || !session) return
+
+    const { data, error } = await supabase
+      .from('folders')
+      .insert([{ user_id: session.user.id, name }])
+      .select()
+      .single()
+
+    if (error) {
+      alert("Error processing folder configuration: " + error.message)
+    } else if (data) {
+      const parsedFolder = { id: data.id, name: data.name, tickers: [] }
+      setFolders(f => {
+        const updated = [...f, parsedFolder]
+        if (f.length === 0) setActiveFolderId(data.id)
+        return updated
+      })
+    }
     setNewFolderMode(false)
     setNewFolderName('')
   }
   
-  const saveFolderEdit = (id) => {
+  const saveFolderEdit = async (id) => {
     const folder = folders.find(f => f.id === id)
     const name = editName.trim()
     if (!name || name === folder.name) {
       setEditingFolderId(null)
       return
     }
+
     openConfirmModal(
       'Rename Folder',
       `Are you sure you want to rename this folder to "${name}"?`,
-      () => setFolders(f => f.map(x => x.id === id ? { ...x, name } : x))
+      async () => {
+        const { error } = await supabase.from('folders').update({ name }).eq('id', id)
+        if (!error) {
+          setFolders(f => f.map(x => x.id === id ? { ...x, name } : x))
+        }
+      }
     );
     setEditingFolderId(null)
   }
 
   const deleteFolder = (id) => {
-    if (folders.length <= 1) return
     openConfirmModal(
       'Delete Folder',
       'Are you sure you want to permanently delete this entire folder?',
-      () => {
-        const next = folders.filter(f => f.id !== id)
-        setFolders(next)
-        if (activeFolderId === id) {
-          setActiveFolderId(next[0].id)
-          setActiveTicker(next[0].tickers[0] ?? '')
+      async () => {
+        const { error } = await supabase.from('folders').delete().eq('id', id)
+        if (!error) {
+          const next = folders.filter(f => f.id !== id)
+          setFolders(next)
+          if (activeFolderId === id) {
+            if (next.length > 0) {
+              setActiveFolderId(next[0].id)
+              setActiveTicker(next[0].tickers[0] ?? '')
+            } else {
+              setActiveFolderId(null)
+              setActiveTicker('')
+            }
+          }
         }
       }
     );
   }
 
-  const addTicker = (symbol) => {
-    symbol = symbol.toUpperCase()
-    setFolders(f => f.map(x => x.id === activeFolderId && !x.tickers.includes(symbol) ? { ...x, tickers: [...x.tickers, symbol] } : x))
-    setActiveTicker(symbol)
+  const addTicker = async (symbol) => {
+    symbol = symbol.toUpperCase().trim()
+    if (!symbol) return
     setSearchQuery('')
     setShowDropdown(false)
+
+    // 1. Safe-Check: Satisfy foreign key validation rule by verifying global_metrics entry
+    await supabase.from('global_metrics').upsert({ ticker: symbol }, { onConflict: 'ticker' })
+
+    // 2. Automated fallback folder initialization if workspace completely empty
+    let destinationFolderId = activeFolderId
+    if (folders.length === 0) {
+      const { data: newF, error: fErr } = await supabase
+        .from('folders')
+        .insert([{ user_id: session.user.id, name: 'My Portfolio' }])
+        .select()
+        .single()
+      
+      if (fErr || !newF) return
+      destinationFolderId = newF.id
+      setFolders([{ id: newF.id, name: newF.name, tickers: [symbol] }])
+      setActiveFolderId(newF.id)
+    } else {
+      const currentFolder = folders.find(f => f.id === destinationFolderId)
+      if (!currentFolder || currentFolder.tickers.includes(symbol)) {
+        setActiveTicker(symbol)
+        return
+      }
+    }
+
+    // 3. Execution of link table record mapping
+    const { error } = await supabase
+      .from('portfolio_items')
+      .insert([{ 
+        user_id: session.user.id, 
+        folder_id: destinationFolderId, 
+        ticker: symbol 
+      }])
+
+    if (!error || error.code === '23505') { // Handle or ignore explicit primary unique conflicts safely
+      setFolders(f => f.map(x => x.id === destinationFolderId ? { ...x, tickers: [...x.tickers, symbol] } : x))
+      setActiveTicker(symbol)
+    }
   }
 
   const removeTicker = (symbol) => {
     openConfirmModal(
       'Remove Asset',
       `Are you sure you want to remove ${symbol} from this folder?`,
-      () => {
-        const folder = folders.find(f => f.id === activeFolderId)
-        const next = folder.tickers.filter(t => t !== symbol)
-        setFolders(f => f.map(x => x.id === activeFolderId ? { ...x, tickers: next } : x))
-        if (activeTicker === symbol) setActiveTicker(next[0] ?? '')
+      async () => {
+        const { error } = await supabase
+          .from('portfolio_items')
+          .delete()
+          .eq('folder_id', activeFolderId)
+          .eq('ticker', symbol)
+        
+        if (!error) {
+          setFolders(f => f.map(x => {
+            if (x.id !== activeFolderId) return x
+            const nextTickers = x.tickers.filter(t => t !== symbol)
+            if (activeTicker === symbol) setActiveTicker(nextTickers[0] ?? '')
+            return { ...x, tickers: nextTickers }
+          }))
+        }
       }
     );
   }
@@ -260,7 +383,6 @@ export default function App() {
     <div className="layout">
       {sidebarOpen && <div className="overlay" onClick={() => setSidebarOpen(false)} />}
 
-      {/* Custom Confirmation Modal */}
       {modal.isOpen && (
         <div className="custom-modal-overlay">
           <div className="custom-modal">
@@ -282,32 +404,38 @@ export default function App() {
 
         <p className="sidebar-label">Folders</p>
         <nav className="sidebar-nav">
-          {folders.map(f => (
-            <div key={f.id} className={`vault-row ${f.id === activeFolderId ? 'active' : ''}`}>
-              {editingFolderId === f.id ? (
-                <input
-                  className="vault-edit-input"
-                  autoFocus
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  onBlur={() => saveFolderEdit(f.id)}
-                  onKeyDown={e => { if (e.key === 'Enter') saveFolderEdit(f.id); if (e.key === 'Escape') setEditingFolderId(null) }}
-                />
-              ) : (
-                <>
-                  <button className="vault-btn" onClick={() => { setActiveFolderId(f.id); setSidebarOpen(false); if (f.tickers[0]) setActiveTicker(f.tickers[0]) }}>
-                    <span className="vault-dot" />
-                    <span className="vault-label">{f.name}</span>
-                    <span className="vault-count">{f.tickers.length}</span>
-                  </button>
-                  <div className="vault-actions">
-                    <button title="Rename" onClick={() => { setEditingFolderId(f.id); setEditName(f.name) }}>✎</button>
-                    {folders.length > 1 && <button title="Delete" onClick={() => deleteFolder(f.id)}>✕</button>}
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
+          {fetchingFolders ? (
+            <div className="vault-row" style={{ padding: '0 24px', color: 'var(--muted)', fontSize: '14px' }}>Loading folders...</div>
+          ) : (
+            <>
+              {folders.map(f => (
+                <div key={f.id} className={`vault-row ${f.id === activeFolderId ? 'active' : ''}`}>
+                  {editingFolderId === f.id ? (
+                    <input
+                      className="vault-edit-input"
+                      autoFocus
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      onBlur={() => saveFolderEdit(f.id)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveFolderEdit(f.id); if (e.key === 'Escape') setEditingFolderId(null) }}
+                    />
+                  ) : (
+                    <>
+                      <button className="vault-btn" onClick={() => { setActiveFolderId(f.id); setSidebarOpen(false); setActiveTicker(f.tickers[0] ?? '') }}>
+                        <span className="vault-dot" />
+                        <span className="vault-label">{f.name}</span>
+                        <span className="vault-count">{f.tickers?.length || 0}</span>
+                      </button>
+                      <div className="vault-actions">
+                        <button title="Rename" onClick={() => { setEditingFolderId(f.id); setEditName(f.name) }}>✎</button>
+                        <button title="Delete" onClick={() => deleteFolder(f.id)}>✕</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
 
           {newFolderMode ? (
             <div className="vault-row">
@@ -329,9 +457,9 @@ export default function App() {
           <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>☰</button>
 
           <div className="header-left">
-            <span className="header-vault-name">{activeFolder?.name}</span>
+            <span className="header-vault-name">{activeFolder?.name ?? 'No Folder Selected'}</span>
             <div className="ticker-tabs">
-              {activeFolder?.tickers.map(t => (
+              {activeFolder?.tickers?.map(t => (
                 <div key={t} className={`ticker-chip ${activeTicker === t ? 'active' : ''}`}>
                   <button className="chip-ticker" onClick={() => setActiveTicker(t)}>{t}</button>
                   <button className="chip-remove" onClick={() => removeTicker(t)} title="Remove">✕</button>
@@ -349,7 +477,7 @@ export default function App() {
             {showDropdown && searchQuery && (
               <ul className="search-drop">
                 {searchResults.length === 0
-                  ? <li className="drop-empty">Press Enter to force add "{searchQuery.toUpperCase()}"</li>
+                  ? <li className="drop-empty" onClick={() => addTicker(searchQuery.trim())}>Press Enter to force add "{searchQuery.toUpperCase()}"</li>
                   : searchResults.map(r => (
                     <li key={r.symbol} className="drop-item" onClick={() => addTicker(r.symbol)}>
                       <span className="drop-symbol">{r.symbol}</span>
@@ -364,96 +492,125 @@ export default function App() {
         </header>
 
         <div className="content">
-          <div className="price-row">
-            <div className="price-left">
-              <span className="price-ticker">{activeTicker}</span>
-              {isEtf && <span className="etf-badge">ETF</span>}
-              {currentPrice != null ? (
-                <span className="price-value">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              ) : (
-                <span className="price-value price-skeleton">——</span>
-              )}
-              {priceChange !== null && (
-                <span className={`price-delta ${priceChange >= 0 ? 'up' : 'down'}`}>
-                  {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)}%
-                </span>
-              )}
+          {!activeTicker && !fetchingFolders ? (
+            <div className="chart-empty" style={{ height: '400px', flexDirection: 'column', gap: '12px', border: '1px dashed var(--border-md)', borderRadius: '12px' }}>
+              <span style={{ fontSize: '28px' }}>◈</span>
+              <h3 style={{ margin: 0, fontWeight: 600, color: 'var(--text)' }}>Your Workspace is Empty</h3>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--muted)', maxWidth: '340px', textAlign: 'center', lineHeight: 1.5 }}>
+                Create a folder on the left sidebar, or type a ticker in the search engine above to initialize your view.
+              </p>
             </div>
-            <div className="tf-group">
-              {['1W', '1M', '6M', '1Y'].map(tf => (
-                <button key={tf} className={`tf-btn ${timeframe === tf ? 'active' : ''}`} onClick={() => setTimeframe(tf)}>{tf}</button>
-              ))}
-            </div>
-          </div>
-
-          <div className="chart-card">
-            {loadingData ? (
-              <div className="chart-empty"><span className="spinner" /> Fetching Market Data...</div>
-            ) : chartData.length === 0 ? (
-              <div className="chart-empty">No Data Available</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="timestamp" tickFormatter={formatXAxis} tick={{ fontSize: 11, fill: '#9ca3af', fontFamily: 'DM Mono, monospace' }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={30} />
-                  <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#9ca3af', fontFamily: 'DM Mono, monospace' }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
-                  <ChartTooltip labelFormatter={formatTooltipLabel} contentStyle={{ background: '#111', border: 'none', borderRadius: '8px', padding: '8px 12px' }} labelStyle={{ color: '#9ca3af', fontSize: '11px', marginBottom: '2px' }} itemStyle={{ color: graphColor, fontSize: '13px', fontFamily: 'DM Mono, monospace' }} formatter={v => [`$${v.toFixed(2)}`, 'Price']} />
-                  <Line type="monotone" dataKey="price" stroke={graphColor} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: graphColor }} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-
-          <div className="desc-card">
-            <h4 className="desc-title">About {activeTicker}</h4>
-            <p className="desc-text">{loadingData ? 'Loading description...' : description}</p>
-          </div>
-
-          <div className="section-header">
-            <span className="section-title">Key Metrics</span>
-            {isEtf && <span className="etf-notice">ETF — Individual financial metrics not applicable</span>}
-          </div>
-          <div className="metrics-grid">
-            {METRIC_DEFS.map(({ key, label, type, colorType, meaning, scale }) => {
-              const val = metrics?.[key]
-              const color = isEtf ? '' : getColor(val, colorType)
-              return (
-                <div key={key} className={`metric-card ${color}`}>
-                  <div className="metric-top">
-                    <span className="metric-label">{label}</span>
-                    <button className="metric-info-btn" onClick={e => { e.stopPropagation(); setTooltipOpen(tooltipOpen === key ? null : key) }} title={meaning}>?</button>
-                    {tooltipOpen === key && (
-                      <div className="metric-tooltip">
-                        <p className="tt-meaning">{meaning}</p>
-                        <p className="tt-scale">{scale}</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="metric-value">
-                    {loadingData ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">N/A</span> : fmt(val, type)}
-                  </div>
+          ) : !activeTicker && fetchingFolders ? (
+            <div className="chart-empty"><span className="spinner" /> Loading workspace data...</div>
+          ) : (
+            <>
+              <div className="price-row">
+                <div className="price-left">
+                  <span className="price-ticker">{activeTicker}</span>
+                  {isEtf && <span className="etf-badge">ETF</span>}
+                  {currentPrice != null ? (
+                    <span className="price-value">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  ) : (
+                    <span className="price-value price-skeleton">——</span>
+                  )}
+                  {priceChange !== null && (
+                    <span className={`price-delta ${priceChange >= 0 ? 'up' : 'down'}`}>
+                      {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)}%
+                    </span>
+                  )}
                 </div>
-              )
-            })}
-          </div>
-
-          {(aiScan || isEtf || loadingData) && (
-            <div className="ai-card">
-              <div className="ai-head">
-                <span className="ai-badge">Neutral Assessment</span>
-                <span className="ai-sub">{activeTicker} · Institutional Scan</span>
+                <div className="tf-group">
+                  {['1W', '1M', '6M', '1Y'].map(tf => (
+                    <button key={tf} className={`tf-btn ${timeframe === tf ? 'active' : ''}`} onClick={() => setTimeframe(tf)}>{tf}</button>
+                  ))}
+                </div>
               </div>
-              <div className="ai-body">
-                {loadingData ? <p>Executing probability check...</p> : isEtf ? <p>ETFs represent a basket of assets. Fundamental bear/bull metrics bypass single-stock analysis.</p> : (
-                  <>
-                    <p><strong>🚩 Terminal Red Flag Sweep:</strong> {aiScan?.terminal_red_flags?.join(" ")}</p>
-                    <p><strong>📈 Bull Case:</strong> {aiScan?.bull_case}</p>
-                    <p><strong>📉 Bear Case:</strong> {aiScan?.bear_case}</p>
-                    <p><strong>⚖️ Verdict:</strong> {aiScan?.neutral_verdict}</p>
-                  </>
+
+              <div className="chart-card">
+                {loadingData ? (
+                  <div className="chart-empty"><span className="spinner" /> Fetching Market Data...</div>
+                ) : chartData.length === 0 ? (
+                  <div className="chart-empty">No Data Available</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={260}>
+                    <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                      <XAxis dataKey="timestamp" tickFormatter={formatXAxis} tick={{ fontSize: 11, fill: '#9ca3af', fontFamily: 'DM Mono, monospace' }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={30} />
+                      <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#9ca3af', fontFamily: 'DM Mono, monospace' }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
+                      <ChartTooltip labelFormatter={formatTooltipLabel} contentStyle={{ background: '#111', border: 'none', borderRadius: '8px', padding: '8px 12px' }} labelStyle={{ color: '#9ca3af', fontSize: '11px', marginBottom: '2px' }} itemStyle={{ color: graphColor, fontSize: '13px', fontFamily: 'DM Mono, monospace' }} formatter={v => [`$${v.toFixed(2)}`, 'Price']} />
+                      <Line type="monotone" dataKey="price" stroke={graphColor} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: graphColor }} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 )}
               </div>
-            </div>
+
+              {description && (
+                <div className="desc-card">
+                  <h3 className="desc-title">Company Profile</h3>
+                  <p className="desc-text">
+                    {descExpanded || description.length <= 180 
+                      ? description 
+                      : `${description.substring(0, 180)}...`
+                    }
+                    {description.length > 180 && (
+                      <button 
+                        className="desc-toggle-btn" 
+                        onClick={() => setDescExpanded(!descExpanded)}
+                      >
+                        {descExpanded ? "Show Less" : "Show More"}
+                      </button>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              <div className="section-header">
+                <span className="section-title">Key Metrics</span>
+                {isEtf && <span className="etf-notice">ETF — Individual financial metrics not applicable</span>}
+              </div>
+              <div className="metrics-grid">
+                {METRIC_DEFS.map(({ key, label, type, colorType, meaning, scale }) => {
+                  const val = metrics?.[key]
+                  const color = isEtf ? '' : getColor(val, colorType)
+                  return (
+                    <div key={key} className={`metric-card ${color}`}>
+                      <div className="metric-top">
+                        <span className="metric-label">{label}</span>
+                        <button className="metric-info-btn" onClick={e => { e.stopPropagation(); setTooltipOpen(tooltipOpen === key ? null : key) }} title={meaning}>?</button>
+                        {tooltipOpen === key && (
+                          <div className="metric-tooltip">
+                            <p className="tt-meaning">{meaning}</p>
+                            <p className="tt-scale">{scale}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="metric-value">
+                        {loadingData ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">N/A</span> : fmt(val, type)}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {(aiScan || isEtf || loadingData) && (
+                <div className="ai-card">
+                  <div className="ai-head">
+                    <span className="ai-badge">Neutral Assessment</span>
+                    <span className="ai-sub">{activeTicker} · Institutional Scan</span>
+                  </div>
+                  <div className="ai-body">
+                    {loadingData ? <p>Executing probability check...</p> : isEtf ? <p>ETFs represent a basket of assets. Fundamental bear/bull metrics bypass single-stock analysis.</p> : (
+                      <>
+                        <p><strong>🚩 Terminal Red Flag Sweep:</strong> {aiScan?.terminal_red_flags?.join(" ")}</p>
+                        <p><strong>📈 Bull Case:</strong> {aiScan?.bull_case}</p>
+                        <p><strong>📉 Bear Case:</strong> {aiScan?.bear_case}</p>
+                        <p><strong>⚖️ Verdict:</strong> {aiScan?.neutral_verdict}</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
