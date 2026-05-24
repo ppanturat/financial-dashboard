@@ -512,7 +512,7 @@ export default function App() {
                   <div className="ai-body">
                     {loadingAnalysis ? <p>Executing quantitative sweep...</p> : isEtf ? <p>ETFs represent a basket of assets. Fundamental bear/bull metrics bypass single-stock analysis.</p> : (
                       <>
-                        <p><strong>🚩 Terminal Red Flag Sweep:</strong> {aiScan?.terminal_red_flags?.join(" ")}</p>
+                        <p><strong>🚩 Terminal Red Flag Sweep:</strong> {Array.isArray(aiScan?.terminal_red_flags) ? aiScan.terminal_red_flags.join(" ") : aiScan?.terminal_red_flags || "Clear"}</p>
                         <p><strong>📈 Bull Case:</strong> {aiScan?.bull_case}</p>
                         <p><strong>📉 Bear Case:</strong> {aiScan?.bear_case}</p>
                         <p><strong>⚖️ Verdict:</strong> {aiScan?.neutral_verdict}</p>
