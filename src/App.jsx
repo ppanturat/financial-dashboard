@@ -615,20 +615,7 @@ export default function App() {
               {description && (
                 <div className="desc-card">
                   <h3 className="desc-title">Company Profile</h3>
-                  <p className="desc-text">
-                    {descExpanded || description.length <= 180 
-                      ? description 
-                      : `${description.substring(0, 180)}...`
-                    }
-                    {description.length > 180 && (
-                      <button 
-                        className="desc-toggle-btn" 
-                        onClick={() => setDescExpanded(!descExpanded)}
-                      >
-                        {descExpanded ? "Show Less" : "Show More"}
-                      </button>
-                    )}
-                  </p>
+                  <p className="desc-text">{description}</p>
                 </div>
               )}
 
