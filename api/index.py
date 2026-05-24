@@ -27,7 +27,6 @@ def search_ticker(query: str):
     except Exception:
         return {"results": []}
 
-# FAST ENDPOINT: Returns chart and numbers instantly
 @app.get("/api/data/{ticker}")
 def get_market_data(ticker: str, timeframe: str = "1M"):
     stock = yf.Ticker(ticker)
@@ -60,7 +59,6 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         "description": info.get('longBusinessSummary', '')
     }
 
-# BACKGROUND AI ENDPOINT: Called separately so it doesn't block the UI
 @app.get("/api/ai/{ticker}")
 def get_ai_analysis(ticker: str):
     stock = yf.Ticker(ticker)
@@ -92,10 +90,21 @@ def get_ai_analysis(ticker: str):
     """
 
     try:
-        res = requests.post(url, headers={"Content-Type": "application/json"}, json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"responseMimeType": "application/json"}}, timeout=10)
+        res = requests.post(
+            url, 
+            headers={"Content-Type": "application/json"}, 
+            json={
+                "contents": [{"parts": [{"text": prompt}]}], 
+                "generationConfig": {"responseMimeType": "application/json"}
+            }, 
+            timeout=10
+        )
         res_data = res.json()
         if "error" in res_data: raise Exception(res_data["error"].get("message"))
-        return json.loads(res_data['candidates'][0]['content']['parts'][0]['text'].replace("```json", "").replace("```", "").strip())
+        
+        raw_text = res_data['candidates'][0]['content']['parts'][0]['text']
+        clean_text = raw_text.replace("```json", "").replace("```", "").strip()
+        return json.loads(clean_text)
     except Exception as e:
         return {
             "terminal_red_flags": [f"Analysis Error: {str(e)}"],

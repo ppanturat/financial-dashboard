@@ -45,7 +45,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
-  const [searchSelectedIndex, setSearchSelectedIndex] = useState(-1) // Tracks keyboard focus index
+  const [searchSelectedIndex, setSearchSelectedIndex] = useState(-1)
   const [tooltipOpen, setTooltipOpen] = useState(null)
 
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null })
@@ -55,14 +55,12 @@ export default function App() {
 
   const BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8000/api" : "/api";
 
-  // --- AUTH SUBSCRIPTION ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setSession(s))
     return () => subscription.unsubscribe()
   }, [])
 
-  // --- COMPREHENSIVE RELATION LOAD ---
   useEffect(() => {
     if (!session) {
       setFolders([])
@@ -73,16 +71,9 @@ export default function App() {
 
     const fetchWorkspaceData = async () => {
       setFetchingFolders(true)
-      
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('folders')
-        .select(`
-          id,
-          name,
-          portfolio_items (
-            ticker
-          )
-        `)
+        .select(`id, name, portfolio_items (ticker)`)
         .eq('user_id', session.user.id)
         .order('created_at', { ascending: true })
 
@@ -92,7 +83,6 @@ export default function App() {
           name: folder.name,
           tickers: folder.portfolio_items ? folder.portfolio_items.map(item => item.ticker) : []
         }))
-
         setFolders(formattedFolders)
         setActiveFolderId(formattedFolders[0].id)
         setActiveTicker(formattedFolders[0].tickers[0] || '')
@@ -114,7 +104,6 @@ export default function App() {
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
-  // --- API CONSUMPTION ---
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return }
     const q = searchQuery.toUpperCase().trim()
@@ -123,7 +112,7 @@ export default function App() {
         const res = await fetch(`${BASE_URL}/search/${encodeURIComponent(q)}`)
         const data = await res.json()
         setSearchResults(data.results || [])
-        setSearchSelectedIndex(-1) // Reset selection when new results load
+        setSearchSelectedIndex(-1)
       } catch (err) { setSearchResults([]) }
     }
     const id = setTimeout(fetchSearch, 300)
@@ -144,7 +133,7 @@ export default function App() {
       setDescription('')
 
       try {
-        // 1. Fetch Chart Data (FAST)
+        // 1. Fetch Fast Market Data Instantly
         const res = await fetch(`${BASE_URL}/data/${activeTicker}?timeframe=${timeframe}`, {
           signal: abortController.signal
         })
@@ -153,25 +142,14 @@ export default function App() {
 
         setChartData(data.chart || [])
         if (data.chart && data.chart.length > 0) setCurrentPrice(data.chart[data.chart.length - 1].price)
-        setLoadingData(false) // Chart mounts instantly!
-
-        // 2. Fetch Analysis & Quants (SLOW Yahoo info call)
-        const analysisRes = await fetch(`${BASE_URL}/analysis/${activeTicker}`, {
-          signal: abortController.signal
-        })
-        if (!analysisRes.ok) throw new Error('Failed to fetch analysis.')
-        const analysisData = await analysisRes.json()
-
-        setQuoteType(analysisData.quoteType)
-        let rawDesc = (analysisData.description || '').trim();
         
+        setQuoteType(data.quoteType)
+        setMetrics(data.metrics)
+
+        let rawDesc = (data.description || '').trim();
         if (/…$|\.{3,}$|[^.!?]$/.test(rawDesc)) {
           const cleanDesc = rawDesc.replace(/[…\s.]+$/, '');
-          const lastSentenceEnd = Math.max(
-            cleanDesc.lastIndexOf('.'),
-            cleanDesc.lastIndexOf('!'),
-            cleanDesc.lastIndexOf('?')
-          );
+          const lastSentenceEnd = Math.max(cleanDesc.lastIndexOf('.'), cleanDesc.lastIndexOf('!'), cleanDesc.lastIndexOf('?'));
           if (lastSentenceEnd !== -1) {
             rawDesc = cleanDesc.substring(0, lastSentenceEnd + 1).trim();
           } else {
@@ -179,13 +157,17 @@ export default function App() {
           }
         }
         setDescription(rawDesc);
+        setLoadingData(false) // Data loaded, free the UI!
 
-        if (analysisData.quoteType === 'ETF') {
-          setMetrics(null)
-          setAiScan(null)
-        } else {
-          setMetrics(analysisData.metrics)
-          setAiScan(analysisData.ai_scan)
+        // 2. Fetch AI Background Task (if not ETF)
+        if (data.quoteType !== 'ETF') {
+          const aiRes = await fetch(`${BASE_URL}/ai/${activeTicker}`, {
+            signal: abortController.signal
+          })
+          if (aiRes.ok) {
+            const aiData = await aiRes.json()
+            setAiScan(aiData) // Set the direct AI payload
+          }
         }
       } catch (e) {
         if (e.name !== 'AbortError') {
@@ -194,7 +176,7 @@ export default function App() {
       } finally {
         if (!abortController.signal.aborted) {
           setLoadingData(false)
-          setLoadingAnalysis(false)
+          setLoadingAnalysis(false) // Both finished
         }
       }
     }
@@ -203,7 +185,6 @@ export default function App() {
     return () => { abortController.abort() }
   }, [activeTicker, timeframe])
 
-  // --- DISPLAY LOGIC ---
   const formatXAxis = (tickItem) => {
     if (!tickItem) return '';
     const d = new Date(tickItem);
@@ -243,9 +224,7 @@ export default function App() {
 
   const openConfirmModal = (title, message, onConfirmAction) => {
     setModal({
-      isOpen: true,
-      title,
-      message,
+      isOpen: true, title, message,
       onConfirm: () => {
         onConfirmAction();
         setModal({ isOpen: false, title: '', message: '', onConfirm: null });
@@ -253,21 +232,12 @@ export default function App() {
     });
   }
 
-  // --- REAL RELATION MUTATIONS ---
-
   const saveNewFolder = async () => {
     const name = newFolderName.trim()
     if (!name || !session) return
-
-    const { data, error } = await supabase
-      .from('folders')
-      .insert([{ user_id: session.user.id, name }])
-      .select()
-      .single()
-
-    if (error) {
-      alert("Error processing folder configuration: " + error.message)
-    } else if (data) {
+    const { data, error } = await supabase.from('folders').insert([{ user_id: session.user.id, name }]).select().single()
+    if (error) alert("Error processing folder configuration: " + error.message)
+    else if (data) {
       const parsedFolder = { id: data.id, name: data.name, tickers: [] }
       setFolders(f => {
         const updated = [...f, parsedFolder]
@@ -282,147 +252,83 @@ export default function App() {
   const saveFolderEdit = async (id) => {
     const folder = folders.find(f => f.id === id)
     const name = editName.trim()
-    if (!name || name === folder.name) {
-      setEditingFolderId(null)
-      return
-    }
-
-    openConfirmModal(
-      'Rename Folder',
-      `Are you sure you want to rename this folder to "${name}"?`,
-      async () => {
-        const { error } = await supabase.from('folders').update({ name }).eq('id', id)
-        if (!error) {
-          setFolders(f => f.map(x => x.id === id ? { ...x, name } : x))
-        }
-      }
-    );
+    if (!name || name === folder.name) { setEditingFolderId(null); return }
+    openConfirmModal('Rename Folder', `Are you sure you want to rename this folder to "${name}"?`, async () => {
+      const { error } = await supabase.from('folders').update({ name }).eq('id', id)
+      if (!error) setFolders(f => f.map(x => x.id === id ? { ...x, name } : x))
+    });
     setEditingFolderId(null)
   }
 
   const deleteFolder = (id) => {
-    openConfirmModal(
-      'Delete Folder',
-      'Are you sure you want to permanently delete this entire folder?',
-      async () => {
-        const { error } = await supabase.from('folders').delete().eq('id', id)
-        if (!error) {
-          const next = folders.filter(f => f.id !== id)
-          setFolders(next)
-          if (activeFolderId === id) {
-            if (next.length > 0) {
-              setActiveFolderId(next[0].id)
-              setActiveTicker(next[0].tickers[0] ?? '')
-            } else {
-              setActiveFolderId(null)
-              setActiveTicker('')
-            }
+    openConfirmModal('Delete Folder', 'Are you sure you want to permanently delete this entire folder?', async () => {
+      const { error } = await supabase.from('folders').delete().eq('id', id)
+      if (!error) {
+        const next = folders.filter(f => f.id !== id)
+        setFolders(next)
+        if (activeFolderId === id) {
+          if (next.length > 0) {
+            setActiveFolderId(next[0].id)
+            setActiveTicker(next[0].tickers[0] ?? '')
+          } else {
+            setActiveFolderId(null)
+            setActiveTicker('')
           }
         }
       }
-    );
+    });
   }
 
   const addTicker = async (symbol) => {
     symbol = symbol.toUpperCase().trim()
     if (!symbol) return
-
-    // Immediately clean up UI inputs for a seamless layout interaction
     setSearchQuery('')
     setShowDropdown(false)
     setSearchSelectedIndex(-1)
 
     try {
-      // 1. Safe-Check: Ensure entry exists in parent global_metrics table (satisfies constraints)
-      const { error: metricError } = await supabase
-        .from('global_metrics')
-        .upsert({ ticker: symbol }, { onConflict: 'ticker' })
+      const { error: metricError } = await supabase.from('global_metrics').upsert({ ticker: symbol }, { onConflict: 'ticker' })
+      if (metricError) { alert(`Database Error (global_metrics table): ${metricError.message}`); return; }
 
-      if (metricError) {
-        alert(`Database Error (global_metrics table): ${metricError.message}`);
-        return;
-      }
-
-      // 2. Resolve Active Folder Context Target
       let destinationFolderId = activeFolderId
-
       if (folders.length === 0) {
-        // Fallback: build automated default workspace folder if user profile has zero folders
-        const { data: newF, error: fErr } = await supabase
-          .from('folders')
-          .insert([{ user_id: session.user.id, name: 'My Portfolio' }])
-          .select()
-          .single()
-        
-        if (fErr || !newF) {
-          alert(`Error initializing automated default folder: ${fErr?.message}`);
-          return;
-        }
+        const { data: newF, error: fErr } = await supabase.from('folders').insert([{ user_id: session.user.id, name: 'My Portfolio' }]).select().single()
+        if (fErr || !newF) { alert(`Error initializing automated default folder: ${fErr?.message}`); return; }
         destinationFolderId = newF.id
         setFolders([{ id: newF.id, name: newF.name, tickers: [symbol] }])
         setActiveFolderId(newF.id)
       } else {
-        // Fix: If workspace contains folders but none are active, default directly to the first folder
         if (!destinationFolderId) {
           destinationFolderId = folders[0].id
           setActiveFolderId(folders[0].id)
         }
-
         const currentFolder = folders.find(f => f.id === destinationFolderId)
-        if (!currentFolder) {
-          alert("Unable to detect target folder context.");
-          return;
-        }
-
-        // Avoid writing duplicate records if the ticker is already in this specific folder
-        if (currentFolder.tickers.includes(symbol)) {
-          setActiveTicker(symbol)
-          return
-        }
+        if (!currentFolder) { alert("Unable to detect target folder context."); return; }
+        if (currentFolder.tickers.includes(symbol)) { setActiveTicker(symbol); return }
       }
 
-      // 3. Execution of child record mapping inside portfolio_items
-      const { error: itemError } = await supabase
-        .from('portfolio_items')
-        .insert([{ 
-          user_id: session.user.id, 
-          folder_id: destinationFolderId, 
-          ticker: symbol 
-        }])
-
-      // Code 23505 implies unique check violations (already matches key layout rules perfectly)
+      const { error: itemError } = await supabase.from('portfolio_items').insert([{ user_id: session.user.id, folder_id: destinationFolderId, ticker: symbol }])
       if (!itemError || itemError.code === '23505') {
         setFolders(f => f.map(x => x.id === destinationFolderId ? { ...x, tickers: x.tickers.includes(symbol) ? x.tickers : [...x.tickers, symbol] } : x))
         setActiveTicker(symbol)
       } else {
         alert(`Database Error (portfolio_items table): ${itemError.message}\nMake sure your Row Level Security (RLS) rules allow data ingestion.`);
       }
-    } catch (err) {
-      alert("Unexpected application runtime error: " + err.message);
-    }
+    } catch (err) { alert("Unexpected application runtime error: " + err.message); }
   }
 
   const removeTicker = (symbol) => {
-    openConfirmModal(
-      'Remove Asset',
-      `Are you sure you want to remove ${symbol} from this folder?`,
-      async () => {
-        const { error } = await supabase
-          .from('portfolio_items')
-          .delete()
-          .eq('folder_id', activeFolderId)
-          .eq('ticker', symbol)
-        
-        if (!error) {
-          setFolders(f => f.map(x => {
-            if (x.id !== activeFolderId) return x
-            const nextTickers = x.tickers.filter(t => t !== symbol)
-            if (activeTicker === symbol) setActiveTicker(nextTickers[0] ?? '')
-            return { ...x, tickers: nextTickers }
-          }))
-        }
+    openConfirmModal('Remove Asset', `Are you sure you want to remove ${symbol} from this folder?`, async () => {
+      const { error } = await supabase.from('portfolio_items').delete().eq('folder_id', activeFolderId).eq('ticker', symbol)
+      if (!error) {
+        setFolders(f => f.map(x => {
+          if (x.id !== activeFolderId) return x
+          const nextTickers = x.tickers.filter(t => t !== symbol)
+          if (activeTicker === symbol) setActiveTicker(nextTickers[0] ?? '')
+          return { ...x, tickers: nextTickers }
+        }))
       }
-    );
+    });
   }
 
   const handleAuth = async (e, type) => {
@@ -464,11 +370,7 @@ export default function App() {
       )}
 
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-brand">
-          <span className="brand-mark">◈</span>
-          <span className="brand-name">STOCK CHECKER</span>
-        </div>
-
+        <div className="sidebar-brand"><span className="brand-mark">◈</span><span className="brand-name">STOCK CHECKER</span></div>
         <p className="sidebar-label">Folders</p>
         <nav className="sidebar-nav">
           {fetchingFolders ? (
@@ -478,114 +380,50 @@ export default function App() {
               {folders.map(f => (
                 <div key={f.id} className={`vault-row ${f.id === activeFolderId ? 'active' : ''}`}>
                   {editingFolderId === f.id ? (
-                    <input
-                      className="vault-edit-input"
-                      autoFocus
-                      value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      onBlur={() => saveFolderEdit(f.id)}
-                      onKeyDown={e => { if (e.key === 'Enter') saveFolderEdit(f.id); if (e.key === 'Escape') setEditingFolderId(null) }}
-                    />
+                    <input className="vault-edit-input" autoFocus value={editName} onChange={e => setEditName(e.target.value)} onBlur={() => saveFolderEdit(f.id)} onKeyDown={e => { if (e.key === 'Enter') saveFolderEdit(f.id); if (e.key === 'Escape') setEditingFolderId(null) }} />
                   ) : (
                     <>
-                      <button className="vault-btn" onClick={() => { setActiveFolderId(f.id); setSidebarOpen(false); setActiveTicker(f.tickers[0] ?? '') }}>
-                        <span className="vault-dot" />
-                        <span className="vault-label">{f.name}</span>
-                        <span className="vault-count">{f.tickers?.length || 0}</span>
-                      </button>
-                      <div className="vault-actions">
-                        <button title="Rename" onClick={() => { setEditingFolderId(f.id); setEditName(f.name) }}>✎</button>
-                        <button title="Delete" onClick={() => deleteFolder(f.id)}>✕</button>
-                      </div>
+                      <button className="vault-btn" onClick={() => { setActiveFolderId(f.id); setSidebarOpen(false); setActiveTicker(f.tickers[0] ?? '') }}><span className="vault-dot" /><span className="vault-label">{f.name}</span><span className="vault-count">{f.tickers?.length || 0}</span></button>
+                      <div className="vault-actions"><button title="Rename" onClick={() => { setEditingFolderId(f.id); setEditName(f.name) }}>✎</button><button title="Delete" onClick={() => deleteFolder(f.id)}>✕</button></div>
                     </>
                   )}
                 </div>
               ))}
             </>
           )}
-
           {newFolderMode ? (
-            <div className="vault-row">
-              <input ref={newFolderRef} className="vault-edit-input" autoFocus placeholder="Folder name..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} onBlur={saveNewFolder} onKeyDown={e => { if (e.key === 'Enter') saveNewFolder(); if (e.key === 'Escape') { setNewFolderMode(false); setNewFolderName('') } }} />
-            </div>
-          ) : (
-            <button className="new-vault-btn" onClick={() => setNewFolderMode(true)}>+ New Folder</button>
-          )}
+            <div className="vault-row"><input ref={newFolderRef} className="vault-edit-input" autoFocus placeholder="Folder name..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} onBlur={saveNewFolder} onKeyDown={e => { if (e.key === 'Enter') saveNewFolder(); if (e.key === 'Escape') { setNewFolderMode(false); setNewFolderName('') } }} /></div>
+          ) : (<button className="new-vault-btn" onClick={() => setNewFolderMode(true)}>+ New Folder</button>)}
         </nav>
-
-        <div className="sidebar-footer">
-          <span className="user-email">{session.user.email}</span>
-          <button className="signout-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button>
-        </div>
+        <div className="sidebar-footer"><span className="user-email">{session.user.email}</span><button className="signout-btn" onClick={() => supabase.auth.signOut()}>Sign Out</button></div>
       </aside>
 
       <main className="main">
         <header className="header">
           <button className="hamburger" onClick={() => setSidebarOpen(o => !o)}>☰</button>
-
           <div className="header-left">
             <span className="header-vault-name">{activeFolder?.name ?? 'No Folder Selected'}</span>
             <div className="ticker-tabs">
               {activeFolder?.tickers?.map(t => (
-                <div key={t} className={`ticker-chip ${activeTicker === t ? 'active' : ''}`}>
-                  <button className="chip-ticker" onClick={() => setActiveTicker(t)}>{t}</button>
-                  <button className="chip-remove" onClick={() => removeTicker(t)} title="Remove">✕</button>
-                </div>
+                <div key={t} className={`ticker-chip ${activeTicker === t ? 'active' : ''}`}><button className="chip-ticker" onClick={() => setActiveTicker(t)}>{t}</button><button className="chip-remove" onClick={() => removeTicker(t)} title="Remove">✕</button></div>
               ))}
             </div>
           </div>
-
           <div className="search-wrap" ref={searchRef}>
             <div className="search-box">
               <span className="search-icon">⌕</span>
-              <input 
-                type="text" 
-                placeholder="Search Ticker..." 
-                value={searchQuery} 
-                onChange={e => { 
-                  setSearchQuery(e.target.value); 
-                  setShowDropdown(true);
-                  setSearchSelectedIndex(-1); // Reset selected index on type
-                }} 
-                onFocus={() => setShowDropdown(true)} 
-                onKeyDown={e => { 
-                  if (e.key === 'ArrowDown') {
-                    e.preventDefault();
-                    setSearchSelectedIndex(prev => prev < searchResults.length - 1 ? prev + 1 : prev);
-                  } else if (e.key === 'ArrowUp') {
-                    e.preventDefault();
-                    setSearchSelectedIndex(prev => prev > -1 ? prev - 1 : -1);
-                  } else if (e.key === 'Enter' && searchQuery.trim()) {
-                    e.preventDefault();
-                    if (searchSelectedIndex >= 0 && searchResults[searchSelectedIndex]) {
-                      addTicker(searchResults[searchSelectedIndex].symbol);
-                    } else {
-                      addTicker(searchQuery.trim()); 
-                    }
-                  } else if (e.key === 'Escape') {
-                    setShowDropdown(false);
-                    setSearchSelectedIndex(-1);
-                  }
-                }} 
-              />
+              <input type="text" placeholder="Search Ticker..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setShowDropdown(true); setSearchSelectedIndex(-1); }} onFocus={() => setShowDropdown(true)} onKeyDown={e => { 
+                  if (e.key === 'ArrowDown') { e.preventDefault(); setSearchSelectedIndex(prev => prev < searchResults.length - 1 ? prev + 1 : prev); }
+                  else if (e.key === 'ArrowUp') { e.preventDefault(); setSearchSelectedIndex(prev => prev > -1 ? prev - 1 : -1); }
+                  else if (e.key === 'Enter' && searchQuery.trim()) { e.preventDefault(); if (searchSelectedIndex >= 0 && searchResults[searchSelectedIndex]) { addTicker(searchResults[searchSelectedIndex].symbol); } else { addTicker(searchQuery.trim()); } }
+                  else if (e.key === 'Escape') { setShowDropdown(false); setSearchSelectedIndex(-1); }
+                }} />
               {searchQuery && <button className="search-clear" onClick={() => { setSearchQuery(''); setSearchResults([]); setSearchSelectedIndex(-1); }}>✕</button>}
             </div>
             {showDropdown && searchQuery && (
               <ul className="search-drop">
-                {searchResults.length === 0
-                  ? <li className="drop-empty" onClick={() => addTicker(searchQuery.trim())}>Press Enter to force add "{searchQuery.toUpperCase()}"</li>
-                  : searchResults.map((r, i) => (
-                    <li 
-                      key={r.symbol} 
-                      className="drop-item" 
-                      style={i === searchSelectedIndex ? { backgroundColor: 'var(--border)' } : {}}
-                      onClick={() => addTicker(r.symbol)}
-                      onMouseEnter={() => setSearchSelectedIndex(i)}
-                    >
-                      <span className="drop-symbol">{r.symbol}</span>
-                      <span className="drop-name">{r.shortname ?? r.longname ?? ''}</span>
-                      <span className="drop-type">{r.quoteType?.toLowerCase()}</span>
-                    </li>
+                {searchResults.length === 0 ? <li className="drop-empty" onClick={() => addTicker(searchQuery.trim())}>Press Enter to force add "{searchQuery.toUpperCase()}"</li> : searchResults.map((r, i) => (
+                    <li key={r.symbol} className="drop-item" style={i === searchSelectedIndex ? { backgroundColor: 'var(--border)' } : {}} onClick={() => addTicker(r.symbol)} onMouseEnter={() => setSearchSelectedIndex(i)}><span className="drop-symbol">{r.symbol}</span><span className="drop-name">{r.shortname ?? r.longname ?? ''}</span><span className="drop-type">{r.quoteType?.toLowerCase()}</span></li>
                   ))
                 }
               </ul>
@@ -596,11 +434,7 @@ export default function App() {
         <div className="content">
           {!activeTicker && !fetchingFolders ? (
             <div className="chart-empty" style={{ height: '400px', flexDirection: 'column', gap: '12px', border: '1px dashed var(--border-md)', borderRadius: '12px' }}>
-              <span style={{ fontSize: '28px' }}>◈</span>
-              <h3 style={{ margin: 0, fontWeight: 600, color: 'var(--text)' }}>Your Workspace is Empty</h3>
-              <p style={{ margin: 0, fontSize: '14px', color: 'var(--muted)', maxWidth: '340px', textAlign: 'center', lineHeight: 1.5 }}>
-                Create a folder on the left sidebar, or type a ticker in the search engine above to initialize your view.
-              </p>
+              <span style={{ fontSize: '28px' }}>◈</span><h3 style={{ margin: 0, fontWeight: 600, color: 'var(--text)' }}>Your Workspace is Empty</h3><p style={{ margin: 0, fontSize: '14px', color: 'var(--muted)', maxWidth: '340px', textAlign: 'center', lineHeight: 1.5 }}>Create a folder on the left sidebar, or type a ticker in the search engine above to initialize your view.</p>
             </div>
           ) : !activeTicker && fetchingFolders ? (
             <div className="chart-empty"><span className="spinner" /> Loading workspace data...</div>
@@ -608,23 +442,12 @@ export default function App() {
             <>
               <div className="price-row">
                 <div className="price-left">
-                  <span className="price-ticker">{activeTicker}</span>
-                  {isEtf && <span className="etf-badge">ETF</span>}
-                  {currentPrice != null ? (
-                    <span className="price-value">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  ) : (
-                    <span className="price-value price-skeleton">——</span>
-                  )}
-                  {priceChange !== null && (
-                    <span className={`price-delta ${priceChange >= 0 ? 'up' : 'down'}`}>
-                      {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)}%
-                    </span>
-                  )}
+                  <span className="price-ticker">{activeTicker}</span>{isEtf && <span className="etf-badge">ETF</span>}
+                  {currentPrice != null ? <span className="price-value">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> : <span className="price-value price-skeleton">——</span>}
+                  {priceChange !== null && <span className={`price-delta ${priceChange >= 0 ? 'up' : 'down'}`}>{priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)}%</span>}
                 </div>
                 <div className="tf-group">
-                  {['1W', '1M', '6M', '1Y'].map(tf => (
-                    <button key={tf} className={`tf-btn ${timeframe === tf ? 'active' : ''}`} onClick={() => setTimeframe(tf)}>{tf}</button>
-                  ))}
+                  {['1W', '1M', '6M', '1Y'].map(tf => <button key={tf} className={`tf-btn ${timeframe === tf ? 'active' : ''}`} onClick={() => setTimeframe(tf)}>{tf}</button>)}
                 </div>
               </div>
 
@@ -647,16 +470,13 @@ export default function App() {
               </div>
 
               {description && (
-                <div className="desc-card">
-                  <h3 className="desc-title">Company Profile</h3>
-                  <p className="desc-text">{description}</p>
-                </div>
+                <div className="desc-card"><h3 className="desc-title">Company Profile</h3><p className="desc-text">{description}</p></div>
               )}
 
               <div className="section-header">
-                <span className="section-title">Key Metrics</span>
-                {isEtf && <span className="etf-notice">ETF — Individual financial metrics not applicable</span>}
+                <span className="section-title">Key Metrics</span>{isEtf && <span className="etf-notice">ETF — Individual financial metrics not applicable</span>}
               </div>
+              
               <div className="metrics-grid">
                 {METRIC_DEFS.map(({ key, label, type, colorType, meaning, scale }) => {
                   const val = metrics?.[key]
@@ -666,23 +486,16 @@ export default function App() {
                       <div className="metric-top">
                         <span className="metric-label">{label}</span>
                         <button className="metric-info-btn" onClick={e => { e.stopPropagation(); setTooltipOpen(tooltipOpen === key ? null : key) }} title={meaning}>?</button>
-                        {tooltipOpen === key && (
-                          <div className="metric-tooltip">
-                            <p className="tt-meaning">{meaning}</p>
-                            <p className="tt-scale">{scale}</p>
-                          </div>
-                        )}
+                        {tooltipOpen === key && <div className="metric-tooltip"><p className="tt-meaning">{meaning}</p><p className="tt-scale">{scale}</p></div>}
                       </div>
-                      {/* Change this specific line inside your metrics map loop */}
                       <div className="metric-value">
-                        {loadingAnalysis ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">N/A</span> : fmt(val, type)}
+                        {loadingData ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">N/A</span> : fmt(val, type)}
                       </div>
                     </div>
                   )
                 })}
               </div>
 
-              {/* Change these lines inside the AI Card block */}
               {(aiScan || isEtf || loadingAnalysis) && (
                 <div className="ai-card">
                   <div className="ai-head">
@@ -690,7 +503,7 @@ export default function App() {
                     <span className="ai-sub">{activeTicker} · Institutional Scan</span>
                   </div>
                   <div className="ai-body">
-                    {loadingAnalysis ? <p>Executing probability check...</p> : isEtf ? <p>ETFs represent a basket of assets...</p> : (
+                    {loadingAnalysis ? <p>Executing quantitative sweep...</p> : isEtf ? <p>ETFs represent a basket of assets. Fundamental bear/bull metrics bypass single-stock analysis.</p> : (
                       <>
                         <p><strong>🚩 Terminal Red Flag Sweep:</strong> {aiScan?.terminal_red_flags?.join(" ")}</p>
                         <p><strong>📈 Bull Case:</strong> {aiScan?.bull_case}</p>
