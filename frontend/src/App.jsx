@@ -3,53 +3,37 @@ import { supabase } from './supabaseClient'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip, ResponsiveContainer } from 'recharts'
 import './App.css'
 
-// popular tickers for search priority
 const popularTickers = ['VOO', 'SPY', 'AAPL', 'MSFT', 'NVDA', 'V', 'TSLA', 'META', 'AMZN', 'PACB', 'SDGR', 'RKLB']
 const allTickers = [...popularTickers, 'AMD', 'INTC', 'NFLX', 'DIS', 'BA', 'JPM', 'GS']
 
-// mock chart generator for timeframes
-const generateChartData = (timeframe) => {
-  const data = []
-  let price = 100
-  const points = timeframe === '1W' ? 7 : timeframe === '1M' ? 30 : timeframe === '1Y' ? 12 : 5
-  const labels = timeframe === '1Y' ? ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'] : null
-  
-  for (let i = 0; i < points; i++) {
-    price = price + (Math.random() * 10 - 4.5) // random walk
-    data.push({ name: labels ? labels[i] : `day ${i+1}`, price: parseFloat(price.toFixed(2)) })
-  }
-  return data
-}
-
 export default function App() {
-  // auth state
+  // auth states
   const [session, setSession] = useState(null)
   const [view, setView] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   
-  // ui state
+  // ui states
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [loadingData, setLoadingData] = useState(false)
   
-  // folder & ticker state
+  // folder states (still using local state for now, connected to db later)
   const [folders, setFolders] = useState([
-    { id: 1, name: 'shield vault', tickers: ['VOO', 'V'] },
-    { id: 2, name: 'satellite vault', tickers: ['PACB', 'SDGR'] }
+    { id: 1, name: 'shield vault', tickers: ['VOO', 'AAPL'] },
+    { id: 2, name: 'satellite vault', tickers: ['PACB', 'RKLB'] }
   ])
   const [activeFolderId, setActiveFolderId] = useState(1)
   const [editingFolder, setEditingFolder] = useState(null)
   const [editName, setEditName] = useState('')
   
-  // active asset state
+  // live data states
   const [activeTicker, setActiveTicker] = useState('VOO')
-  const [metrics, setMetrics] = useState(null)
-  const [loadingData, setLoadingData] = useState(false)
-  
-  // chart state
   const [timeframe, setTimeframe] = useState('1M')
   const [chartData, setChartData] = useState([])
+  const [metrics, setMetrics] = useState(null)
+  const [currentPrice, setCurrentPrice] = useState(0)
   
-  // search state
+  // search states
   const [searchQuery, setSearchQuery] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
 
@@ -63,28 +47,70 @@ export default function App() {
     return () => authListener.subscription.unsubscribe()
   }, [])
 
-  // fetch metrics
+  // fetch live real-time data via vite proxy
   useEffect(() => {
-    const fetchMetrics = async () => {
-      if (!session || !activeTicker) return
+    const fetchLiveYahooData = async () => {
+      if (!activeTicker) return
       setLoadingData(true)
-      const { data } = await supabase.from('global_metrics').select('*').eq('ticker', activeTicker).single()
-      setMetrics(data || null)
+      
+      try {
+        // 1. set up timeframes for yahoo api
+        const ranges = { '1W': '5d', '1M': '1mo', '6M': '6mo', '1Y': '1y' }
+        const intervals = { '1W': '1d', '1M': '1d', '6M': '1d', '1Y': '1wk' }
+        const range = ranges[timeframe] || '1mo'
+        const interval = intervals[timeframe] || '1d'
+
+        // 2. fetch real chart data
+        const chartRes = await fetch(`/yf/v8/finance/chart/${activeTicker}?range=${range}&interval=${interval}`)
+        const chartJson = await chartRes.json()
+        const result = chartJson.chart.result[0]
+        
+        const timestamps = result.timestamp
+        const prices = result.indicators.quote[0].close
+        
+        // format chart data
+        const formattedChart = timestamps.map((t, i) => {
+          const d = new Date(t * 1000)
+          const label = timeframe === '1Y' 
+            ? d.toLocaleString('default', { month: 'short', year: '2-digit' })
+            : `${d.getMonth()+1}/${d.getDate()}`
+          return { name: label, price: prices[i] ? parseFloat(prices[i].toFixed(2)) : null }
+        }).filter(item => item.price !== null)
+        
+        setChartData(formattedChart)
+        if (formattedChart.length > 0) {
+          setCurrentPrice(formattedChart[formattedChart.length - 1].price)
+        }
+
+        // 3. fetch real financial metrics (fcf, cash, debt, rev)
+        const metricsRes = await fetch(`/yf/v10/finance/quoteSummary/${activeTicker}?modules=financialData`)
+        const metricsJson = await metricsRes.json()
+        const finData = metricsJson.quoteSummary.result[0].financialData
+        
+        const cash = finData.totalCash?.raw || 0
+        const debt = finData.totalDebt?.raw || 0
+        
+        setMetrics({
+          war_chest_ratio: debt > 0 ? (cash / debt) : 999,
+          fcf: finData.freeCashflow?.raw || null,
+          revenue_yoy: finData.revenueGrowth?.raw || null
+        })
+
+      } catch (error) {
+        console.error('failed to fetch live data', error)
+      }
+      
       setLoadingData(false)
     }
-    fetchMetrics()
-  }, [activeTicker, session])
 
-  // update chart on timeframe or ticker change
-  useEffect(() => {
-    setChartData(generateChartData(timeframe))
-  }, [timeframe, activeTicker])
+    fetchLiveYahooData()
+  }, [activeTicker, timeframe])
 
-  // graph color logic
+  // graph line color logic (green if up, red if down)
   const isUp = chartData.length > 0 && chartData[chartData.length - 1].price >= chartData[0].price
   const graphColor = isUp ? '#16a34a' : '#dc2626'
 
-  // metric colors
+  // metric background colors
   const getColor = (val, type) => {
     if (val === null || val === undefined) return 'bg-white'
     if (type === 'warChest') {
@@ -96,39 +122,45 @@ export default function App() {
     return 'bg-white'
   }
 
-  // search filter & sort (popular first)
+  // format large numbers neatly
+  const formatCurrency = (num) => {
+    if (!num) return 'n/a'
+    if (num > 1e9) return `$${(num / 1e9).toFixed(2)}B`
+    if (num > 1e6) return `$${(num / 1e6).toFixed(2)}M`
+    return `$${num.toLocaleString()}`
+  }
+
+  // autocomplete sort
   const filteredSearch = useMemo(() => {
     if (!searchQuery) return []
-    const lowerQ = searchQuery.toLowerCase()
-    const matches = allTickers.filter(t => t.toLowerCase().startsWith(lowerQ))
-    return matches.sort((a, b) => {
-      const aPop = popularTickers.indexOf(a)
-      const bPop = popularTickers.indexOf(b)
-      if (aPop !== -1 && bPop !== -1) return aPop - bPop
-      if (aPop !== -1) return -1
-      if (bPop !== -1) return 1
-      return a.localeCompare(b)
-    })
+    const lower = searchQuery.toLowerCase()
+    return allTickers
+      .filter(t => t.toLowerCase().startsWith(lower))
+      .sort((a, b) => {
+        const aPop = popularTickers.indexOf(a)
+        const bPop = popularTickers.indexOf(b)
+        if (aPop !== -1 && bPop !== -1) return aPop - bPop
+        if (aPop !== -1) return -1
+        if (bPop !== -1) return 1
+        return a.localeCompare(b)
+      })
   }, [searchQuery])
 
-  // folder crud
+  // folder crud functions
   const createFolder = () => {
     const name = prompt('folder name:')
     if (name) setFolders([...folders, { id: Date.now(), name, tickers: [] }])
   }
-  
   const saveFolderEdit = (id) => {
     setFolders(folders.map(f => f.id === id ? { ...f, name: editName } : f))
     setEditingFolder(null)
   }
-
   const deleteFolder = (id) => {
     if (folders.length === 1) return alert('cannot delete last folder')
     const updated = folders.filter(f => f.id !== id)
     setFolders(updated)
     if (activeFolderId === id) setActiveFolderId(updated[0].id)
   }
-
   const addTickerToFolder = (ticker) => {
     setFolders(folders.map(f => {
       if (f.id === activeFolderId && !f.tickers.includes(ticker)) {
@@ -140,7 +172,7 @@ export default function App() {
     setSearchQuery('')
   }
 
-  // auth handler
+  // basic auth handler
   const handleAuth = async (e, type) => {
     e.preventDefault()
     const { error } = type === 'up' 
@@ -150,6 +182,7 @@ export default function App() {
     else if (type === 'up') setView('check_email')
   }
 
+  // auth views
   if (!session) {
     if (view === 'check_email') return <div className="auth-wrapper"><div className="auth-card"><h2>check email</h2></div></div>
     return (
@@ -169,9 +202,9 @@ export default function App() {
 
   const activeFolder = folders.find(f => f.id === activeFolderId)
 
+  // main render
   return (
     <div className="dashboard-layout">
-      {/* mobile toggle */}
       <button className="mobile-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>☰ menu</button>
 
       {/* sidebar */}
@@ -200,7 +233,6 @@ export default function App() {
           ))}
         </div>
         <div className="sidebar-footer">
-          <p className="user-email">{session.user.email}</p>
           <button className="btn-danger" onClick={() => supabase.auth.signOut()}>sign out</button>
         </div>
       </aside>
@@ -243,21 +275,29 @@ export default function App() {
           {/* chart */}
           <div className="chart-card">
             <div className="chart-header">
-              <h3>{activeTicker} price action (mock)</h3>
+              <div>
+                <h3>{activeTicker}</h3>
+                {currentPrice > 0 && <p className="live-price">${currentPrice.toFixed(2)}</p>}
+              </div>
               <div className="timeframes">
-                {['1W', '1M', '1Y'].map(tf => (
+                {['1W', '1M', '6M', '1Y'].map(tf => (
                   <button key={tf} className={`tf-btn ${timeframe === tf ? 'active-tf' : ''}`} onClick={() => setTimeframe(tf)}>{tf}</button>
                 ))}
               </div>
             </div>
+            
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                <XAxis dataKey="name" stroke="#6b7280" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
-                <YAxis domain={['auto', 'auto']} stroke="#6b7280" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
-                <ChartTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
-                <Line type="monotone" dataKey="price" stroke={graphColor} strokeWidth={3} dot={false} />
-              </LineChart>
+              {loadingData ? (
+                <div style={{display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center'}}>loading live data...</div>
+              ) : (
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                  <XAxis dataKey="name" stroke="#6b7280" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
+                  <YAxis domain={['auto', 'auto']} stroke="#6b7280" tick={{fontSize: 12}} tickLine={false} axisLine={false} />
+                  <ChartTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
+                  <Line type="monotone" dataKey="price" stroke={graphColor} strokeWidth={3} dot={false} />
+                </LineChart>
+              )}
             </ResponsiveContainer>
           </div>
 
@@ -267,7 +307,7 @@ export default function App() {
             <p>green indicates strong financial health and survival capability. yellow suggests caution or high debt. red indicates severe survival risk or cash bleed.</p>
           </div>
 
-          {/* metrics */}
+          {/* real metrics */}
           <div className="metrics-grid">
             <div className={`metric-card ${getColor(metrics?.war_chest_ratio, 'warChest')}`}>
               <div className="metric-header">
@@ -288,7 +328,7 @@ export default function App() {
                   <div className="tooltip">cash left after operations and capital expenditures.<br/><br/>negative: burning cash (red)<br/>positive: generating cash (green)</div>
                 </div>
               </div>
-              <p className="metric-value">{metrics?.fcf ? `$${metrics.fcf.toLocaleString()}` : 'n/a'}</p>
+              <p className="metric-value">{formatCurrency(metrics?.fcf)}</p>
             </div>
             
             <div className="metric-card bg-white">
@@ -302,10 +342,6 @@ export default function App() {
               <p className="metric-value">{metrics?.revenue_yoy ? `${(metrics.revenue_yoy * 100).toFixed(1)}%` : 'n/a'}</p>
             </div>
           </div>
-          
-          {!metrics && !loadingData && (
-            <p className="db-warning">no data found for {activeTicker} in global metrics. run your python script.</p>
-          )}
         </div>
       </main>
     </div>
