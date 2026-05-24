@@ -131,42 +131,50 @@ export default function App() {
 
   useEffect(() => {
     if (!activeTicker) return
-    let cancelled = false
+    
+    const abortController = new AbortController()
+    
     const run = async () => {
       setLoadingData(true)
       setMetrics(null)
       setAiScan(null)
       setCurrentPrice(null)
       setDescription('')
-      setDescExpanded(false)
+      // setDescExpanded(false) is completely removed from here!
 
       try {
-        const res = await fetch(`${BASE_URL}/data/${activeTicker}?timeframe=${timeframe}`)
-        if (!res.ok) throw new Error()
+        const res = await fetch(`${BASE_URL}/data/${activeTicker}?timeframe=${timeframe}`, {
+          signal: abortController.signal
+        })
+        if (!res.ok) throw new Error('Failed to fetch data.')
         const data = await res.json()
 
-        if (!cancelled) {
-          setQuoteType(data.quoteType)
-          setChartData(data.chart)
-          setDescription(data.description)
-          
-          if (data.chart.length > 0) setCurrentPrice(data.chart[data.chart.length - 1].price)
+        setQuoteType(data.quoteType)
+        setChartData(data.chart || [])
+        setDescription(data.description || '')
+        
+        if (data.chart && data.chart.length > 0) setCurrentPrice(data.chart[data.chart.length - 1].price)
 
-          if (data.quoteType === 'ETF') {
-            setMetrics(null)
-            setAiScan(null)
-          } else {
-            setMetrics(data.metrics)
-            setAiScan(data.ai_scan)
-          }
+        if (data.quoteType === 'ETF') {
+          setMetrics(null)
+          setAiScan(null)
+        } else {
+          setMetrics(data.metrics)
+          setAiScan(data.ai_scan)
         }
       } catch (e) {
-        if (!cancelled) setDescription('Failed to fetch data.')
+        if (e.name !== 'AbortError') {
+          setDescription('Failed to fetch data.')
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setLoadingData(false)
+        }
       }
-      if (!cancelled) setLoadingData(false)
     }
+    
     run()
-    return () => { cancelled = true }
+    return () => { abortController.abort() }
   }, [activeTicker, timeframe])
 
   // --- DISPLAY LOGIC ---
@@ -640,7 +648,7 @@ export default function App() {
                         )}
                       </div>
                       <div className="metric-value">
-                        {loadingData ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">—</span> : fmt(val, type)}
+                        {loadingData ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">N/A</span> : fmt(val, type)}
                       </div>
                     </div>
                   )
