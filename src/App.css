@@ -724,3 +724,27 @@ body {
 
 .ai-body p { margin-bottom: 8px; }
 .ai-body p:last-child { margin-bottom: 0; }
+
+/* Description Card Styles */
+.desc-text {
+  position: relative;
+  line-height: 1.6;
+}
+
+.desc-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--green, #16a34a);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 6px;
+  font-size: 13px;
+  text-decoration: underline;
+  display: inline-block;
+  transition: opacity 0.2s;
+}
+
+.desc-toggle-btn:hover {
+  opacity: 0.8;
+}
