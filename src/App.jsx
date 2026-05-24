@@ -45,6 +45,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
+  const [searchSelectedIndex, setSearchSelectedIndex] = useState(-1) // Tracks keyboard focus index
   const [tooltipOpen, setTooltipOpen] = useState(null)
 
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null })
@@ -73,7 +74,6 @@ export default function App() {
     const fetchWorkspaceData = async () => {
       setFetchingFolders(true)
       
-      // Use standard Supabase sub-resource filtering to fetch folders and nested items cleanly
       const { data, error } = await supabase
         .from('folders')
         .select(`
@@ -87,7 +87,6 @@ export default function App() {
         .order('created_at', { ascending: true })
 
       if (data && data.length > 0) {
-        // Flatten portfolio_items nested structure into a basic ticker array for matching local states
         const formattedFolders = data.map(folder => ({
           id: folder.id,
           name: folder.name,
@@ -124,6 +123,7 @@ export default function App() {
         const res = await fetch(`${BASE_URL}/search/${encodeURIComponent(q)}`)
         const data = await res.json()
         setSearchResults(data.results || [])
+        setSearchSelectedIndex(-1) // Reset selection when new results load
       } catch (err) { setSearchResults([]) }
     }
     const id = setTimeout(fetchSearch, 300)
@@ -295,6 +295,7 @@ export default function App() {
     if (!symbol) return
     setSearchQuery('')
     setShowDropdown(false)
+    setSearchSelectedIndex(-1)
 
     // 1. Safe-Check: Satisfy foreign key validation rule by verifying global_metrics entry
     await supabase.from('global_metrics').upsert({ ticker: symbol }, { onConflict: 'ticker' })
@@ -399,7 +400,7 @@ export default function App() {
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
           <span className="brand-mark">◈</span>
-          <span className="brand-name">FINANCIAL DASHBOARD</span>
+          <span className="brand-name">STOCK CHECKER</span>
         </div>
 
         <p className="sidebar-label">Folders</p>
@@ -471,15 +472,50 @@ export default function App() {
           <div className="search-wrap" ref={searchRef}>
             <div className="search-box">
               <span className="search-icon">⌕</span>
-              <input type="text" placeholder="Search Ticker..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setShowDropdown(true) }} onFocus={() => setShowDropdown(true)} onKeyDown={e => { if (e.key === 'Enter' && searchQuery.trim()) { addTicker(searchQuery.trim()); } }} />
-              {searchQuery && <button className="search-clear" onClick={() => { setSearchQuery(''); setSearchResults([]) }}>✕</button>}
+              <input 
+                type="text" 
+                placeholder="Search Ticker..." 
+                value={searchQuery} 
+                onChange={e => { 
+                  setSearchQuery(e.target.value); 
+                  setShowDropdown(true);
+                  setSearchSelectedIndex(-1); // Reset selected index on type
+                }} 
+                onFocus={() => setShowDropdown(true)} 
+                onKeyDown={e => { 
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setSearchSelectedIndex(prev => prev < searchResults.length - 1 ? prev + 1 : prev);
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSearchSelectedIndex(prev => prev > -1 ? prev - 1 : -1);
+                  } else if (e.key === 'Enter' && searchQuery.trim()) {
+                    e.preventDefault();
+                    if (searchSelectedIndex >= 0 && searchResults[searchSelectedIndex]) {
+                      addTicker(searchResults[searchSelectedIndex].symbol);
+                    } else {
+                      addTicker(searchQuery.trim()); 
+                    }
+                  } else if (e.key === 'Escape') {
+                    setShowDropdown(false);
+                    setSearchSelectedIndex(-1);
+                  }
+                }} 
+              />
+              {searchQuery && <button className="search-clear" onClick={() => { setSearchQuery(''); setSearchResults([]); setSearchSelectedIndex(-1); }}>✕</button>}
             </div>
             {showDropdown && searchQuery && (
               <ul className="search-drop">
                 {searchResults.length === 0
                   ? <li className="drop-empty" onClick={() => addTicker(searchQuery.trim())}>Press Enter to force add "{searchQuery.toUpperCase()}"</li>
-                  : searchResults.map(r => (
-                    <li key={r.symbol} className="drop-item" onClick={() => addTicker(r.symbol)}>
+                  : searchResults.map((r, i) => (
+                    <li 
+                      key={r.symbol} 
+                      className="drop-item" 
+                      style={i === searchSelectedIndex ? { backgroundColor: 'var(--border)' } : {}}
+                      onClick={() => addTicker(r.symbol)}
+                      onMouseEnter={() => setSearchSelectedIndex(i)}
+                    >
                       <span className="drop-symbol">{r.symbol}</span>
                       <span className="drop-name">{r.shortname ?? r.longname ?? ''}</span>
                       <span className="drop-type">{r.quoteType?.toLowerCase()}</span>
