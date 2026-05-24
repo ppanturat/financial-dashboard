@@ -23,6 +23,7 @@ export default function App() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false)
   const [fetchingFolders, setFetchingFolders] = useState(true)
 
   const [folders, setFolders] = useState([])
@@ -136,55 +137,55 @@ export default function App() {
     
     const run = async () => {
       setLoadingData(true)
+      setLoadingAnalysis(true)
       setMetrics(null)
       setAiScan(null)
       setCurrentPrice(null)
       setDescription('')
-      // setDescExpanded(false) is completely removed from here!
 
       try {
+        // 1. Fetch Chart Data (FAST)
         const res = await fetch(`${BASE_URL}/data/${activeTicker}?timeframe=${timeframe}`, {
           signal: abortController.signal
         })
         if (!res.ok) throw new Error('Failed to fetch data.')
         const data = await res.json()
 
-        setQuoteType(data.quoteType)
         setChartData(data.chart || [])
+        if (data.chart && data.chart.length > 0) setCurrentPrice(data.chart[data.chart.length - 1].price)
+        setLoadingData(false) // Chart mounts instantly!
 
-        let rawDesc = (data.description || '').trim();
+        // 2. Fetch Analysis & Quants (SLOW Yahoo info call)
+        const analysisRes = await fetch(`${BASE_URL}/analysis/${activeTicker}`, {
+          signal: abortController.signal
+        })
+        if (!analysisRes.ok) throw new Error('Failed to fetch analysis.')
+        const analysisData = await analysisRes.json()
+
+        setQuoteType(analysisData.quoteType)
+        let rawDesc = (analysisData.description || '').trim();
         
-        // 1. Catch if the paragraph ends with a unicode '…', '...', or breaks mid-sentence
         if (/…$|\.{3,}$|[^.!?]$/.test(rawDesc)) {
-          
-          // Clean out any trailing periods or ellipsis symbols at the very end
           const cleanDesc = rawDesc.replace(/[…\s.]+$/, '');
-          
-          // Find the last legitimate full stop sentence boundary (. ! or ?)
           const lastSentenceEnd = Math.max(
             cleanDesc.lastIndexOf('.'),
             cleanDesc.lastIndexOf('!'),
             cleanDesc.lastIndexOf('?')
           );
-          
-          // Cut everything off after that last complete sentence
           if (lastSentenceEnd !== -1) {
             rawDesc = cleanDesc.substring(0, lastSentenceEnd + 1).trim();
           } else {
-            rawDesc = cleanDesc + '.'; // Fallback if no sentences exist
+            rawDesc = cleanDesc + '.';
           }
         }
-
         setDescription(rawDesc);
-        
-        if (data.chart && data.chart.length > 0) setCurrentPrice(data.chart[data.chart.length - 1].price)
 
-        if (data.quoteType === 'ETF') {
+        if (analysisData.quoteType === 'ETF') {
           setMetrics(null)
           setAiScan(null)
         } else {
-          setMetrics(data.metrics)
-          setAiScan(data.ai_scan)
+          setMetrics(analysisData.metrics)
+          setAiScan(analysisData.ai_scan)
         }
       } catch (e) {
         if (e.name !== 'AbortError') {
@@ -193,6 +194,7 @@ export default function App() {
       } finally {
         if (!abortController.signal.aborted) {
           setLoadingData(false)
+          setLoadingAnalysis(false)
         }
       }
     }
@@ -671,22 +673,24 @@ export default function App() {
                           </div>
                         )}
                       </div>
+                      {/* Change this specific line inside your metrics map loop */}
                       <div className="metric-value">
-                        {loadingData ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">N/A</span> : fmt(val, type)}
+                        {loadingAnalysis ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">N/A</span> : fmt(val, type)}
                       </div>
                     </div>
                   )
                 })}
               </div>
 
-              {(aiScan || isEtf || loadingData) && (
+              {/* Change these lines inside the AI Card block */}
+              {(aiScan || isEtf || loadingAnalysis) && (
                 <div className="ai-card">
                   <div className="ai-head">
                     <span className="ai-badge">AI Assessment</span>
                     <span className="ai-sub">{activeTicker} · Institutional Scan</span>
                   </div>
                   <div className="ai-body">
-                    {loadingData ? <p>Executing probability check...</p> : isEtf ? <p>ETFs represent a basket of assets. Fundamental bear/bull metrics bypass single-stock analysis.</p> : (
+                    {loadingAnalysis ? <p>Executing probability check...</p> : isEtf ? <p>ETFs represent a basket of assets...</p> : (
                       <>
                         <p><strong>🚩 Terminal Red Flag Sweep:</strong> {aiScan?.terminal_red_flags?.join(" ")}</p>
                         <p><strong>📈 Bull Case:</strong> {aiScan?.bull_case}</p>
