@@ -147,15 +147,22 @@ export default function App() {
         setMetrics(data.metrics)
 
         let rawDesc = (data.description || '').trim();
-        if (/…$|\.{3,}$|[^.!?]$/.test(rawDesc)) {
+        
+        // FIX: Catch 2+ dots, ellipses, or strings that don't end in proper punctuation
+        if (/\.{2,}$|…$|[^.!?]$/.test(rawDesc)) {
           const cleanDesc = rawDesc.replace(/[…\s.]+$/, '');
-          const lastSentenceEnd = Math.max(cleanDesc.lastIndexOf('.'), cleanDesc.lastIndexOf('!'), cleanDesc.lastIndexOf('?'));
+          const lastSentenceEnd = Math.max(
+            cleanDesc.lastIndexOf('.'),
+            cleanDesc.lastIndexOf('!'),
+            cleanDesc.lastIndexOf('?')
+          );
           if (lastSentenceEnd !== -1) {
             rawDesc = cleanDesc.substring(0, lastSentenceEnd + 1).trim();
           } else {
             rawDesc = cleanDesc + '.';
           }
         }
+        
         setDescription(rawDesc);
         setLoadingData(false) // Data loaded, free the UI!
 

@@ -27,6 +27,7 @@ def search_ticker(query: str):
     except Exception:
         return {"results": []}
 
+# FAST ENDPOINT: Returns chart and numbers instantly
 @app.get("/api/data/{ticker}")
 def get_market_data(ticker: str, timeframe: str = "1M"):
     stock = yf.Ticker(ticker)
@@ -44,11 +45,17 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         cash = info.get('totalCash', 0)
         debt = info.get('totalDebt', 0)
         wcr = round(cash / debt, 4) if debt and debt > 0 else (999 if cash else None)
+        
+        # FIX: Catch and remove meaningless negative Forward P/E ratios
+        forward_pe = info.get('forwardPE')
+        if forward_pe is not None and forward_pe < 0:
+            forward_pe = None
+            
         metrics = {
             "war_chest_ratio": wcr,
             "fcf": info.get('freeCashflow'),
             "gross_margin": info.get('grossMargins'),
-            "forward_pe": info.get('forwardPE'),
+            "forward_pe": forward_pe,
             "revenue_yoy": info.get('revenueGrowth')
         }
 
@@ -67,11 +74,16 @@ def get_ai_analysis(ticker: str):
     cash = info.get('totalCash', 0)
     debt = info.get('totalDebt', 0)
     wcr = round(cash / debt, 4) if debt and debt > 0 else (999 if cash else None)
+    
+    forward_pe = info.get('forwardPE')
+    if forward_pe is not None and forward_pe < 0:
+        forward_pe = None
+            
     metrics = {
         "war_chest_ratio": wcr,
         "fcf": info.get('freeCashflow'),
         "gross_margin": info.get('grossMargins'),
-        "forward_pe": info.get('forwardPE'),
+        "forward_pe": forward_pe,
         "revenue_yoy": info.get('revenueGrowth')
     }
 
@@ -80,7 +92,7 @@ def get_ai_analysis(ticker: str):
     
     prompt = f"""
     Act as an institutional quantitative analyst. Analyze these metrics for {ticker}: {json.dumps(metrics)}
-    Return raw JSON schema ONLY (no markdown):
+    Return raw JSON schema ONLY (no markdown), keep the tone short and concise, but well-explained:
     {{
         "terminal_red_flags": ["List major risks here or state 'Clear'"],
         "bull_case": "Detail positive operational metrics.",
@@ -90,21 +102,10 @@ def get_ai_analysis(ticker: str):
     """
 
     try:
-        res = requests.post(
-            url, 
-            headers={"Content-Type": "application/json"}, 
-            json={
-                "contents": [{"parts": [{"text": prompt}]}], 
-                "generationConfig": {"responseMimeType": "application/json"}
-            }, 
-            timeout=10
-        )
+        res = requests.post(url, headers={"Content-Type": "application/json"}, json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"responseMimeType": "application/json"}}, timeout=10)
         res_data = res.json()
         if "error" in res_data: raise Exception(res_data["error"].get("message"))
-        
-        raw_text = res_data['candidates'][0]['content']['parts'][0]['text']
-        clean_text = raw_text.replace("```json", "").replace("```", "").strip()
-        return json.loads(clean_text)
+        return json.loads(res_data['candidates'][0]['content']['parts'][0]['text'].replace("```json", "").replace("```", "").strip())
     except Exception as e:
         return {
             "terminal_red_flags": [f"Analysis Error: {str(e)}"],
