@@ -28,83 +28,99 @@ def search_ticker(query: str):
 def get_market_data(ticker: str, timeframe: str = "1M"):
     stock = yf.Ticker(ticker)
     
-    # 1. format chart data with raw timestamps for React to format
+    # 1. format chart data
     period_map = {"1W": "5d", "1M": "1mo", "6M": "6mo", "1Y": "1y"}
-    interval_map = {"1W": "15m", "1M": "1d", "6M": "1d", "1Y": "1wk"}
+    interval_map = {"1W": "15m", "1M": "1d", "6M": "1d", "1Y": "1d"}
     
-    try:
-        hist = stock.history(
-            period=period_map.get(timeframe, "1mo"), 
-            interval=interval_map.get(timeframe, "1d")
-        )
-        
-        chart_data = []
+    hist = stock.history(period=period_map.get(timeframe, "1mo"), interval=interval_map.get(timeframe, "1d"))
+    chart_data = []
+    if not hist.empty:
         for date, row in hist.iterrows():
-            if not row.isna()['Close']:
-                # Pass the raw millisecond timestamp to the frontend
-                chart_data.append({"timestamp": int(date.timestamp() * 1000), "price": round(row['Close'], 2)})
-    except Exception:
-        chart_data = []
+            chart_data.append({
+                "timestamp": date.isoformat(),
+                "price": round(row['Close'], 2)
+            })
 
-    # 2. extract metrics & company description
     info = stock.info
     quote_type = info.get('quoteType', 'EQUITY')
-    description = info.get('longBusinessSummary', 'No description available for this asset.')
+    description = info.get('longBusinessSummary', '')
     
     metrics = None
     ai_scan = None
 
     if quote_type != 'ETF':
+        # Safely extract metrics
         cash = info.get('totalCash', 0)
         debt = info.get('totalDebt', 0)
+        wcr = round(cash / debt, 4) if debt and debt > 0 else (999 if cash else None)
         
-        if debt > 0:
-            war_chest = cash / debt
-        elif cash > 0:
-            war_chest = 999.0
-        else:
-            war_chest = None
-            
         metrics = {
-            "war_chest_ratio": war_chest,
+            "war_chest_ratio": wcr,
             "fcf": info.get('freeCashflow'),
-            "revenue_yoy": info.get('revenueGrowth'),
             "gross_margin": info.get('grossMargins'),
-            "forward_pe": info.get('forwardPE', info.get('trailingPE'))
+            "forward_pe": info.get('forwardPE'),
+            "revenue_yoy": info.get('revenueGrowth')
         }
-        
-        # Strict Neutrality: Bear vs Bull & Terminal Red Flag Sweep
+
+        # --- ADVANCED QUANTITATIVE ENGINE ---
         flags = []
-        bull_points = []
-        bear_points = []
+        bull = []
+        bear = []
+        score = 50  # Start neutral 0-100
 
-        if war_chest is not None:
-            if war_chest < 0.5:
-                flags.append("Critically low War Chest (Cash/Debt < 0.5). High survival risk.")
-                bear_points.append("Balance sheet under severe stress.")
-            elif war_chest > 1.5:
-                bull_points.append("Fortress balance sheet covers debt easily.")
-            else:
-                bear_points.append("Moderate debt load restricts extreme capital flexibility.")
-        
-        if metrics['fcf'] is not None:
-            if metrics['fcf'] < 0:
-                flags.append("Negative Free Cash Flow. Cash burn is active.")
-                bear_points.append("Operations are draining capital.")
-            else:
-                bull_points.append("Operations generate positive cash flow.")
+        fcf = metrics['fcf']
+        pe = metrics['forward_pe']
+        yoy = metrics['revenue_yoy']
+        margin = metrics['gross_margin']
 
-        if metrics['forward_pe'] is not None:
-            if metrics['forward_pe'] > 40:
-                bear_points.append("Stretched valuation prices in near-perfection.")
-            elif metrics['forward_pe'] < 15:
-                bull_points.append("Trading at a relative value discount.")
+        # Cross-Reference 1: Liquidity & Runway
+        if wcr is not None and fcf is not None:
+            if fcf < 0 and wcr < 0.5:
+                flags.append("SEVERE LIQUIDITY RISK: Burning cash while operating with a highly leveraged, cash-poor balance sheet. High risk of immediate shareholder dilution or debt restructuring.")
+                score -= 25
+            elif fcf < 0 and wcr > 1.5:
+                bear.append("Operations are bleeding cash, but a massive war chest provides management a multi-year runway to execute a turnaround without facing immediate existential threats.")
+                score -= 5
+            elif fcf > 0 and wcr > 1.0:
+                bull.append("Fortress Balance Sheet: The asset is an organic cash-printing machine sitting on excess reserves. High probability of upcoming share buybacks, dividend hikes, or M&A.")
+                score += 15
+
+        # Cross-Reference 2: Valuation vs. Growth (PEG Proxy)
+        if pe is not None and yoy is not None:
+            if pe > 40 and yoy < 0.10:
+                flags.append("VALUATION DISCONNECT: Trading at an elite premium multiple (>40x P/E) while delivering sluggish, single-digit growth. This asset is priced for absolute perfection it is failing to deliver.")
+                score -= 20
+            elif pe < 15 and yoy > 0.15:
+                bull.append("GARP (Growth at a Reasonable Price): The broader market is heavily mispricing this asset. It is sustaining double-digit top-line expansion while trading at a deep value discount.")
+                score += 20
+            elif pe > 40 and yoy >= 0.20:
+                bull.append("Hyper-Growth Premium: Valuation is objectively stretched, but rapid >20% revenue expansion justifies a momentum premium as long as execution remains flawless.")
+                bear.append("Priced for perfection. The extreme valuation multiple means any slight miss in future earnings will likely trigger a violent downside correction.")
+
+        # Cross-Reference 3: Profitability Moat
+        if margin is not None:
+            if margin > 0.60:
+                bull.append("Elite pricing power detected. Software-like gross margins provide the company immense flexibility to outspend competitors in R&D and marketing.")
+                score += 10
+            elif margin < 0.20:
+                bear.append("Structurally weak business model. Razor-thin margins make the company highly susceptible to supply chain shocks or minor inflationary pressures.")
+                score -= 10
+
+        # Construct Final Verdict
+        if len(flags) > 0:
+            verdict = f"DANGER (Score: {score}/100) — Fundamental deterioration detected. Capital allocation here carries immense downside risk until red flags are resolved."
+        elif score > 75:
+            verdict = f"STRONG CONVICTION (Score: {score}/100) — Institutional metrics align perfectly. This asset exhibits highly scalable growth, excellent capital defense, and justifiable valuation."
+        elif score < 40:
+            verdict = f"WEAKNESS (Score: {score}/100) — Asset is facing significant structural headwinds. Better capital deployment opportunities exist elsewhere in the market."
+        else:
+            verdict = f"NEUTRAL (Score: {score}/100) — Company exhibits a muddy balance of decent and concerning metrics. Macro-economic factors will dictate future price action."
 
         ai_scan = {
-            "terminal_red_flags": flags if flags else ["None detected in primary metrics."],
-            "bull_case": " ".join(bull_points) if bull_points else "No overwhelming bull signals in core metrics.",
-            "bear_case": " ".join(bear_points) if bear_points else "No overwhelming bear signals in core metrics.",
-            "neutral_verdict": "Proceed with caution. Validate thesis beyond core metrics." if flags else "Metrics are stable. Monitor valuation and broader macroeconomic trends."
+            "terminal_red_flags": flags if flags else ["Balance sheet cleared. No immediate existential liquidity or debt threats detected."],
+            "bull_case": " ".join(bull) if bull else "Lacks distinct fundamental upside catalysts.",
+            "bear_case": " ".join(bear) if bear else "No glaring operational liabilities found in current reporting.",
+            "neutral_verdict": verdict
         }
 
     return {

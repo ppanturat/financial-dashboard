@@ -293,46 +293,79 @@ export default function App() {
   const addTicker = async (symbol) => {
     symbol = symbol.toUpperCase().trim()
     if (!symbol) return
+
+    // Immediately clean up UI inputs for a seamless layout interaction
     setSearchQuery('')
     setShowDropdown(false)
     setSearchSelectedIndex(-1)
 
-    // 1. Safe-Check: Satisfy foreign key validation rule by verifying global_metrics entry
-    await supabase.from('global_metrics').upsert({ ticker: symbol }, { onConflict: 'ticker' })
+    try {
+      // 1. Safe-Check: Ensure entry exists in parent global_metrics table (satisfies constraints)
+      const { error: metricError } = await supabase
+        .from('global_metrics')
+        .upsert({ ticker: symbol }, { onConflict: 'ticker' })
 
-    // 2. Automated fallback folder initialization if workspace completely empty
-    let destinationFolderId = activeFolderId
-    if (folders.length === 0) {
-      const { data: newF, error: fErr } = await supabase
-        .from('folders')
-        .insert([{ user_id: session.user.id, name: 'My Portfolio' }])
-        .select()
-        .single()
-      
-      if (fErr || !newF) return
-      destinationFolderId = newF.id
-      setFolders([{ id: newF.id, name: newF.name, tickers: [symbol] }])
-      setActiveFolderId(newF.id)
-    } else {
-      const currentFolder = folders.find(f => f.id === destinationFolderId)
-      if (!currentFolder || currentFolder.tickers.includes(symbol)) {
-        setActiveTicker(symbol)
-        return
+      if (metricError) {
+        alert(`Database Error (global_metrics table): ${metricError.message}`);
+        return;
       }
-    }
 
-    // 3. Execution of link table record mapping
-    const { error } = await supabase
-      .from('portfolio_items')
-      .insert([{ 
-        user_id: session.user.id, 
-        folder_id: destinationFolderId, 
-        ticker: symbol 
-      }])
+      // 2. Resolve Active Folder Context Target
+      let destinationFolderId = activeFolderId
 
-    if (!error || error.code === '23505') { // Handle or ignore explicit primary unique conflicts safely
-      setFolders(f => f.map(x => x.id === destinationFolderId ? { ...x, tickers: [...x.tickers, symbol] } : x))
-      setActiveTicker(symbol)
+      if (folders.length === 0) {
+        // Fallback: build automated default workspace folder if user profile has zero folders
+        const { data: newF, error: fErr } = await supabase
+          .from('folders')
+          .insert([{ user_id: session.user.id, name: 'My Portfolio' }])
+          .select()
+          .single()
+        
+        if (fErr || !newF) {
+          alert(`Error initializing automated default folder: ${fErr?.message}`);
+          return;
+        }
+        destinationFolderId = newF.id
+        setFolders([{ id: newF.id, name: newF.name, tickers: [symbol] }])
+        setActiveFolderId(newF.id)
+      } else {
+        // Fix: If workspace contains folders but none are active, default directly to the first folder
+        if (!destinationFolderId) {
+          destinationFolderId = folders[0].id
+          setActiveFolderId(folders[0].id)
+        }
+
+        const currentFolder = folders.find(f => f.id === destinationFolderId)
+        if (!currentFolder) {
+          alert("Unable to detect target folder context.");
+          return;
+        }
+
+        // Avoid writing duplicate records if the ticker is already in this specific folder
+        if (currentFolder.tickers.includes(symbol)) {
+          setActiveTicker(symbol)
+          return
+        }
+      }
+
+      // 3. Execution of child record mapping inside portfolio_items
+      const { error: itemError } = await supabase
+        .from('portfolio_items')
+        .insert([{ 
+          user_id: session.user.id, 
+          folder_id: destinationFolderId, 
+          ticker: symbol 
+        }])
+
+      // Code 23505 implies unique check violations (already matches key layout rules perfectly)
+      if (!itemError || itemError.code === '23505') {
+        setFolders(f => f.map(x => x.id === destinationFolderId ? { ...x, tickers: x.tickers.includes(symbol) ? x.tickers : [...x.tickers, symbol] } : x))
+        setActiveTicker(symbol)
+      } else {
+        alert(`Database Error (portfolio_items table): ${itemError.message}\nMake sure your Row Level Security (RLS) rules allow data ingestion.`);
+      }
+    } catch (err) {
+      alert("Unexpected application runtime error: " + err.message);
     }
   }
 
