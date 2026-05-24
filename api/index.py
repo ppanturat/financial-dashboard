@@ -69,7 +69,7 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
 
         # 2. Native, lightweight HTTP request to Gemini API
         api_key = os.environ.get("GEMINI_API_KEY")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
         
         prompt = f"""
         Act as a professional institutional quantitative analyst. Analyze the following financial metrics for {ticker}:
