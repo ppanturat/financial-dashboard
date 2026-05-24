@@ -148,18 +148,20 @@ export default function App() {
 
         let rawDesc = (data.description || '').trim();
         
-        // FIX: Catch 2+ dots, ellipses, or strings that don't end in proper punctuation
-        if (/\.{2,}$|…$|[^.!?]$/.test(rawDesc)) {
-          const cleanDesc = rawDesc.replace(/[…\s.]+$/, '');
+        // 1. Aggressively chop off anything starting with "...", "…", HTML entities, or "Read more"
+        rawDesc = rawDesc.replace(/(\.\.\.|…|&#8230;|&hellip;|Read more).*$/i, '').trim();
+
+        // 2. Ensure the remaining text ends cleanly with a period
+        if (/[^.!?]$/.test(rawDesc)) {
           const lastSentenceEnd = Math.max(
-            cleanDesc.lastIndexOf('.'),
-            cleanDesc.lastIndexOf('!'),
-            cleanDesc.lastIndexOf('?')
+            rawDesc.lastIndexOf('.'),
+            rawDesc.lastIndexOf('!'),
+            rawDesc.lastIndexOf('?')
           );
           if (lastSentenceEnd !== -1) {
-            rawDesc = cleanDesc.substring(0, lastSentenceEnd + 1).trim();
+            rawDesc = rawDesc.substring(0, lastSentenceEnd + 1).trim();
           } else {
-            rawDesc = cleanDesc + '.';
+            rawDesc = rawDesc + '.';
           }
         }
         
