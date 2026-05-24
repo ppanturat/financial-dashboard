@@ -62,71 +62,100 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
             "revenue_yoy": info.get('revenueGrowth')
         }
 
-        # --- ADVANCED QUANTITATIVE ENGINE ---
+        # scoring
+        score = 50.0
         flags = []
         bull = []
         bear = []
-        score = 50  # Start neutral 0-100
 
-        fcf = metrics['fcf']
-        pe = metrics['forward_pe']
-        yoy = metrics['revenue_yoy']
-        margin = metrics['gross_margin']
+        # Safely parse metrics for math logic
+        war_chest = metrics.get('war_chest_ratio')
+        fcf = metrics.get('fcf')
+        gross_margin = metrics.get('gross_margin')
+        forward_pe = metrics.get('forward_pe')
+        rev_yoy = metrics.get('revenue_yoy')
 
-        # Cross-Reference 1: Liquidity & Runway
-        if wcr is not None and fcf is not None:
-            if fcf < 0 and wcr < 0.5:
-                flags.append("SEVERE LIQUIDITY RISK: Burning cash while operating with a highly leveraged, cash-poor balance sheet. High risk of immediate shareholder dilution or debt restructuring.")
-                score -= 25
-            elif fcf < 0 and wcr > 1.5:
-                bear.append("Operations are bleeding cash, but a massive war chest provides management a multi-year runway to execute a turnaround without facing immediate existential threats.")
-                score -= 5
-            elif fcf > 0 and wcr > 1.0:
-                bull.append("Fortress Balance Sheet: The asset is an organic cash-printing machine sitting on excess reserves. High probability of upcoming share buybacks, dividend hikes, or M&A.")
+        # 1. LIQUIDITY & SOLVENCY (War Chest Ratio) - Checks Debt Risk
+        if war_chest is not None:
+            if war_chest < 0.5:
+                flags.append("High Debt Risk: The company has twice as much debt as cash. If revenues drop, they may struggle to survive without taking on bad loans or diluting shareholders.")
+                score -= 15
+            elif war_chest >= 1.5:
+                bull.append("Bulletproof Balance Sheet: With significantly more cash than debt, the company can easily survive economic downturns, buy back stock, or acquire competitors.")
+                score += 12
+            elif war_chest >= 1.0:
+                score += 5
+
+        # 2. CASH GENERATION (Free Cash Flow) - Checks Operational Health
+        if fcf is not None:
+            if fcf < 0:
+                # COMPLEXITY: Cross-reference cash burn with available cash reserves
+                if war_chest is not None and war_chest < 1.0:
+                    flags.append("Cash Burn Crisis: The business is losing money and doesn't have the cash reserves to sustain this for long.")
+                    score -= 20
+                else:
+                    bear.append("Negative Cash Flow: The company is currently spending more cash than it makes. They have the reserves to survive, but it adds risk.")
+                    score -= 5
+            elif fcf > 1_000_000_000:
+                bull.append("Massive Cash Generator: The business produces billions in excess cash, proving its core operations are highly lucrative and self-sustaining.")
                 score += 15
+            elif fcf > 0:
+                score += 5
 
-        # Cross-Reference 2: Valuation vs. Growth (PEG Proxy)
-        if pe is not None and yoy is not None:
-            if pe > 40 and yoy < 0.10:
-                flags.append("VALUATION DISCONNECT: Trading at an elite premium multiple (>40x P/E) while delivering sluggish, single-digit growth. This asset is priced for absolute perfection it is failing to deliver.")
-                score -= 20
-            elif pe < 15 and yoy > 0.15:
-                bull.append("GARP (Growth at a Reasonable Price): The broader market is heavily mispricing this asset. It is sustaining double-digit top-line expansion while trading at a deep value discount.")
-                score += 20
-            elif pe > 40 and yoy >= 0.20:
-                bull.append("Hyper-Growth Premium: Valuation is objectively stretched, but rapid >20% revenue expansion justifies a momentum premium as long as execution remains flawless.")
-                bear.append("Priced for perfection. The extreme valuation multiple means any slight miss in future earnings will likely trigger a violent downside correction.")
-
-        # Cross-Reference 3: Profitability Moat
-        if margin is not None:
-            if margin > 0.60:
-                bull.append("Elite pricing power detected. Software-like gross margins provide the company immense flexibility to outspend competitors in R&D and marketing.")
-                score += 10
-            elif margin < 0.20:
-                bear.append("Structurally weak business model. Razor-thin margins make the company highly susceptible to supply chain shocks or minor inflationary pressures.")
+        # 3. PROFITABILITY & PRICING POWER (Gross Margin) - Checks Business Model
+        if gross_margin is not None:
+            if gross_margin < 0.20:
+                bear.append("Low Profit Margins: The company keeps very little profit from what it sells. This leaves almost no room for error if costs go up.")
                 score -= 10
+            elif gross_margin > 0.50:
+                bull.append("Strong Pricing Power: High profit margins show that customers are willing to pay a premium for their products, making the business highly efficient.")
+                score += 12
+            elif gross_margin > 0.30:
+                score += 5
 
-        # Construct Final Verdict
-        if len(flags) > 0:
-            verdict = f"DANGER (Score: {score}/100) — Fundamental deterioration detected. Capital allocation here carries immense downside risk until red flags are resolved."
-        elif score > 75:
-            verdict = f"STRONG CONVICTION (Score: {score}/100) — Institutional metrics align perfectly. This asset exhibits highly scalable growth, excellent capital defense, and justifiable valuation."
-        elif score < 40:
-            verdict = f"WEAKNESS (Score: {score}/100) — Asset is facing significant structural headwinds. Better capital deployment opportunities exist elsewhere in the market."
+        # 4. VALUATION (Forward P/E) - Checks if it's a Trap or a Deal
+        if forward_pe is not None:
+            if forward_pe > 40:
+                # COMPLEXITY: High P/E is only a trap if growth is low
+                if rev_yoy is not None and rev_yoy < 0.10:
+                    bear.append("Overvalued: The stock is extremely expensive (P/E over 40), but the company isn't growing fast enough to justify this premium price.")
+                    score -= 15
+                else:
+                    bear.append("Priced for Perfection: The stock is expensive. While growth is good, any slight miss in future earnings could cause a sharp drop in the stock price.")
+                    score -= 5
+            elif forward_pe < 15 and forward_pe > 0:
+                bull.append("Deep Value: The stock is trading at a bargain price compared to the earnings it is expected to generate next year.")
+                score += 15
+            else:
+                score += 5
+
+        # 5. GROWTH (Revenue YoY) - Checks Market Demand
+        if rev_yoy is not None:
+            if rev_yoy < 0:
+                flags.append("Shrinking Business: Revenues are actively declining compared to last year. The company is losing market share or facing a severe downturn.")
+                score -= 15
+            elif rev_yoy > 0.20:
+                bull.append("Rapid Growth: Sales are growing by over 20% year-over-year, showing that there is massive and expanding demand for what they offer.")
+                score += 15
+            elif rev_yoy > 0.05:
+                score += 5
+
+        # Cap the final score cleanly between 1 and 99
+        score = int(max(1, min(99, score)))
+
+        # Final Verdict Generation (Clear, accessible language)
+        if len(flags) > 0 or score < 40:
+            verdict = f"HIGH RISK (Score: {score}/100) — This company shows serious financial warning signs, such as heavy debt, shrinking sales, or cash burn. It is a highly risky asset right now."
+        elif score >= 80:
+            verdict = f"STRONG HEALTH (Score: {score}/100) — The company has excellent financials. A combination of strong cash flow, healthy growth, and a solid balance sheet makes this a highly resilient business."
+        elif score >= 60:
+            verdict = f"STABLE / POSITIVE (Score: {score}/100) — The business is generally healthy and growing, though it may have a few minor weaknesses or a slightly expensive valuation."
         else:
-            verdict = f"NEUTRAL (Score: {score}/100) — Company exhibits a muddy balance of decent and concerning metrics. Macro-economic factors will dictate future price action."
+            verdict = f"NEUTRAL (Score: {score}/100) — The financials are a mixed bag. There are some decent metrics, but they are offset by notable risks or stagnation."
 
         ai_scan = {
-            "terminal_red_flags": flags if flags else ["Balance sheet cleared. No immediate existential liquidity or debt threats detected."],
-            "bull_case": " ".join(bull) if bull else "Lacks distinct fundamental upside catalysts.",
-            "bear_case": " ".join(bear) if bear else "No glaring operational liabilities found in current reporting.",
+            "terminal_red_flags": flags if flags else ["No immediate threats. The company has manageable debt and avoids critical cash burn."],
+            "bull_case": " ".join(bull) if bull else "The company is stable but lacks any standout traits for aggressive growth or deep value.",
+            "bear_case": " ".join(bear) if bear else "No major operational weaknesses detected at current reporting levels.",
             "neutral_verdict": verdict
         }
-
-    return {
-        "quoteType": quote_type,
-        "chart": chart_data,
-        "metrics": metrics,
-        "description": description,
-        "ai_scan": ai_scan
-    }
