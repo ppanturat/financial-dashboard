@@ -40,7 +40,6 @@ export default function App() {
   const [currentPrice, setCurrentPrice] = useState(null)
   const [aiScan, setAiScan] = useState(null)
   const [description, setDescription] = useState('')
-  const [descExpanded, setDescExpanded] = useState(false)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -664,7 +663,7 @@ export default function App() {
               {(aiScan || isEtf || loadingData) && (
                 <div className="ai-card">
                   <div className="ai-head">
-                    <span className="ai-badge">Neutral Assessment</span>
+                    <span className="ai-badge">AI Assessment</span>
                     <span className="ai-sub">{activeTicker} · Institutional Scan</span>
                   </div>
                   <div className="ai-body">
