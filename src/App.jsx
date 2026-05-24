@@ -52,6 +52,7 @@ export default function App() {
 
   const searchRef = useRef(null)
   const newFolderRef = useRef(null)
+  const prevTickerRef = useRef(null) // Added to track when the ticker ACTUALLY changes
 
   const BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8000/api" : "/api";
 
@@ -124,68 +125,78 @@ export default function App() {
     
     const abortController = new AbortController()
     
+    // Check if we are switching stocks, or just switching timeframes
+    const isNewTicker = prevTickerRef.current !== activeTicker;
+    prevTickerRef.current = activeTicker;
+    
     const run = async () => {
-      setLoadingData(true)
-      setLoadingAnalysis(true)
-      setMetrics(null)
-      setAiScan(null)
-      setCurrentPrice(null)
-      setDescription('')
+      // ONLY wipe the UI clean if it's a completely new stock
+      if (isNewTicker) {
+        setLoadingData(true)
+        setLoadingAnalysis(true)
+        setMetrics(null)
+        setAiScan(null)
+        setCurrentPrice(null)
+        setDescription('')
+      }
 
       try {
-        // 1. Fetch Fast Market Data Instantly
+        // 1. Fetch Fast Market Data
         const res = await fetch(`${BASE_URL}/data/${activeTicker}?timeframe=${timeframe}`, {
           signal: abortController.signal
         })
         if (!res.ok) throw new Error('Failed to fetch data.')
         const data = await res.json()
 
+        // ALWAYS update the chart and price (since timeframe changed)
         setChartData(data.chart || [])
         if (data.chart && data.chart.length > 0) setCurrentPrice(data.chart[data.chart.length - 1].price)
         
-        setQuoteType(data.quoteType)
-        setMetrics(data.metrics)
+        // ONLY update metrics and trigger AI if it's a new stock
+        if (isNewTicker) {
+          setQuoteType(data.quoteType)
+          setMetrics(data.metrics)
 
-        let rawDesc = (data.description || '').trim();
-        
-        // 1. Aggressively chop off anything starting with "...", "…", HTML entities, or "Read more"
-        rawDesc = rawDesc.replace(/(\.\.\.|…|&#8230;|&hellip;|Read more).*$/i, '').trim();
-
-        // 2. Ensure the remaining text ends cleanly with a period
-        if (/[^.!?]$/.test(rawDesc)) {
-          const lastSentenceEnd = Math.max(
-            rawDesc.lastIndexOf('.'),
-            rawDesc.lastIndexOf('!'),
-            rawDesc.lastIndexOf('?')
-          );
-          if (lastSentenceEnd !== -1) {
-            rawDesc = rawDesc.substring(0, lastSentenceEnd + 1).trim();
-          } else {
-            rawDesc = rawDesc + '.';
+          let rawDesc = (data.description || '').trim();
+          
+          // THE ULTIMATE KILL-SWITCH FOR "..."
+          // Physically snap the string in half at the first sign of ..., …, or Read more
+          rawDesc = rawDesc.split('...')[0].split('…')[0].split('Read more')[0].split('&#8230;')[0].split('&hellip;')[0].trim();
+          
+          // Ensure it ends with proper punctuation
+          if (/[^.!?]$/.test(rawDesc)) {
+            const lastSentenceEnd = Math.max(
+              rawDesc.lastIndexOf('.'),
+              rawDesc.lastIndexOf('!'),
+              rawDesc.lastIndexOf('?')
+            );
+            if (lastSentenceEnd !== -1) {
+              rawDesc = rawDesc.substring(0, lastSentenceEnd + 1).trim();
+            } else {
+              rawDesc = rawDesc + '.';
+            }
           }
-        }
-        
-        setDescription(rawDesc);
-        setLoadingData(false) // Data loaded, free the UI!
+          
+          setDescription(rawDesc);
+          setLoadingData(false) // Text/Metrics loaded, free the UI!
 
-        // 2. Fetch AI Background Task (if not ETF)
-        if (data.quoteType !== 'ETF') {
-          const aiRes = await fetch(`${BASE_URL}/ai/${activeTicker}`, {
-            signal: abortController.signal
-          })
-          if (aiRes.ok) {
-            const aiData = await aiRes.json()
-            setAiScan(aiData) // Set the direct AI payload
+          // 2. Fetch AI Background Task (if not ETF)
+          if (data.quoteType !== 'ETF') {
+            const aiRes = await fetch(`${BASE_URL}/ai/${activeTicker}`, {
+              signal: abortController.signal
+            })
+            if (aiRes.ok) {
+              const aiData = await aiRes.json()
+              setAiScan(aiData) 
+            }
           }
+          setLoadingAnalysis(false) // AI finished
         }
       } catch (e) {
-        if (e.name !== 'AbortError') {
+        if (e.name !== 'AbortError' && isNewTicker) {
           setDescription('Failed to fetch data.')
-        }
-      } finally {
-        if (!abortController.signal.aborted) {
           setLoadingData(false)
-          setLoadingAnalysis(false) // Both finished
+          setLoadingAnalysis(false)
         }
       }
     }
