@@ -1,5 +1,4 @@
 fastapi
 yfinance
 requests
-google-generativeai
 python-dotenv
