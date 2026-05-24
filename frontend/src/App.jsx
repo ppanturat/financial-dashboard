@@ -6,59 +6,12 @@ import {
 } from 'recharts'
 import './App.css'
 
-// popular tickers fallback for search when proxy is unavailable
-const POPULAR = [
-  { symbol: 'AAPL', shortname: 'Apple Inc.', quoteType: 'EQUITY' },
-  { symbol: 'MSFT', shortname: 'Microsoft Corporation', quoteType: 'EQUITY' },
-  { symbol: 'GOOGL', shortname: 'Alphabet Inc.', quoteType: 'EQUITY' },
-  { symbol: 'AMZN', shortname: 'Amazon.com Inc.', quoteType: 'EQUITY' },
-  { symbol: 'NVDA', shortname: 'NVIDIA Corporation', quoteType: 'EQUITY' },
-  { symbol: 'META', shortname: 'Meta Platforms Inc.', quoteType: 'EQUITY' },
-  { symbol: 'TSLA', shortname: 'Tesla Inc.', quoteType: 'EQUITY' },
-  { symbol: 'BRK-B', shortname: 'Berkshire Hathaway', quoteType: 'EQUITY' },
-  { symbol: 'JPM', shortname: 'JPMorgan Chase', quoteType: 'EQUITY' },
-  { symbol: 'V', shortname: 'Visa Inc.', quoteType: 'EQUITY' },
-  { symbol: 'VOO', shortname: 'Vanguard S&P 500 ETF', quoteType: 'ETF' },
-  { symbol: 'VTI', shortname: 'Vanguard Total Stock Market ETF', quoteType: 'ETF' },
-  { symbol: 'QQQ', shortname: 'Invesco QQQ Trust', quoteType: 'ETF' },
-  { symbol: 'SPY', shortname: 'SPDR S&P 500 ETF Trust', quoteType: 'ETF' },
-  { symbol: 'AMD', shortname: 'Advanced Micro Devices', quoteType: 'EQUITY' },
-  { symbol: 'PACB', shortname: 'Pacific Biosciences', quoteType: 'EQUITY' },
-  { symbol: 'SDGR', shortname: 'Schrödinger, Inc.', quoteType: 'EQUITY' },
-  { symbol: 'ADBE', shortname: 'Adobe Inc.', quoteType: 'EQUITY' }
-]
-
 const METRIC_DEFS = [
-  {
-    key: 'war_chest_ratio', label: 'War Chest Ratio', type: 'raw', colorType: 'warChest',
-    meaning: 'Cash divided by total debt.',
-    scale: '< 0.5 = Danger (Red) · 0.5–1.0 = Caution (Yellow) · > 1.0 = Healthy (Green)',
-    etf: false
-  },
-  {
-    key: 'fcf', label: 'Free Cash Flow', type: 'curr', colorType: 'fcf',
-    meaning: 'Cash left after all operating costs and capital expenditures.',
-    scale: 'Negative = Burning Cash (Red) · Positive = Generating Cash (Green)',
-    etf: false
-  },
-  {
-    key: 'gross_margin', label: 'Gross Margin', type: 'pct', colorType: 'margin',
-    meaning: 'Percentage of revenue retained after direct costs.',
-    scale: '< 20% = Tight (Red) · 20–50% = OK (White) · > 50% = Excellent (Green)',
-    etf: false
-  },
-  {
-    key: 'forward_pe', label: 'Forward P/E', type: 'raw', colorType: 'pe',
-    meaning: 'Price relative to next-year earnings expectations.',
-    scale: '< 15 = Cheap (Green) · 15–40 = Fair (White) · > 40 = Expensive (Red)',
-    etf: false
-  },
-  {
-    key: 'revenue_yoy', label: 'Revenue YoY', type: 'pct', colorType: 'margin',
-    meaning: 'Year-over-year revenue growth rate.',
-    scale: 'Negative = Shrinking (Red) · Positive = Growing (Green)',
-    etf: false
-  },
+  { key: 'war_chest_ratio', label: 'War Chest Ratio', type: 'raw', colorType: 'warChest', meaning: 'Cash divided by total debt.', scale: '< 0.5 = Danger (Red) · 0.5–1.0 = Caution (Yellow) · > 1.0 = Healthy (Green)' },
+  { key: 'fcf', label: 'Free Cash Flow', type: 'curr', colorType: 'fcf', meaning: 'Cash left after all operating costs and capital expenditures.', scale: 'Negative = Burning Cash (Red) · Positive = Generating Cash (Green)' },
+  { key: 'gross_margin', label: 'Gross Margin', type: 'pct', colorType: 'margin', meaning: 'Percentage of revenue retained after direct costs.', scale: '< 20% = Tight (Red) · 20–50% = OK (White) · > 50% = Excellent (Green)' },
+  { key: 'forward_pe', label: 'Forward P/E', type: 'raw', colorType: 'pe', meaning: 'Price relative to next-year earnings expectations.', scale: '< 15 = Cheap (Green) · 15–40 = Fair (White) · > 40 = Expensive (Red)' },
+  { key: 'revenue_yoy', label: 'Revenue YoY', type: 'pct', colorType: 'margin', meaning: 'Year-over-year revenue growth rate.', scale: 'Negative = Shrinking (Red) · Positive = Growing (Green)' },
 ]
 
 export default function App() {
@@ -71,10 +24,9 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
 
-  // initialize with your specific structural architecture
   const [folders, setFolders] = useState([
-    { id: 1, name: 'Shield Vault', tickers: ['VOO'] },
-    { id: 2, name: 'Satellite Vault', tickers: ['PACB', 'SDGR', 'ADBE'] }
+    { id: 1, name: 'Shield Folder', tickers: ['VOO'] },
+    { id: 2, name: 'Satellite Folder', tickers: ['PACB', 'SDGR', 'ADBE'] }
   ])
   const [activeFolderId, setActiveFolderId] = useState(1)
   const [editingFolderId, setEditingFolderId] = useState(null)
@@ -88,24 +40,25 @@ export default function App() {
   const [chartData, setChartData] = useState([])
   const [metrics, setMetrics] = useState(null)
   const [currentPrice, setCurrentPrice] = useState(null)
-  const [aiSummary, setAiSummary] = useState('')
+  const [aiScan, setAiScan] = useState(null)
+  const [description, setDescription] = useState('')
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [showDropdown, setShowDropdown] = useState(false)
   const [tooltipOpen, setTooltipOpen] = useState(null)
 
-  const searchRef = useRef(null)
-  const newFolderRef = useRef(null)
+  // Custom Modal State
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null })
 
-  // auth init
+  const searchRef = useRef(null)
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setSession(session))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => setSession(s))
     return () => subscription.unsubscribe()
   }, [])
 
-  // dropdown handler
   useEffect(() => {
     const fn = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) setShowDropdown(false)
@@ -115,131 +68,75 @@ export default function App() {
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
-  // global api search
+  // To test locally, use http://localhost:8000/api
+  // When deploying to Vercel, change base_url to just "/api"
+  const BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8000/api" : "/api";
+
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return }
     const q = searchQuery.toUpperCase().trim()
-    
     const fetchSearch = async () => {
       try {
-        const res = await fetch(`/yf-search/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8`, { signal: AbortSignal.timeout(3000) })
-        if (!res.ok) throw new Error()
+        const res = await fetch(`${BASE_URL}/search/${encodeURIComponent(q)}`)
         const data = await res.json()
-        const quotes = (data?.quotes ?? []).filter(r => r.quoteType === 'EQUITY' || r.quoteType === 'ETF')
-        if (quotes.length > 0) setSearchResults(quotes.slice(0, 8))
-        else throw new Error('empty')
-      } catch {
-        // fallback to standard list if proxy block occurs
-        const filtered = POPULAR.filter(t => t.symbol.startsWith(q) || t.shortname.toLowerCase().includes(q.toLowerCase())).slice(0, 8)
-        setSearchResults(filtered)
-      }
+        setSearchResults(data.results || [])
+      } catch (err) { setSearchResults([]) }
     }
-    
-    const id = setTimeout(fetchSearch, 250)
+    const id = setTimeout(fetchSearch, 300)
     return () => clearTimeout(id)
   }, [searchQuery])
 
-  // fetch actual market data
   useEffect(() => {
     if (!activeTicker) return
     let cancelled = false
     const run = async () => {
       setLoadingData(true)
       setMetrics(null)
-      setAiSummary('')
+      setAiScan(null)
       setCurrentPrice(null)
+      setDescription('')
 
       try {
-        // fetch chart
-        const ranges = { '1W': '5d', '1M': '1mo', '6M': '6mo', '1Y': '1y' }
-        const intervals = { '1W': '15m', '1M': '1d', '6M': '1d', '1Y': '1wk' }
-        const resChart = await fetch(`/yf/v8/finance/chart/${activeTicker}?range=${ranges[timeframe]}&interval=${intervals[timeframe]}`)
-        if (!resChart.ok) throw new Error()
-        const chartJson = await resChart.json()
-        const res = chartJson?.chart?.result?.[0]
-        
-        if (res) {
-          const ts = res.timestamp ?? []
-          const closes = res.indicators?.quote?.[0]?.close ?? []
-          const type = res.meta?.instrumentType ?? 'EQUITY'
-          if (!cancelled) setQuoteType(type)
+        const res = await fetch(`${BASE_URL}/data/${activeTicker}?timeframe=${timeframe}`)
+        if (!res.ok) throw new Error()
+        const data = await res.json()
 
-          const formatted = ts.map((t, i) => {
-            const d = new Date(t * 1000)
-            const label = timeframe === '1Y' ? d.toLocaleString('default', { month: 'short', year: '2-digit' }) : `${d.getMonth() + 1}/${d.getDate()}`
-            return { name: label, price: closes[i] != null ? +closes[i].toFixed(2) : null }
-          }).filter(p => p.price !== null)
+        if (!cancelled) {
+          setQuoteType(data.quoteType)
+          setChartData(data.chart)
+          setDescription(data.description)
+          
+          if (data.chart.length > 0) setCurrentPrice(data.chart[data.chart.length - 1].price)
 
-          if (!cancelled) {
-            setChartData(formatted)
-            if (formatted.length) setCurrentPrice(formatted[formatted.length - 1].price)
-          }
-        }
-
-        // fetch metrics 
-        const isEtf = quoteType === 'ETF' || ['VOO','VTI','QQQ','SPY','IWM','VT','VNQ','VXUS'].includes(activeTicker)
-
-        if (isEtf) {
-          if (!cancelled) {
+          if (data.quoteType === 'ETF') {
             setMetrics(null)
-            setAiSummary(`${activeTicker} is an ETF. Individual financial metrics like P/E, FCF, and margins are not reported at the fund level.`)
-          }
-        } else {
-          const resMetrics = await fetch(`/yf/v11/finance/quoteSummary/${activeTicker}?modules=financialData%2CdefaultKeyStatistics`)
-          if (resMetrics.ok) {
-            const metricsJson = await resMetrics.json()
-            const res0 = metricsJson?.quoteSummary?.result?.[0]
-            if (res0) {
-              const fin = res0.financialData ?? {}
-              const stats = res0.defaultKeyStatistics ?? {}
-              const cash = fin.totalCash?.raw ?? 0
-              const debt = fin.totalDebt?.raw ?? 0
-
-              const m = {
-                war_chest_ratio: debt > 0 ? cash / debt : cash > 0 ? 999 : null,
-                fcf: fin.freeCashflow?.raw ?? null,
-                revenue_yoy: fin.revenueGrowth?.raw ?? null,
-                gross_margin: fin.grossMargins?.raw ?? null,
-                forward_pe: stats.forwardPE?.raw ?? null
-              }
-              if (!cancelled) { setMetrics(m); buildSummary(m, activeTicker) }
-            }
+            setAiScan(null)
           } else {
-            throw new Error()
+            setMetrics(data.metrics)
+            setAiScan(data.ai_scan)
           }
         }
       } catch (e) {
-        if (!cancelled) {
-          setMetrics(null)
-          setAiSummary('Financial data unavailable. The endpoint may be temporarily restricted.')
-        }
+        if (!cancelled) setDescription('Failed to fetch data.')
       }
-
       if (!cancelled) setLoadingData(false)
     }
     run()
     return () => { cancelled = true }
-  }, [activeTicker, timeframe, quoteType])
+  }, [activeTicker, timeframe])
 
-  const buildSummary = (m, ticker) => {
-    const parts = [`Scan complete for ${ticker}.`]
-    if (m.war_chest_ratio !== null) {
-      if (m.war_chest_ratio < 0.5) parts.push('Balance sheet under stress — cash barely covers debt obligations.')
-      else if (m.war_chest_ratio > 1.5) parts.push('Fortress balance sheet — cash comfortably exceeds debt.')
-      else parts.push('Debt and cash are moderately balanced.')
-    }
-    if (m.fcf !== null) parts.push(m.fcf < 0 ? 'Cash burn detected — negative Free Cash Flow.' : 'Operations generating positive Free Cash Flow.')
-    if (m.gross_margin !== null) {
-      if (m.gross_margin > 0.5) parts.push('Strong pricing power with margins above 50%.')
-      else if (m.gross_margin < 0.2) parts.push('Margins are tight — high costs or fierce competition.')
-    }
-    if (m.forward_pe !== null) {
-      if (m.forward_pe > 40) parts.push('Valuation is stretched — market pricing in near-perfection.')
-      else if (m.forward_pe < 15) parts.push('Potential value opportunity at current valuation.')
-      else parts.push('Valuation sits in a fair-value range.')
-    }
-    setAiSummary(parts.join(' '))
-  }
+  // Chart Formatters
+  const formatXAxis = (tickItem) => {
+    if (!tickItem) return '';
+    const d = new Date(tickItem);
+    return timeframe === '1Y' ? d.toLocaleString('en-US', { month: 'short', year: '2-digit' }) : `${d.getMonth() + 1}/${d.getDate()}`;
+  };
+
+  const formatTooltipLabel = (label) => {
+    if (!label) return '';
+    const d = new Date(label);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   const getColor = (val, type) => {
     if (val == null) return ''
@@ -266,26 +163,57 @@ export default function App() {
   const graphColor = isUp ? '#16a34a' : '#dc2626'
   const priceChange = chartData.length > 1 ? ((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price * 100) : null
 
-  // crud interactions
+  // Custom Modal Triggers
+  const openConfirmModal = (title, message, onConfirmAction) => {
+    setModal({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirmAction();
+        setModal({ isOpen: false, title: '', message: '', onConfirm: null });
+      }
+    });
+  }
+
   const saveNewFolder = () => {
     const name = newFolderName.trim()
     if (name) setFolders(f => [...f, { id: Date.now(), name, tickers: [] }])
     setNewFolderMode(false)
     setNewFolderName('')
   }
+  
   const saveFolderEdit = (id) => {
-    setFolders(f => f.map(x => x.id === id ? { ...x, name: editName.trim() || x.name } : x))
+    const folder = folders.find(f => f.id === id)
+    const name = editName.trim()
+    if (!name || name === folder.name) {
+      setEditingFolderId(null)
+      return
+    }
+    openConfirmModal(
+      'Rename Folder',
+      `Are you sure you want to rename this folder to "${name}"?`,
+      () => setFolders(f => f.map(x => x.id === id ? { ...x, name } : x))
+    );
     setEditingFolderId(null)
   }
+
   const deleteFolder = (id) => {
     if (folders.length <= 1) return
-    const next = folders.filter(f => f.id !== id)
-    setFolders(next)
-    if (activeFolderId === id) {
-      setActiveFolderId(next[0].id)
-      setActiveTicker(next[0].tickers[0] ?? '')
-    }
+    openConfirmModal(
+      'Delete Folder',
+      'Are you sure you want to permanently delete this entire folder?',
+      () => {
+        const next = folders.filter(f => f.id !== id)
+        setFolders(next)
+        if (activeFolderId === id) {
+          setActiveFolderId(next[0].id)
+          setActiveTicker(next[0].tickers[0] ?? '')
+        }
+      }
+    );
   }
+
   const addTicker = (symbol) => {
     symbol = symbol.toUpperCase()
     setFolders(f => f.map(x => x.id === activeFolderId && !x.tickers.includes(symbol) ? { ...x, tickers: [...x.tickers, symbol] } : x))
@@ -293,11 +221,18 @@ export default function App() {
     setSearchQuery('')
     setShowDropdown(false)
   }
+
   const removeTicker = (symbol) => {
-    const folder = folders.find(f => f.id === activeFolderId)
-    const next = folder.tickers.filter(t => t !== symbol)
-    setFolders(f => f.map(x => x.id === activeFolderId ? { ...x, tickers: next } : x))
-    if (activeTicker === symbol) setActiveTicker(next[0] ?? '')
+    openConfirmModal(
+      'Remove Asset',
+      `Are you sure you want to remove ${symbol} from this folder?`,
+      () => {
+        const folder = folders.find(f => f.id === activeFolderId)
+        const next = folder.tickers.filter(t => t !== symbol)
+        setFolders(f => f.map(x => x.id === activeFolderId ? { ...x, tickers: next } : x))
+        if (activeTicker === symbol) setActiveTicker(next[0] ?? '')
+      }
+    );
   }
 
   const handleAuth = async (e, type) => {
@@ -309,36 +244,12 @@ export default function App() {
     else if (type === 'up') setAuthView('check_email')
   }
 
-  // view routing
   if (!session) {
     if (authView === 'check_email') return (
-      <div className="auth-wrap">
-        <div className="auth-card">
-          <div className="auth-logo">◈</div>
-          <h2>Check Your Email</h2>
-          <p className="auth-sub">We sent a confirmation link to {email}</p>
-          <button className="btn-text" onClick={() => setAuthView('login')}>Back to Sign In</button>
-        </div>
-      </div>
+      <div className="auth-wrap"><div className="auth-card"><div className="auth-logo">◈</div><h2>Check Your Email</h2><p className="auth-sub">We sent a confirmation link to {email}</p><button className="btn-text" onClick={() => setAuthView('login')}>Back to Sign In</button></div></div>
     )
     return (
-      <div className="auth-wrap">
-        <div className="auth-card">
-          <div className="auth-logo">◈</div>
-          <h2>{authView === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-          <p className="auth-sub">{authView === 'login' ? 'Sign in to your vault' : 'Start tracking your portfolio'}</p>
-          <form className="auth-form" onSubmit={e => handleAuth(e, authView === 'login' ? 'in' : 'up')}>
-            <input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required />
-            <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
-            <button className="btn-primary" type="submit" disabled={authLoading}>
-              {authLoading ? 'Loading...' : authView === 'login' ? 'Sign In' : 'Create Account'}
-            </button>
-          </form>
-          <button className="btn-text" onClick={() => setAuthView(authView === 'login' ? 'register' : 'login')}>
-            {authView === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign In'}
-          </button>
-        </div>
-      </div>
+      <div className="auth-wrap"><div className="auth-card"><div className="auth-logo">◈</div><h2>{authView === 'login' ? 'Welcome Back' : 'Create Account'}</h2><p className="auth-sub">Sign in to your dashboard</p><form className="auth-form" onSubmit={e => handleAuth(e, authView === 'login' ? 'in' : 'up')}><input type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} required /><input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required /><button className="btn-primary" type="submit" disabled={authLoading}>{authLoading ? 'Loading...' : authView === 'login' ? 'Sign In' : 'Create Account'}</button></form><button className="btn-text" onClick={() => setAuthView(authView === 'login' ? 'register' : 'login')}>{authView === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign In'}</button></div></div>
     )
   }
 
@@ -349,13 +260,27 @@ export default function App() {
     <div className="layout">
       {sidebarOpen && <div className="overlay" onClick={() => setSidebarOpen(false)} />}
 
+      {/* Custom Confirmation Modal */}
+      {modal.isOpen && (
+        <div className="custom-modal-overlay">
+          <div className="custom-modal">
+            <h3>{modal.title}</h3>
+            <p>{modal.message}</p>
+            <div className="custom-modal-actions">
+              <button className="btn-text" onClick={() => setModal({ ...modal, isOpen: false })}>Cancel</button>
+              <button className="btn-primary btn-danger-solid" onClick={modal.onConfirm}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
           <span className="brand-mark">◈</span>
           <span className="brand-name">FINANCIAL DASHBOARD</span>
         </div>
 
-        <p className="sidebar-label">Vaults</p>
+        <p className="sidebar-label">Folders</p>
         <nav className="sidebar-nav">
           {folders.map(f => (
             <div key={f.id} className={`vault-row ${f.id === activeFolderId ? 'active' : ''}`}>
@@ -370,10 +295,7 @@ export default function App() {
                 />
               ) : (
                 <>
-                  <button
-                    className="vault-btn"
-                    onClick={() => { setActiveFolderId(f.id); setSidebarOpen(false); if (f.tickers[0]) setActiveTicker(f.tickers[0]) }}
-                  >
+                  <button className="vault-btn" onClick={() => { setActiveFolderId(f.id); setSidebarOpen(false); if (f.tickers[0]) setActiveTicker(f.tickers[0]) }}>
                     <span className="vault-dot" />
                     <span className="vault-label">{f.name}</span>
                     <span className="vault-count">{f.tickers.length}</span>
@@ -389,19 +311,10 @@ export default function App() {
 
           {newFolderMode ? (
             <div className="vault-row">
-              <input
-                ref={newFolderRef}
-                className="vault-edit-input"
-                autoFocus
-                placeholder="Vault name..."
-                value={newFolderName}
-                onChange={e => setNewFolderName(e.target.value)}
-                onBlur={saveNewFolder}
-                onKeyDown={e => { if (e.key === 'Enter') saveNewFolder(); if (e.key === 'Escape') { setNewFolderMode(false); setNewFolderName('') } }}
-              />
+              <input ref={newFolderRef} className="vault-edit-input" autoFocus placeholder="Folder name..." value={newFolderName} onChange={e => setNewFolderName(e.target.value)} onBlur={saveNewFolder} onKeyDown={e => { if (e.key === 'Enter') saveNewFolder(); if (e.key === 'Escape') { setNewFolderMode(false); setNewFolderName('') } }} />
             </div>
           ) : (
-            <button className="new-vault-btn" onClick={() => setNewFolderMode(true)}>+ New Vault</button>
+            <button className="new-vault-btn" onClick={() => setNewFolderMode(true)}>+ New Folder</button>
           )}
         </nav>
 
@@ -430,14 +343,7 @@ export default function App() {
           <div className="search-wrap" ref={searchRef}>
             <div className="search-box">
               <span className="search-icon">⌕</span>
-              <input
-                type="text"
-                placeholder="Search Ticker..."
-                value={searchQuery}
-                onChange={e => { setSearchQuery(e.target.value); setShowDropdown(true) }}
-                onFocus={() => setShowDropdown(true)}
-                onKeyDown={e => { if (e.key === 'Enter' && searchQuery.trim()) { addTicker(searchQuery.trim()); } }}
-              />
+              <input type="text" placeholder="Search Ticker..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setShowDropdown(true) }} onFocus={() => setShowDropdown(true)} onKeyDown={e => { if (e.key === 'Enter' && searchQuery.trim()) { addTicker(searchQuery.trim()); } }} />
               {searchQuery && <button className="search-clear" onClick={() => { setSearchQuery(''); setSearchResults([]) }}>✕</button>}
             </div>
             {showDropdown && searchQuery && (
@@ -489,13 +395,18 @@ export default function App() {
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9ca3af', fontFamily: 'DM Mono, monospace' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                  <XAxis dataKey="timestamp" tickFormatter={formatXAxis} tick={{ fontSize: 11, fill: '#9ca3af', fontFamily: 'DM Mono, monospace' }} tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={30} />
                   <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#9ca3af', fontFamily: 'DM Mono, monospace' }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} />
-                  <ChartTooltip contentStyle={{ background: '#111', border: 'none', borderRadius: '8px', padding: '8px 12px' }} labelStyle={{ color: '#9ca3af', fontSize: '11px', marginBottom: '2px' }} itemStyle={{ color: graphColor, fontSize: '13px', fontFamily: 'DM Mono, monospace' }} formatter={v => [`$${v.toFixed(2)}`, 'Price']} />
+                  <ChartTooltip labelFormatter={formatTooltipLabel} contentStyle={{ background: '#111', border: 'none', borderRadius: '8px', padding: '8px 12px' }} labelStyle={{ color: '#9ca3af', fontSize: '11px', marginBottom: '2px' }} itemStyle={{ color: graphColor, fontSize: '13px', fontFamily: 'DM Mono, monospace' }} formatter={v => [`$${v.toFixed(2)}`, 'Price']} />
                   <Line type="monotone" dataKey="price" stroke={graphColor} strokeWidth={2} dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: graphColor }} />
                 </LineChart>
               </ResponsiveContainer>
             )}
+          </div>
+
+          <div className="desc-card">
+            <h4 className="desc-title">About {activeTicker}</h4>
+            <p className="desc-text">{loadingData ? 'Loading description...' : description}</p>
           </div>
 
           <div className="section-header">
@@ -526,13 +437,22 @@ export default function App() {
             })}
           </div>
 
-          {(aiSummary || loadingData) && (
+          {(aiScan || isEtf || loadingData) && (
             <div className="ai-card">
               <div className="ai-head">
-                <span className="ai-badge">AI Scan</span>
-                <span className="ai-sub">{activeTicker} · {timeframe}</span>
+                <span className="ai-badge">Neutral Assessment</span>
+                <span className="ai-sub">{activeTicker} · Institutional Scan</span>
               </div>
-              <p className="ai-body">{loadingData ? 'Analyzing...' : aiSummary}</p>
+              <div className="ai-body">
+                {loadingData ? <p>Executing probability check...</p> : isEtf ? <p>ETFs represent a basket of assets. Fundamental bear/bull metrics bypass single-stock analysis.</p> : (
+                  <>
+                    <p><strong>🚩 Terminal Red Flag Sweep:</strong> {aiScan?.terminal_red_flags?.join(" ")}</p>
+                    <p><strong>📈 Bull Case:</strong> {aiScan?.bull_case}</p>
+                    <p><strong>📉 Bear Case:</strong> {aiScan?.bear_case}</p>
+                    <p><strong>⚖️ Verdict:</strong> {aiScan?.neutral_verdict}</p>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>
