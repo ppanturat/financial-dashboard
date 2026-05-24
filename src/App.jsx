@@ -151,7 +151,24 @@ export default function App() {
 
         setQuoteType(data.quoteType)
         setChartData(data.chart || [])
-        setDescription(data.description || '')
+        
+        // Format the description to ensure it ends cleanly on a full stop
+        let rawDesc = data.description || '';
+        
+        // Remove trailing ellipses or weird spaces Yahoo Finance adds
+        rawDesc = rawDesc.replace(/\.{2,}\s*$/, '').trim();
+        
+        // If it doesn't end with a period, slice it at the last available period
+        if (rawDesc.length > 0 && !rawDesc.endsWith('.')) {
+          const lastPeriodIndex = rawDesc.lastIndexOf('.');
+          if (lastPeriodIndex > 0) {
+            rawDesc = rawDesc.substring(0, lastPeriodIndex + 1);
+          } else {
+            rawDesc += '.'; // Fallback if no periods exist
+          }
+        }
+
+        setDescription(rawDesc);
         
         if (data.chart && data.chart.length > 0) setCurrentPrice(data.chart[data.chart.length - 1].price)
 
