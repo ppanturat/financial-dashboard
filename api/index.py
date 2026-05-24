@@ -1,9 +1,13 @@
+import os
+import json
+import requests
+import yfinance as yf
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import yfinance as yf
-import requests
-import json
-import g4f 
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -14,6 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Configure the real AI
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+model = genai.GenerativeModel('gemini-1.5-flash')
+
 @app.get("/api/search/{query}")
 def search_ticker(query: str):
     url = f"https://query2.finance.yahoo.com/v1/finance/search?q={query}&quotesCount=8"
@@ -23,14 +31,14 @@ def search_ticker(query: str):
         data = res.json()
         quotes = [q for q in data.get('quotes', []) if q.get('quoteType') in ['EQUITY', 'ETF']]
         return {"results": quotes}
-    except Exception as e:
+    except Exception:
         return {"results": []}
 
 @app.get("/api/data/{ticker}")
 def get_market_data(ticker: str, timeframe: str = "1M"):
     stock = yf.Ticker(ticker)
     
-    # Format chart data
+    # 1. Format chart data
     period_map = {"1W": "5d", "1M": "1mo", "6M": "6mo", "1Y": "1y"}
     interval_map = {"1W": "15m", "1M": "1d", "6M": "1d", "1Y": "1d"}
     
@@ -63,34 +71,35 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
             "revenue_yoy": info.get('revenueGrowth')
         }
 
+        # 2. Feed data to Gemini for real analysis
         prompt = f"""
-        Act as a Wall Street analyst. Analyze these metrics for {ticker}: {json.dumps(metrics)}
-        Return ONLY a raw JSON response (no markdown, no formatting) with exactly these keys:
-        "terminal_red_flags": [array of strings detailing risks],
-        "bull_case": "string with the positive case",
-        "bear_case": "string with the negative case",
-        "neutral_verdict": "VERDICT (Score: X/100) - short explanation"
+        Act as a professional institutional quantitative analyst. Analyze the following financial metrics for {ticker}:
+        {json.dumps(metrics)}
+        
+        Provide a concise, highly accurate assessment of the asset's financial health.
+        You MUST return your response in raw JSON format (no markdown formatting, no code blocks) using this exact schema:
+        {{
+            "terminal_red_flags": ["List any major liquidity/debt/cash burn threats here, or state 'Clear'"],
+            "bull_case": "Detail the core positive operational metrics.",
+            "bear_case": "Detail the core vulnerabilities or valuation risks.",
+            "neutral_verdict": "VERDICT (Score: X/100) — A short, well-explained summary of their overall health."
+        }}
         """
 
         try:
-            # This reaches out to free LLM endpoints on the web automatically
-            response = g4f.ChatCompletion.create(
-                model=g4f.models.gpt_4o_mini, 
-                messages=[{"role": "user", "content": prompt}]
+            # Force the model to output JSON
+            response = model.generate_content(
+                prompt,
+                generation_config={"response_mime_type": "application/json"}
             )
-            
-            # Clean up the response in case the AI wraps it in ```json ... ``` markdown
-            clean_response = response.replace("```json", "").replace("```", "").strip()
-            ai_scan = json.loads(clean_response)
-            
+            ai_scan = json.loads(response.text)
         except Exception as e:
-            # Fallback just in case the free web endpoints are temporarily busy
-            print("AI Error:", e)
+            print("Gemini API Error:", e)
             ai_scan = {
                 "terminal_red_flags": ["Failed to connect to AI server."],
                 "bull_case": "Data unavailable.",
                 "bear_case": "Data unavailable.",
-                "neutral_verdict": "ERROR (Score: ?/100) — AI evaluation temporarily offline."
+                "neutral_verdict": "ERROR (Score: ?/100) — AI evaluation failed to process."
             }
 
     return {
