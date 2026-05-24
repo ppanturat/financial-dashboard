@@ -640,7 +640,7 @@ export default function App() {
                         )}
                       </div>
                       <div className="metric-value">
-                        {loadingData ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">N/A</span> : fmt(val, type)}
+                        {loadingData ? <span className="skeleton-val">—</span> : isEtf ? <span className="skeleton-val">—</span> : fmt(val, type)}
                       </div>
                     </div>
                   )
