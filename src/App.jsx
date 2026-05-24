@@ -151,20 +151,27 @@ export default function App() {
 
         setQuoteType(data.quoteType)
         setChartData(data.chart || [])
+
+        let rawDesc = (data.description || '').trim();
         
-        // Format the description to ensure it ends cleanly on a full stop
-        let rawDesc = data.description || '';
-        
-        // Remove trailing ellipses or weird spaces Yahoo Finance adds
-        rawDesc = rawDesc.replace(/\.{2,}\s*$/, '').trim();
-        
-        // If it doesn't end with a period, slice it at the last available period
-        if (rawDesc.length > 0 && !rawDesc.endsWith('.')) {
-          const lastPeriodIndex = rawDesc.lastIndexOf('.');
-          if (lastPeriodIndex > 0) {
-            rawDesc = rawDesc.substring(0, lastPeriodIndex + 1);
+        // 1. Catch if the paragraph ends with a unicode '…', '...', or breaks mid-sentence
+        if (/…$|\.{3,}$|[^.!?]$/.test(rawDesc)) {
+          
+          // Clean out any trailing periods or ellipsis symbols at the very end
+          const cleanDesc = rawDesc.replace(/[…\s.]+$/, '');
+          
+          // Find the last legitimate full stop sentence boundary (. ! or ?)
+          const lastSentenceEnd = Math.max(
+            cleanDesc.lastIndexOf('.'),
+            cleanDesc.lastIndexOf('!'),
+            cleanDesc.lastIndexOf('?')
+          );
+          
+          // Cut everything off after that last complete sentence
+          if (lastSentenceEnd !== -1) {
+            rawDesc = cleanDesc.substring(0, lastSentenceEnd + 1).trim();
           } else {
-            rawDesc += '.'; // Fallback if no periods exist
+            rawDesc = cleanDesc + '.'; // Fallback if no sentences exist
           }
         }
 
