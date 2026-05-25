@@ -6,7 +6,7 @@ import { useStockData } from './hooks/useStockData'
 import { useSearch } from './hooks/useSearch'
 import { useModal } from './hooks/useModal'
 
-import { AuthPage } from './components/AuthPage'
+import { AuthPage } from './pages/AuthPage'
 import { MarketView } from './pages/MarketView'
 import { PortfolioView } from './pages/PortfolioView'
 
@@ -26,11 +26,11 @@ export default function App() {
   const { 
     portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading,
     holdings, livePrices, loadingHoldings, 
-    createPortfolioFolder, renamePortfolioFolder, deletePortfolioFolder, 
+    createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder, 
     saveHolding, removeHolding 
   } = usePortfolio(session)
 
-  const [activeTab, setActiveTab]             = useState('market') // 'market' | 'portfolio'
+  const [activeTab, setActiveTab]             = useState('market')
   const [activeFolderId, setActiveFolderId]   = useState(null)
   const [activeTicker, setActiveTicker]       = useState('')
   const [sidebarOpen, setSidebarOpen]         = useState(false)
@@ -114,8 +114,10 @@ export default function App() {
         folders={currentFolders}
         activeFolderId={currentActiveId}
         fetchingFolders={currentLoading}
+        marketFolders={folders} 
         onSelectFolder={handleSelectFolder}
         onCreateFolder={handleCreateFolder}
+        onImportFolder={importMarketFolder}
         onRenameFolder={handleRenameFolder}
         onDeleteFolder={handleDeleteFolder}
         onSignOut={signOut}

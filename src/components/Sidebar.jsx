@@ -1,10 +1,14 @@
 import { useState, useRef } from 'react'
 
-export function Sidebar({ session, activeTab, setActiveTab, folders, activeFolderId, fetchingFolders, isOpen, onSelectFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onSignOut }) {
+export function Sidebar({ 
+  session, activeTab, setActiveTab, folders, activeFolderId, fetchingFolders, marketFolders, 
+  isOpen, onSelectFolder, onCreateFolder, onImportFolder, onRenameFolder, onDeleteFolder, onSignOut 
+}) {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [newMode, setNewMode] = useState(false)
   const [newName, setNewName] = useState('')
+  const [importMode, setImportMode] = useState(false)
   const newRef = useRef(null)
 
   const startEdit = (f) => { setEditingId(f.id); setEditName(f.name) }
@@ -22,7 +26,7 @@ export function Sidebar({ session, activeTab, setActiveTab, folders, activeFolde
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-brand">
         <span className="brand-mark">◈</span>
-        <span className="brand-name">STOCK CHECKER</span>
+        <span className="brand-name">FINANCIAL DASHBOARD</span>
       </div>
 
       <div className="sidebar-tabs">
@@ -82,8 +86,26 @@ export function Sidebar({ session, activeTab, setActiveTab, folders, activeFolde
                   }}
                 />
               </div>
+            ) : importMode ? (
+              <div className="import-picker-menu">
+                <span className="import-label">select market folder:</span>
+                <div className="import-list">
+                  {marketFolders?.map(mf => (
+                    <button key={mf.id} className="import-item-btn" onClick={() => { onImportFolder(mf); setImportMode(false); }}>
+                      ↳ {mf.name} <span className="import-count">({mf.tickers?.length || 0})</span>
+                    </button>
+                  ))}
+                  {marketFolders?.length === 0 && <span className="import-empty">no market folders found.</span>}
+                </div>
+                <button className="btn-text btn-cancel" onClick={() => setImportMode(false)}>cancel</button>
+              </div>
             ) : (
-              <button className="new-vault-btn" onClick={() => setNewMode(true)}>+ New Folder</button>
+              <div className="sidebar-btn-row">
+                <button className="new-vault-btn" onClick={() => setNewMode(true)}>+ new folder</button>
+                {activeTab === 'portfolio' && (
+                  <button className="new-vault-btn import-btn" onClick={() => setImportMode(true)}>↓ import</button>
+                )}
+              </div>
             )}
           </>
         )}

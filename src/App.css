@@ -616,3 +616,19 @@ body {
   .modal-split { flex-direction: column; gap: 16px; }
   .modal-left { border-bottom: 1px solid var(--border); padding-bottom: 16px; }
 }
+
+/* sidebar action row */
+.sidebar-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+.import-btn { border-color: rgba(37,99,235,0.3); color: #60a5fa; }
+.import-btn:hover { background: rgba(37,99,235,0.1); border-color: #60a5fa; color: #fff; }
+
+/* import picker */
+.import-picker-menu { background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 12px; margin-top: 4px; }
+.import-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 8px; display: block; }
+.import-list { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; margin-bottom: 8px; }
+.import-item-btn { background: none; border: none; text-align: left; color: rgba(255,255,255,0.6); font-family: 'Syne', sans-serif; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; transition: all 0.15s; display: flex; justify-content: space-between; }
+.import-item-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.import-count { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.3); }
+.import-empty { font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; }
+.btn-cancel { width: 100%; font-size: 11px; background: rgba(255,255,255,0.05); }
+.btn-cancel:hover { background: rgba(255,255,255,0.1); color: #fff; }

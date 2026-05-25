@@ -88,6 +88,36 @@ export function usePortfolio(session) {
     return data
   }
 
+  // import from market view
+  const importMarketFolder = async (marketFolder) => {
+    if (!session) return null
+    
+    // create the portfolio folder
+    const { data, error } = await supabase
+      .from('portfolio_folders')
+      .insert([{ user_id: session.user.id, name: marketFolder.name }])
+      .select()
+      .single()
+    
+    if (error) throw error
+
+    // insert all tickers with zero amount/price so user can edit later
+    if (marketFolder.tickers && marketFolder.tickers.length > 0) {
+      const payload = marketFolder.tickers.map(t => ({
+        user_id: session.user.id,
+        folder_id: data.id,
+        ticker: t,
+        amount: 0,
+        buy_price: 0
+      }))
+      await supabase.from('portfolio_holdings').insert(payload)
+    }
+
+    setPortfolioFolders(f => [...f, data])
+    setActivePortfolioId(data.id)
+    return data
+  }
+
   const renamePortfolioFolder = async (id, name) => {
     if (!name.trim()) return
     const { error } = await supabase.from('portfolio_folders').update({ name }).eq('id', id)
@@ -130,7 +160,7 @@ export function usePortfolio(session) {
   return { 
     portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders,
     holdings, livePrices, loadingHoldings, 
-    createPortfolioFolder, renamePortfolioFolder, deletePortfolioFolder, 
+    createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder, 
     saveHolding, removeHolding 
   }
 }
