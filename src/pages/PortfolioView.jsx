@@ -172,8 +172,9 @@ function StatPill({ label, value, highlight }) {
 
 // ── Growth Chart ──────────────────────────────────────────────────────────────
 
-function GrowthChart({ costBasis, currentValue, currency, thbRate }) {
+function GrowthChart({ costBasis, currentValue, defaultCurrency, thbRate }) {
   const [range, setRange] = useState('1M')
+  const [currency, setCurrency] = useState(defaultCurrency || 'USD')
   const symb = currency === 'THB' ? '฿' : '$'
   const data = useMemo(() => buildGrowthData(costBasis, currentValue, range), [costBasis, currentValue, range])
 
@@ -183,30 +184,33 @@ function GrowthChart({ costBasis, currentValue, currency, thbRate }) {
   const lineColor = isUp ? '#16a34a' : '#dc2626'
   const gradId = isUp ? 'growthGradGreen' : 'growthGradRed'
 
-  // Displayed cost basis in selected currency
   const displayedCost = currency === 'THB' ? costBasis * thbRate : costBasis
 
   return (
     <div className="chart-card">
       {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0 8px', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0 8px', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <p className="desc-title" style={{ marginBottom: 4 }}>Portfolio Growth</p>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 26, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: 'var(--text)' }}>
-              {fmt(currentValue, currency, thbRate)}
-            </span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: isUp ? 'var(--green)' : 'var(--red)' }}>
+          <p className="desc-title" style={{ marginBottom: 6 }}>Portfolio Growth</p>
+          <div className="port-balance-row">
+            <span className="price-value">{fmt(currentValue, currency, thbRate)}</span>
+            <span className={`price-delta ${isUp ? 'up' : 'down'}`}>
               {isUp ? '▲' : '▼'} {fmt(Math.abs(pnl), currency, thbRate)} ({isUp ? '+' : ''}{pnlPct.toFixed(2)}%)
             </span>
           </div>
         </div>
 
-        {/* Range selector */}
-        <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2)', padding: 3, borderRadius: 8, border: '1px solid var(--border-md)', flexShrink: 0 }}>
-          {Object.keys(RANGE_CONFIG).map(r => (
-            <RangeButton key={r} label={r} active={range === r} onClick={() => setRange(r)} />
-          ))}
+        {/* Controls: currency toggle + range selector */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
+          <div className="currency-toggle">
+            <button className={currency === 'USD' ? 'active' : ''} onClick={() => setCurrency('USD')}>USD</button>
+            <button className={currency === 'THB' ? 'active' : ''} onClick={() => setCurrency('THB')}>THB</button>
+          </div>
+          <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2)', padding: 3, borderRadius: 8, border: '1px solid var(--border-md)' }}>
+            {Object.keys(RANGE_CONFIG).map(r => (
+              <RangeButton key={r} label={r} active={range === r} onClick={() => setRange(r)} />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -265,32 +269,38 @@ function GrowthChart({ costBasis, currentValue, currency, thbRate }) {
 
 const DIV_VIEWS = ['Monthly', 'By Stock']
 
-function DividendChart({ holdings, currency, thbRate }) {
+function DividendChart({ holdings, defaultCurrency, thbRate }) {
   const [view, setView] = useState('Monthly')
+  const [currency, setCurrency] = useState(defaultCurrency || 'USD')
   const div = useMemo(() => buildDividendData(holdings, currency, thbRate), [holdings, currency, thbRate])
 
-  const isPos = div.totalAnnual > 0
-  const accentColor = '#d97706'  // amber — matches the app's dividend/income vibe
+  const accentColor = '#d97706'
 
   return (
     <div className="chart-card">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0 8px', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0 8px', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
         <div>
-          <p className="desc-title" style={{ marginBottom: 4 }}>Dividend Income</p>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 26, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: 'var(--text)' }}>
+          <p className="desc-title" style={{ marginBottom: 6 }}>Dividend Income</p>
+          <div className="port-balance-row">
+            <span className="price-value">
               {div.symb}{div.totalAnnual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
-            <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}>/ year</span>
+            <span className="price-delta" style={{ color: 'var(--muted)' }}>/ year</span>
           </div>
         </div>
 
-        {/* View toggle */}
-        <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2)', padding: 3, borderRadius: 8, border: '1px solid var(--border-md)', flexShrink: 0 }}>
-          {DIV_VIEWS.map(v => (
-            <RangeButton key={v} label={v} active={view === v} onClick={() => setView(v)} />
-          ))}
+        {/* Controls: currency toggle + view toggle */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
+          <div className="currency-toggle">
+            <button className={currency === 'USD' ? 'active' : ''} onClick={() => setCurrency('USD')}>USD</button>
+            <button className={currency === 'THB' ? 'active' : ''} onClick={() => setCurrency('THB')}>THB</button>
+          </div>
+          <div style={{ display: 'flex', gap: 2, background: 'var(--surface-2)', padding: 3, borderRadius: 8, border: '1px solid var(--border-md)' }}>
+            {DIV_VIEWS.map(v => (
+              <RangeButton key={v} label={v} active={view === v} onClick={() => setView(v)} />
+            ))}
+          </div>
         </div>
       </div>
 
@@ -482,7 +492,7 @@ export function PortfolioView({
                   <td className="num">{h.amount}</td>
                   <td className="num">{fmt(h.buy_price, currency, thbRate)}</td>
                   <td className="num">{fmt(h.livePrice, currency, thbRate)}</td>
-                  <td className={`num ${h.profitLoss >= 0 ? 'text-green' : 'text-red'}`}>
+                  <td className="num" style={{ color: h.profitLoss >= 0 ? 'var(--green)' : 'var(--red)' }}>
                     {h.profitLoss >= 0 ? '+' : '-'}{fmt(Math.abs(h.profitLoss), currency, thbRate)}
                     <span className="pnl-pct"> ({h.profitLossPct >= 0 ? '+' : ''}{h.profitLossPct.toFixed(2)}%)</span>
                   </td>
@@ -504,14 +514,14 @@ export function PortfolioView({
       <GrowthChart
         costBasis={totalCostBasis}
         currentValue={totalPortfolioValue}
-        currency={currency}
+        defaultCurrency={currency}
         thbRate={thbRate}
       />
 
       {/* ── Dividend Chart ── */}
       <DividendChart
         holdings={holdings}
-        currency={currency}
+        defaultCurrency={currency}
         thbRate={thbRate}
       />
     </>
