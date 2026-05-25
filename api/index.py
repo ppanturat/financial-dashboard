@@ -27,7 +27,6 @@ def search_ticker(query: str):
     except Exception:
         return {"results": []}
 
-# FAST ENDPOINT: Returns chart and numbers instantly
 @app.get("/api/data/{ticker}")
 def get_market_data(ticker: str, timeframe: str = "1M"):
     stock = yf.Ticker(ticker)
@@ -46,10 +45,8 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         debt = info.get('totalDebt', 0)
         wcr = round(cash / debt, 4) if debt and debt > 0 else (999 if cash else None)
         
-        # FIX: Catch and remove meaningless negative Forward P/E ratios
         forward_pe = info.get('forwardPE')
-        if forward_pe is not None and forward_pe < 0:
-            forward_pe = None
+        if forward_pe is not None and forward_pe < 0: forward_pe = None
             
         metrics = {
             "war_chest_ratio": wcr,
@@ -66,30 +63,36 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         "description": info.get('longBusinessSummary', '')
     }
 
+@app.get("/api/bulk_prices")
+def get_bulk_prices(tickers: str):
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+    result = {}
+    for t in ticker_list:
+        try:
+            stock = yf.Ticker(t)
+            last_price = stock.fast_info.get('last_price')
+            if last_price: result[t] = round(last_price, 2)
+        except Exception:
+            pass
+    return result
+
 @app.get("/api/ai/{ticker}")
 def get_ai_analysis(ticker: str):
+    # ... Keep your existing AI endpoint exactly the same here ...
     stock = yf.Ticker(ticker)
     info = stock.info
-    
     cash = info.get('totalCash', 0)
     debt = info.get('totalDebt', 0)
     wcr = round(cash / debt, 4) if debt and debt > 0 else (999 if cash else None)
-    
     forward_pe = info.get('forwardPE')
-    if forward_pe is not None and forward_pe < 0:
-        forward_pe = None
-            
+    if forward_pe is not None and forward_pe < 0: forward_pe = None
     metrics = {
-        "war_chest_ratio": wcr,
-        "fcf": info.get('freeCashflow'),
-        "gross_margin": info.get('grossMargins'),
-        "forward_pe": forward_pe,
+        "war_chest_ratio": wcr, "fcf": info.get('freeCashflow'),
+        "gross_margin": info.get('grossMargins'), "forward_pe": forward_pe,
         "revenue_yoy": info.get('revenueGrowth')
     }
-
     api_key = os.environ.get("GEMINI_API_KEY")
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
-    
     prompt = f"""
     Act as an institutional quantitative analyst. Analyze these metrics for {ticker}: {json.dumps(metrics)}
     Return raw JSON schema ONLY (no markdown), keep the tone short and concise, but well-explained:
@@ -100,7 +103,6 @@ def get_ai_analysis(ticker: str):
         "neutral_verdict": "VERDICT (Score: X/100) — Well-explained summary."
     }}
     """
-
     try:
         res = requests.post(url, headers={"Content-Type": "application/json"}, json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"responseMimeType": "application/json"}}, timeout=10)
         res_data = res.json()
