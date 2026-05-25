@@ -11,9 +11,10 @@ export function Sidebar({
   
   // import state
   const [importMode, setImportMode] = useState(false)
-  const [importStep, setImportStep] = useState(1) // 1: select folder, 2: select tickers
+  const [importStep, setImportStep] = useState(1) 
   const [importTargetFolder, setImportTargetFolder] = useState(null)
   const [importTickers, setImportTickers] = useState([])
+  const [isImporting, setIsImporting] = useState(false)
 
   const newRef = useRef(null)
 
@@ -31,7 +32,7 @@ export function Sidebar({
   // start the ticker selection step
   const handleStartImport = (mf) => {
     setImportTargetFolder(mf)
-    setImportTickers(mf.tickers || []) // pre-select all by default
+    setImportTickers(mf.tickers || []) 
     setImportStep(2)
   }
 
@@ -42,13 +43,22 @@ export function Sidebar({
     )
   }
 
-  // finalize import
+  // finalize import safely with visual feedback
   const handleConfirmImport = async () => {
-    await onImportFolder(importTargetFolder.name, importTickers)
-    setImportMode(false)
-    setImportStep(1)
-    setImportTargetFolder(null)
-    setImportTickers([])
+    if (!importTargetFolder) return
+    setIsImporting(true)
+    
+    try {
+      await onImportFolder(importTargetFolder.name, importTickers)
+      setImportMode(false)
+      setImportStep(1)
+      setImportTargetFolder(null)
+      setImportTickers([])
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setIsImporting(false)
+    }
   }
 
   return (
@@ -105,7 +115,7 @@ export function Sidebar({
                   ref={newRef}
                   className="vault-edit-input"
                   autoFocus
-                  placeholder="Folder name..."
+                  placeholder="Folder Name..."
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   onBlur={commitNew}
@@ -147,8 +157,10 @@ export function Sidebar({
                       {(!importTargetFolder?.tickers || importTargetFolder.tickers.length === 0) && <span className="import-empty">Empty folder.</span>}
                     </div>
                     <div className="import-actions">
-                      <button className="btn-text btn-cancel" onClick={() => setImportStep(1)}>Back</button>
-                      <button className="btn-primary btn-small" onClick={handleConfirmImport}>Confirm</button>
+                      <button className="btn-text btn-cancel" onClick={() => setImportStep(1)} disabled={isImporting}>Back</button>
+                      <button className="btn-primary btn-small" onClick={handleConfirmImport} disabled={isImporting}>
+                        {isImporting ? 'Importing...' : 'Confirm'}
+                      </button>
                     </div>
                   </>
                 )}

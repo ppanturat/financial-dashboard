@@ -99,7 +99,7 @@ export function usePortfolio(session) {
       .select()
       .single()
     
-    if (error) throw error
+    if (error) throw new Error("database error: could not create portfolio_folders. did you run the sql?")
 
     // insert only the selected tickers with zero amount/price so user can edit later
     if (selectedTickers && selectedTickers.length > 0) {
@@ -110,7 +110,9 @@ export function usePortfolio(session) {
         amount: 0,
         buy_price: 0
       }))
-      await supabase.from('portfolio_holdings').insert(payload)
+      
+      const { error: holdingsError } = await supabase.from('portfolio_holdings').insert(payload)
+      if (holdingsError) throw new Error("database error: could not insert into portfolio_holdings. missing folder_id column?")
     }
 
     setPortfolioFolders(f => [...f, data])
