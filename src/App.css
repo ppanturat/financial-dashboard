@@ -560,6 +560,8 @@ body {
   .header { gap: 8px; padding: 0 10px; }
 }
 
+/* append to src/App.css */
+
 /* sidebar tabs */
 .sidebar-tabs { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-bottom: 1px solid var(--sidebar-border); }
 .sidebar-tabs button { background: none; border: none; color: rgba(255,255,255,0.5); padding: 10px; text-align: left; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
@@ -584,7 +586,24 @@ body {
 .port-actions button { background: none; border: none; font-size: 14px; color: var(--muted); cursor: pointer; padding: 4px; margin-right: 8px; transition: color 0.15s; }
 .port-actions button:hover { color: var(--text); }
 
-/* form inputs for modal */
+/* holding modal specifics */
+.large-modal { max-width: 600px; width: 95%; }
+.modal-split { display: flex; gap: 24px; margin-top: 16px; }
+.modal-left, .modal-right { flex: 1; display: flex; flex-direction: column; }
+.modal-search-results { list-style: none; background: var(--surface-2); border: 1px solid var(--border-md); border-radius: 8px; margin-top: 4px; max-height: 150px; overflow-y: auto; }
+.modal-search-results li { padding: 10px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 13px; }
+.modal-search-results li:hover { background: var(--surface); }
+.modal-search-results li span { color: var(--muted); font-size: 11px; margin-left: 8px; }
+
+.market-folders-picker { margin-top: 16px; flex: 1; overflow-y: auto; }
+.market-folders-picker label { font-size: 12px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 8px; }
+.market-folders-list { display: flex; flex-direction: column; gap: 12px; }
+.picker-folder-name { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; display: block; }
+.picker-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.picker-tags button { background: var(--surface-2); border: 1px solid var(--border-md); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text); cursor: pointer; transition: all 0.15s; }
+.picker-tags button:hover { border-color: var(--accent); }
+.picker-tags button.active { background: var(--accent); color: white; border-color: var(--accent); }
+
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; text-align: left; }
 .form-group label { font-size: 12px; font-weight: 600; color: var(--muted); }
 .custom-modal-overlay input { background: var(--surface-2); color: var(--text); border: 1px solid var(--border-md); }
@@ -592,4 +611,8 @@ body {
 
 @media (max-width: 900px) {
   .portfolio-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .modal-split { flex-direction: column; gap: 16px; }
+  .modal-left { border-bottom: 1px solid var(--border); padding-bottom: 16px; }
 }

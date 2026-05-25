@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ChartTooltip } from 'recharts'
-import { usePortfolio } from '../hooks/usePortfolio'
 import { HoldingModal } from '../components/HoldingModal'
+import { EmptyState } from '../components/EmptyState'
 
 const COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488'];
 
-export function PortfolioView({ session, openConfirmModal }) {
-  const { holdings, livePrices, loading, saveHolding, removeHolding } = usePortfolio(session)
+export function PortfolioView({ 
+  activePortfolioId, holdings, livePrices, loadingHoldings, 
+  marketFolders, saveHolding, removeHolding, openConfirmModal 
+}) {
   const [modalOpen, setModalOpen] = useState(false)
   const [editingObj, setEditingObj] = useState(null)
 
@@ -16,12 +18,16 @@ export function PortfolioView({ session, openConfirmModal }) {
   }
 
   const handleDelete = (id, ticker) => {
-    openConfirmModal('Delete Holding', `Are you sure you want to remove ${ticker} from your portfolio?`, () => removeHolding(id))
+    openConfirmModal('Delete Holding', `Are you sure you want to remove ${ticker} from this folder?`, () => removeHolding(id))
   }
 
-  if (loading) return <div className="chart-empty">Loading Portfolio...</div>
+  if (!activePortfolioId) {
+    return <EmptyState loading={loadingHoldings} />
+  }
 
-  // Calculate Totals & Formatting Data for Pie Chart
+  if (loadingHoldings) return <div className="chart-empty">loading portfolio data...</div>
+
+  // calc totals for pie chart
   let totalPortfolioValue = 0
   let totalCostBasis = 0
 
@@ -38,9 +44,9 @@ export function PortfolioView({ session, openConfirmModal }) {
       currentValue,
       livePrice,
       profitLoss: currentValue - costBasis,
-      profitLossPct: ((currentValue - costBasis) / costBasis) * 100
+      profitLossPct: costBasis > 0 ? ((currentValue - costBasis) / costBasis) * 100 : 0
     }
-  }).sort((a, b) => b.currentValue - a.currentValue) // Sort by largest holding
+  }).sort((a, b) => b.currentValue - a.currentValue)
 
   const totalPnL = totalPortfolioValue - totalCostBasis
   const totalPnLPct = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0
@@ -50,6 +56,7 @@ export function PortfolioView({ session, openConfirmModal }) {
       <HoldingModal 
         isOpen={modalOpen} 
         holding={editingObj} 
+        marketFolders={marketFolders}
         onClose={() => setModalOpen(false)} 
         onSave={saveHolding} 
       />
@@ -66,7 +73,7 @@ export function PortfolioView({ session, openConfirmModal }) {
       </div>
 
       <div className="portfolio-grid">
-        {/* PIE CHART */}
+        {/* pie chart */}
         <div className="chart-card port-chart">
           <h3 className="desc-title">Asset Allocation</h3>
           {pieData.length > 0 ? (
@@ -79,11 +86,11 @@ export function PortfolioView({ session, openConfirmModal }) {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="chart-empty">No assets to display</div>
+            <div className="chart-empty">no assets to display</div>
           )}
         </div>
 
-        {/* HOLDINGS TABLE */}
+        {/* holdings table */}
         <div className="chart-card port-table-container">
           <h3 className="desc-title">Your Assets</h3>
           <table className="port-table">
@@ -114,7 +121,7 @@ export function PortfolioView({ session, openConfirmModal }) {
                 </tr>
               ))}
               {pieData.length === 0 && (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>No holdings yet.</td></tr>
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>no holdings yet.</td></tr>
               )}
             </tbody>
           </table>
