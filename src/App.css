@@ -528,6 +528,7 @@ body {
   .vault-actions { opacity: 1; }
 
   .header { padding: 0 14px; gap: 10px; }
+  .header-left { overflow: visible; }
   .header-vault-name { display: none; }
   .search-wrap { width: auto; flex: 1; min-width: 0; }
   .content { padding: 16px 14px 24px; gap: 14px; }
