@@ -114,6 +114,7 @@ export default function App() {
       <ConfirmModal modal={modal} onClose={closeModal} onExecute={executeModal} />
 
       <Sidebar
+        isOpen={sidebarOpen}
         session={session}
         folders={folders}
         activeFolderId={activeFolderId}

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 
-export function Sidebar({ session, folders, activeFolderId, fetchingFolders, onSelectFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onSignOut }) {
+export function Sidebar({ session, folders, activeFolderId, fetchingFolders, isOpen, onSelectFolder, onCreateFolder, onRenameFolder, onDeleteFolder, onSignOut }) {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [newMode, setNewMode] = useState(false)
@@ -19,7 +19,7 @@ export function Sidebar({ session, folders, activeFolderId, fetchingFolders, onS
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-brand">
         <span className="brand-mark">◈</span>
         <span className="brand-name">STOCK CHECKER</span>
