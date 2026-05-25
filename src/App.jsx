@@ -11,6 +11,7 @@ import { Header } from './components/Header'
 import { PriceRow } from './components/PriceRow'
 import { StockChart } from './components/StockChart'
 import { MetricsGrid } from './components/MetricsGrid'
+import { MetricsSummaryCard } from './components/MetricsSummaryCard'
 import { AiScanCard } from './components/AiScanCard'
 import { ConfirmModal } from './components/ConfirmModal'
 import { EmptyState } from './components/EmptyState'
@@ -19,20 +20,19 @@ import './App.css'
 
 export default function App() {
   const { session, loading: authLoading, signIn, signUp, signOut } = useAuth()
-
   const { folders, loading: foldersLoading, createFolder, renameFolder, deleteFolder, addTicker, removeTicker } =
     useFolders(session)
 
   const [activeFolderId, setActiveFolderId] = useState(null)
-  const [activeTicker, setActiveTicker] = useState('')
-  const [timeframe, setTimeframe] = useState('1M')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [activeTicker, setActiveTicker]     = useState('')
+  const [timeframe, setTimeframe]           = useState('1M')
+  const [sidebarOpen, setSidebarOpen]       = useState(false)
 
   const { modal, confirm, close: closeModal, execute: executeModal } = useModal()
-  const search = useSearch()
+  const search    = useSearch()
   const searchRef = useRef(null)
 
-  // set initial folder + ticker once folders load
+  // auto-select first folder + ticker once folders load
   useEffect(() => {
     if (!foldersLoading && folders.length > 0 && !activeFolderId) {
       setActiveFolderId(folders[0].id)
@@ -40,12 +40,12 @@ export default function App() {
     }
   }, [folders, foldersLoading])
 
-  // reset on sign out
+  // clear state on sign-out
   useEffect(() => {
     if (!session) { setActiveFolderId(null); setActiveTicker('') }
   }, [session])
 
-  // close search on outside click
+  // close search dropdown on outside click
   useEffect(() => {
     const fn = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) search.close()
@@ -54,14 +54,14 @@ export default function App() {
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
-  const stock = useStockData(activeTicker, timeframe)
+  const stock        = useStockData(activeTicker, timeframe)
   const activeFolder = folders.find(f => f.id === activeFolderId)
+  const isEtf        = stock.quoteType === 'ETF'
 
   if (authLoading) return null
+  if (!session)    return <AuthPage onSignIn={signIn} onSignUp={signUp} />
 
-  if (!session) return <AuthPage onSignIn={signIn} onSignUp={signUp} />
-
-  // ── event handlers ──
+  // ── handlers ──
   const handleSelectFolder = (folder) => {
     setActiveFolderId(folder.id)
     setActiveTicker(folder.tickers[0] ?? '')
@@ -69,7 +69,7 @@ export default function App() {
   }
 
   const handleDeleteFolder = (id) => {
-    confirm('delete folder', 'permanently delete this folder and all its tickers?', async () => {
+    confirm('Delete Folder', 'Permanently delete this folder and all its tickers?', async () => {
       await deleteFolder(id)
       const remaining = folders.filter(f => f.id !== id)
       if (activeFolderId === id) {
@@ -83,7 +83,7 @@ export default function App() {
     if (!session) return
     let fid = activeFolderId
     if (!fid && folders.length === 0) {
-      const f = await createFolder('my portfolio')
+      const f = await createFolder('My Portfolio')
       if (!f) return
       fid = f.id
       setActiveFolderId(f.id)
@@ -93,21 +93,19 @@ export default function App() {
   }
 
   const handleRemoveTicker = (symbol) => {
-    confirm('remove asset', `remove ${symbol} from this folder?`, async () => {
+    confirm('Remove Asset', `Remove ${symbol} from this folder?`, async () => {
       await removeTicker(activeFolderId, symbol)
       if (activeTicker === symbol) {
         const folder = folders.find(f => f.id === activeFolderId)
-        const next = folder?.tickers.filter(t => t !== symbol) ?? []
+        const next   = folder?.tickers.filter(t => t !== symbol) ?? []
         setActiveTicker(next[0] ?? '')
       }
     })
   }
 
   const handleRenameFolder = (id, name) => {
-    confirm('rename folder', `rename to "${name}"?`, () => renameFolder(id, name))
+    confirm('Rename Folder', `Rename to "${name}"?`, () => renameFolder(id, name))
   }
-
-  const hasContent = !!activeTicker
 
   return (
     <div className="layout">
@@ -150,13 +148,13 @@ export default function App() {
         />
 
         <div className="content">
-          {!hasContent ? (
+          {!activeTicker ? (
             <EmptyState loading={foldersLoading} />
           ) : (
             <>
               <PriceRow
                 ticker={activeTicker}
-                isEtf={stock.quoteType === 'ETF'}
+                isEtf={isEtf}
                 currentPrice={stock.currentPrice}
                 priceChange={stock.priceChange}
                 timeframe={timeframe}
@@ -172,22 +170,31 @@ export default function App() {
 
               {stock.description && (
                 <div className="desc-card">
-                  <h3 className="desc-title">company profile</h3>
+                  <h3 className="desc-title">Company Profile</h3>
                   <p className="desc-text">{stock.description}</p>
                 </div>
               )}
 
               <MetricsGrid
                 metrics={stock.metrics}
-                isEtf={stock.quoteType === 'ETF'}
+                isEtf={isEtf}
                 loading={stock.loadingData}
               />
 
+              {/* rule-based summary — always available, no quota dependency */}
+              <MetricsSummaryCard
+                metrics={stock.metrics}
+                ticker={activeTicker}
+                isEtf={isEtf}
+                loading={stock.loadingData}
+              />
+
+              {/* ai assessment — shown when available, gracefully absent when quota is hit */}
               <AiScanCard
                 ticker={activeTicker}
                 timeframe={timeframe}
                 aiScan={stock.aiScan}
-                isEtf={stock.quoteType === 'ETF'}
+                isEtf={isEtf}
                 loading={stock.loadingAi}
               />
             </>
