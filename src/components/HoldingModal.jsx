@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8000/api" : "/api"
 
@@ -7,12 +7,11 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
   const [amount, setAmount] = useState('')
   const [buyPrice, setBuyPrice] = useState('')
   
-  // search states
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
+  const overlayRef = useRef(null)
 
-  // reset form on open
   useEffect(() => {
     if (isOpen) {
       setTicker(holding?.ticker || '')
@@ -23,14 +22,16 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
     }
   }, [isOpen, holding])
 
-  // real-time search effect
+  // close on Escape
   useEffect(() => {
-    if (!searchQuery.trim()) { 
-      setSearchResults([])
-      setIsSearching(false)
-      return 
-    }
-    
+    if (!isOpen) return
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isOpen, onClose])
+
+  useEffect(() => {
+    if (!searchQuery.trim()) { setSearchResults([]); setIsSearching(false); return }
     setIsSearching(true)
     const q = searchQuery.toUpperCase().trim()
     const fetchSearch = async () => {
@@ -38,12 +39,9 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
         const res = await fetch(`${BASE_URL}/search/${encodeURIComponent(q)}`)
         const data = await res.json()
         setSearchResults(data.results || [])
-      } catch (err) { 
-        setSearchResults([]) 
-      }
+      } catch { setSearchResults([]) }
       setIsSearching(false)
     }
-    
     const id = setTimeout(fetchSearch, 300)
     return () => clearTimeout(id)
   }, [searchQuery])
@@ -62,99 +60,126 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
     setSearchResults([])
   }
 
+  const handleOverlayClick = (e) => {
+    if (e.target === overlayRef.current) onClose()
+  }
+
   return (
-    <div className="custom-modal-overlay">
-      <div className="custom-modal large-modal">
-        <h3>{holding ? 'Edit Holding' : 'Add to Portfolio'}</h3>
-        
-        <div className="modal-split">
-          {/* left side: discovery */}
-          <div className="modal-left">
-            <div className="form-group">
-              <label>Search Market</label>
-              <input 
-                className="vault-edit-input" 
-                value={searchQuery} 
-                onChange={e => setSearchQuery(e.target.value)} 
-                placeholder="Search Ticker (e.g. MSFT)..." 
-                disabled={!!holding}
-              />
-              
-              {searchQuery && (
-                <ul className="modal-search-results">
-                  {isSearching ? <li className="drop-empty">Searching...</li> : 
-                   searchResults.length === 0 ? <li className="drop-empty">No matches found.</li> :
-                   searchResults.map(r => (
-                    <li key={r.symbol} onClick={() => handleSelectTicker(r.symbol)}>
-                      <strong>{r.symbol}</strong> <span>{r.shortname}</span>
-                    </li>
-                  ))}
-                </ul>
+    <div className="hmodal-overlay" ref={overlayRef} onClick={handleOverlayClick}>
+      <div className="hmodal-box">
+        {/* header */}
+        <div className="hmodal-header">
+          <h3 className="hmodal-title">{holding ? 'Edit Holding' : 'Add Holding'}</h3>
+          <button className="hmodal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="hmodal-body">
+          {/* ticker search / picker — only shown when adding new */}
+          {!holding && (
+            <div className="hmodal-section">
+              <div className="form-group">
+                <label className="hmodal-label">Search Ticker</label>
+                <input
+                  className="hmodal-input"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search (e.g. MSFT, AAPL)…"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <ul className="hmodal-search-list">
+                    {isSearching
+                      ? <li className="hmodal-search-empty">Searching…</li>
+                      : searchResults.length === 0
+                        ? <li className="hmodal-search-empty">No matches found.</li>
+                        : searchResults.map(r => (
+                          <li key={r.symbol} className="hmodal-search-item" onClick={() => handleSelectTicker(r.symbol)}>
+                            <span className="hmodal-search-sym">{r.symbol}</span>
+                            <span className="hmodal-search-name">{r.shortname}</span>
+                          </li>
+                        ))
+                    }
+                  </ul>
+                )}
+              </div>
+
+              {/* market folder quick-pick */}
+              {!searchQuery && marketFolders?.length > 0 && (
+                <div className="hmodal-folder-section">
+                  <span className="hmodal-section-label">Or pick from your watchlists</span>
+                  <div className="hmodal-folder-list">
+                    {marketFolders.map(f => (
+                      <div key={f.id} className="hmodal-folder-row">
+                        <span className="hmodal-folder-name">{f.name}</span>
+                        <div className="hmodal-ticker-chips">
+                          {f.tickers?.map(t => (
+                            <button
+                              key={t}
+                              className={`hmodal-ticker-chip ${ticker === t ? 'selected' : ''}`}
+                              onClick={() => handleSelectTicker(t)}
+                            >{t}</button>
+                          ))}
+                          {(!f.tickers || f.tickers.length === 0) && (
+                            <span className="hmodal-empty-note">Empty folder</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
+          )}
 
-            {!searchQuery && !holding && marketFolders && marketFolders.length > 0 && (
-              <div className="market-folders-picker">
-                <label>From Market Folders</label>
-                <div className="market-folders-list">
-                  {marketFolders.map(f => (
-                    <div key={f.id} className="picker-folder">
-                      <span className="picker-folder-name">{f.name}</span>
-                      <div className="picker-tags">
-                        {f.tickers?.map(t => (
-                          <button key={t} onClick={() => handleSelectTicker(t)} className={ticker === t ? 'active' : ''}>
-                            {t}
-                          </button>
-                        ))}
-                        {(!f.tickers || f.tickers.length === 0) && <span className="drop-empty">Empty folder.</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {/* form fields */}
+          <div className="hmodal-section hmodal-fields">
+            <div className="form-group">
+              <label className="hmodal-label">Ticker Symbol</label>
+              <input
+                className={`hmodal-input hmodal-ticker-display ${ticker ? 'has-value' : ''}`}
+                value={ticker}
+                onChange={e => !holding && setTicker(e.target.value.toUpperCase())}
+                placeholder="Select a ticker above"
+                readOnly={!!holding}
+              />
+            </div>
+
+            <div className="hmodal-row">
+              <div className="form-group">
+                <label className="hmodal-label">Shares</label>
+                <input
+                  type="number"
+                  className="hmodal-input"
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  min="0"
+                  step="any"
+                />
               </div>
-            )}
-          </div>
-
-          {/* right side: input form */}
-          <div className="modal-right">
-            <div className="form-group">
-              <label>Ticker Symbol</label>
-              <input 
-                className="vault-edit-input" 
-                value={ticker} 
-                onChange={e => setTicker(e.target.value.toUpperCase())} 
-                disabled={!!holding} 
-                placeholder="Select or type ticker" 
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Amount of Shares</label>
-              <input 
-                type="number" 
-                className="vault-edit-input" 
-                value={amount} 
-                onChange={e => setAmount(e.target.value)} 
-                placeholder="0.0" 
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Average Buy Price ($)</label>
-              <input 
-                type="number" 
-                className="vault-edit-input" 
-                value={buyPrice} 
-                onChange={e => setBuyPrice(e.target.value)} 
-                placeholder="0.00" 
-              />
+              <div className="form-group">
+                <label className="hmodal-label">Avg Buy Price ($)</label>
+                <input
+                  type="number"
+                  className="hmodal-input"
+                  value={buyPrice}
+                  onChange={e => setBuyPrice(e.target.value)}
+                  placeholder="0.00"
+                  min="0"
+                  step="any"
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="custom-modal-actions mt-4">
-          <button className="btn-text" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave}>Save Holding</button>
+        <div className="hmodal-footer">
+          <button className="hmodal-btn-cancel" onClick={onClose}>Cancel</button>
+          <button
+            className="hmodal-btn-save"
+            onClick={handleSave}
+            disabled={!ticker || !amount || !buyPrice}
+          >Save Holding</button>
         </div>
       </div>
     </div>
