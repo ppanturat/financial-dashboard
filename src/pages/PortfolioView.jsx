@@ -18,10 +18,12 @@ async function fetchThbRate() {
 }
 
 function fmt(val, currency, thbRate) {
+  // Safe parse to prevent NaN layout breaks
+  const num = parseFloat(val) || 0
   if (currency === 'THB') {
-    return '฿' + (val * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return '฿' + (num * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
-  return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 // custom pie label
@@ -58,6 +60,7 @@ export function PortfolioView({
   const [editingObj, setEditingObj] = useState(null)
   const [currency, setCurrency] = useState('USD')
   const [thbRate, setThbRate] = useState(34.5)
+  const [activeChart, setActiveChart] = useState('growth') // 'growth' or 'yield' toggle
 
   useEffect(() => {
     fetchThbRate().then(setThbRate)
@@ -74,13 +77,21 @@ export function PortfolioView({
   let totalPortfolioValue = 0, totalCostBasis = 0
 
   const pieData = holdings.map(h => {
-    const livePrice = livePrices[h.ticker] || h.buy_price
-    const currentValue = h.amount * livePrice
-    const costBasis = h.amount * h.buy_price
-    totalPortfolioValue += currentValue
-    totalCostBasis += costBasis
+    // SAFE PARSING: Prevent NaN outputs that cause "straight line" chart bug
+    const amt = parseFloat(h.amount) || 0;
+    const bp = parseFloat(h.buy_price) || 0;
+    // Fallback to buy price if live price hasn't loaded yet
+    const lp = livePrices && livePrices[h.ticker] ? parseFloat(livePrices[h.ticker]) : bp;
+    
+    const currentValue = amt * lp;
+    const costBasis = amt * bp;
+    totalPortfolioValue += currentValue;
+    totalCostBasis += costBasis;
+    
     return {
-      ...h, currentValue, livePrice,
+      ...h, 
+      currentValue, 
+      livePrice: lp,
       profitLoss: currentValue - costBasis,
       profitLossPct: costBasis > 0 ? ((currentValue - costBasis) / costBasis) * 100 : 0
     }
@@ -94,7 +105,7 @@ export function PortfolioView({
 
   const totalPnL = totalPortfolioValue - totalCostBasis
   const totalPnLPct = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0
-  const growthData = buildGrowthData(pieData, totalPortfolioValue, totalCostBasis)
+  const growthData = buildGrowthData(pieDataWithPct, totalPortfolioValue, totalCostBasis)
 
   // yield data — P&L per holding
   const yieldData = pieDataWithPct.map(h => ({
@@ -122,7 +133,7 @@ export function PortfolioView({
           <div className="port-balance-row">
             <span className="price-value">{fmt(totalPortfolioValue, currency, thbRate)}</span>
             <span className={`price-delta ${totalPnL >= 0 ? 'up' : 'down'}`}>
-              {totalPnL >= 0 ? '▲' : '▼'} {fmt(Math.abs(totalPnL), currency, thbRate)} ({Math.abs(totalPnLPct).toFixed(2)}%)
+              {totalPnL >= 0 ? '▲' : '▼'} {fmt(Math.abs(totalPnL), currency, thbRate)} ({totalPnLPct >= 0 ? '+' : ''}{Math.abs(totalPnLPct).toFixed(2)}%)
             </span>
           </div>
         </div>
@@ -190,7 +201,7 @@ export function PortfolioView({
                   <td className="num">{fmt(h.livePrice, currency, thbRate)}</td>
                   <td className={`num ${h.profitLoss >= 0 ? 'text-green' : 'text-red'}`}>
                     {h.profitLoss >= 0 ? '+' : '-'}{fmt(Math.abs(h.profitLoss), currency, thbRate)}
-                    <span className="pnl-pct"> ({h.profitLossPct >= 0 ? '+' : ''}{h.profitLossPct.toFixed(2)}%)</span>
+                    <span className="pnl-pct"> ({h.profitLossPct >= 0 ? '+' : ''}{Math.abs(h.profitLossPct).toFixed(2)}%)</span>
                   </td>
                   <td className="port-actions">
                     <button onClick={() => handleOpenModal(h)}>✎</button>
@@ -206,55 +217,71 @@ export function PortfolioView({
         </div>
       </div>
 
-      {/* Portfolio Growth chart */}
-      {growthData.length > 0 && (
+      {/* Unified Performance chart (Toggle Growth & Yield) */}
+      {(growthData.length > 0 || yieldData.length > 0) && (
         <div className="chart-card">
-          <h3 className="desc-title">Portfolio Growth</h3>
-          <p className="chart-sub">Cost basis → current value trajectory</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={growthData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }} axisLine={false} tickLine={false} />
-              <YAxis
-                tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}
-                axisLine={false} tickLine={false} width={72}
-                tickFormatter={v => symb + (v >= 1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(0))}
-              />
-              <LineTooltip
-                formatter={v => [fmt(v, currency, thbRate), 'Portfolio Value']}
-                contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 8, fontSize: 12 }}
-              />
-              <ReferenceLine y={totalCostBasis} stroke="var(--muted)" strokeDasharray="4 2" label={{ value: 'Cost Basis', fill: 'var(--muted)', fontSize: 10, fontFamily: 'DM Mono, monospace' }} />
-              <Line type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: 'var(--accent)' }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Yield per Holding chart */}
-      {yieldData.length > 0 && (
-        <div className="chart-card">
-          <h3 className="desc-title">Yield per Holding</h3>
-          <p className="chart-sub">Unrealised return % per position</p>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={yieldData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }} axisLine={false} tickLine={false} />
-              <YAxis
-                tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}
-                axisLine={false} tickLine={false} width={48}
-                tickFormatter={v => v.toFixed(1) + '%'}
-              />
-              <LineTooltip
-                formatter={(v, key) => [
-                  key === 'yield' ? v.toFixed(2) + '%' : fmt(Math.abs(v), currency, thbRate),
-                  key === 'yield' ? 'Return %' : 'P&L'
-                ]}
-                contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 8, fontSize: 12 }}
-              />
-              <ReferenceLine y={0} stroke="var(--muted)" strokeDasharray="4 2" />
-              <Line type="monotone" dataKey="yield" stroke="#16a34a" strokeWidth={2.5} dot={{ r: 5, fill: '#16a34a', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-            </LineChart>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+            <div>
+              <h3 className="desc-title">{activeChart === 'growth' ? 'Portfolio Growth' : 'Yield per Holding'}</h3>
+              <p className="chart-sub">
+                {activeChart === 'growth' ? 'Cost basis → current value trajectory' : 'Unrealised return % per position'}
+              </p>
+            </div>
+            
+            {/* Toggle Switch */}
+            <div style={{ display: 'flex', gap: '4px', background: 'var(--surface-2)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border-md)' }}>
+              <button 
+                onClick={() => setActiveChart('growth')}
+                style={{ background: activeChart === 'growth' ? 'var(--surface)' : 'transparent', border: 'none', padding: '6px 14px', fontSize: '12px', borderRadius: '6px', cursor: 'pointer', color: activeChart === 'growth' ? 'var(--text)' : 'var(--muted)', fontWeight: activeChart === 'growth' ? '600' : '500', boxShadow: activeChart === 'growth' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.15s' }}
+              >
+                Growth
+              </button>
+              <button 
+                onClick={() => setActiveChart('yield')}
+                style={{ background: activeChart === 'yield' ? 'var(--surface)' : 'transparent', border: 'none', padding: '6px 14px', fontSize: '12px', borderRadius: '6px', cursor: 'pointer', color: activeChart === 'yield' ? 'var(--text)' : 'var(--muted)', fontWeight: activeChart === 'yield' ? '600' : '500', boxShadow: activeChart === 'yield' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.15s' }}
+              >
+                Yield
+              </button>
+            </div>
+          </div>
+          
+          <ResponsiveContainer width="100%" height={220}>
+            {activeChart === 'growth' ? (
+              <LineChart data={growthData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }} axisLine={false} tickLine={false} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}
+                  axisLine={false} tickLine={false} width={72}
+                  tickFormatter={v => symb + (v >= 1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(0))}
+                />
+                <LineTooltip
+                  formatter={v => [fmt(v, currency, thbRate), 'Portfolio Value']}
+                  contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 8, fontSize: 12 }}
+                />
+                <ReferenceLine y={totalCostBasis} stroke="var(--muted)" strokeDasharray="4 2" label={{ value: 'Cost Basis', fill: 'var(--muted)', fontSize: 10, fontFamily: 'DM Mono, monospace' }} />
+                <Line type="monotone" dataKey="value" stroke="var(--accent)" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: 'var(--accent)' }} />
+              </LineChart>
+            ) : (
+              <LineChart data={yieldData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }} axisLine={false} tickLine={false} />
+                <YAxis
+                  tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}
+                  axisLine={false} tickLine={false} width={48}
+                  tickFormatter={v => v.toFixed(1) + '%'}
+                />
+                <LineTooltip
+                  formatter={(v, key) => [
+                    key === 'yield' ? v.toFixed(2) + '%' : fmt(Math.abs(v), currency, thbRate),
+                    key === 'yield' ? 'Return %' : 'P&L'
+                  ]}
+                  contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 8, fontSize: 12 }}
+                />
+                <ReferenceLine y={0} stroke="var(--muted)" strokeDasharray="4 2" />
+                <Line type="monotone" dataKey="yield" stroke="#16a34a" strokeWidth={2.5} dot={{ r: 5, fill: '#16a34a', strokeWidth: 0 }} activeDot={{ r: 6 }} />
+              </LineChart>
+            )}
           </ResponsiveContainer>
         </div>
       )}
