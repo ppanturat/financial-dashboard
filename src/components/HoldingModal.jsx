@@ -51,7 +51,7 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
   if (!isOpen) return null
 
   const handleSave = () => {
-    if (!ticker || !amount || !buyPrice) return alert("fill in all fields")
+    if (!ticker || !amount || !buyPrice) return alert("Please fill in all fields.")
     onSave(holding?.id, ticker, parseFloat(amount), parseFloat(buyPrice))
     onClose()
   }
@@ -76,14 +76,14 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
                 className="vault-edit-input" 
                 value={searchQuery} 
                 onChange={e => setSearchQuery(e.target.value)} 
-                placeholder="search ticker (e.g. msft)..." 
+                placeholder="Search Ticker (e.g. MSFT)..." 
                 disabled={!!holding}
               />
               
               {searchQuery && (
                 <ul className="modal-search-results">
-                  {isSearching ? <li className="drop-empty">searching...</li> : 
-                   searchResults.length === 0 ? <li className="drop-empty">no matches</li> :
+                  {isSearching ? <li className="drop-empty">Searching...</li> : 
+                   searchResults.length === 0 ? <li className="drop-empty">No matches found.</li> :
                    searchResults.map(r => (
                     <li key={r.symbol} onClick={() => handleSelectTicker(r.symbol)}>
                       <strong>{r.symbol}</strong> <span>{r.shortname}</span>
@@ -106,7 +106,7 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
                             {t}
                           </button>
                         ))}
-                        {(!f.tickers || f.tickers.length === 0) && <span className="drop-empty">empty folder</span>}
+                        {(!f.tickers || f.tickers.length === 0) && <span className="drop-empty">Empty folder.</span>}
                       </div>
                     </div>
                   ))}
@@ -124,7 +124,7 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
                 value={ticker} 
                 onChange={e => setTicker(e.target.value.toUpperCase())} 
                 disabled={!!holding} 
-                placeholder="select or type ticker" 
+                placeholder="Select or type ticker" 
               />
             </div>
             

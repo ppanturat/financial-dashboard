@@ -88,22 +88,22 @@ export function usePortfolio(session) {
     return data
   }
 
-  // import from market view
-  const importMarketFolder = async (marketFolder) => {
+  // import from market view with selected tickers
+  const importMarketFolder = async (folderName, selectedTickers) => {
     if (!session) return null
     
     // create the portfolio folder
     const { data, error } = await supabase
       .from('portfolio_folders')
-      .insert([{ user_id: session.user.id, name: marketFolder.name }])
+      .insert([{ user_id: session.user.id, name: folderName }])
       .select()
       .single()
     
     if (error) throw error
 
-    // insert all tickers with zero amount/price so user can edit later
-    if (marketFolder.tickers && marketFolder.tickers.length > 0) {
-      const payload = marketFolder.tickers.map(t => ({
+    // insert only the selected tickers with zero amount/price so user can edit later
+    if (selectedTickers && selectedTickers.length > 0) {
+      const payload = selectedTickers.map(t => ({
         user_id: session.user.id,
         folder_id: data.id,
         ticker: t,

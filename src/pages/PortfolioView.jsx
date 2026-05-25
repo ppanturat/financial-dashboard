@@ -25,7 +25,7 @@ export function PortfolioView({
     return <EmptyState loading={loadingHoldings} />
   }
 
-  if (loadingHoldings) return <div className="chart-empty">loading portfolio data...</div>
+  if (loadingHoldings) return <div className="chart-empty">Loading portfolio data...</div>
 
   // calc totals for pie chart
   let totalPortfolioValue = 0
@@ -86,7 +86,7 @@ export function PortfolioView({
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <div className="chart-empty">no assets to display</div>
+            <div className="chart-empty">No assets to display.</div>
           )}
         </div>
 
@@ -121,7 +121,7 @@ export function PortfolioView({
                 </tr>
               ))}
               {pieData.length === 0 && (
-                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>no holdings yet.</td></tr>
+                <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>No holdings yet.</td></tr>
               )}
             </tbody>
           </table>

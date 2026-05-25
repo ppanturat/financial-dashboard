@@ -8,7 +8,13 @@ export function Sidebar({
   const [editName, setEditName] = useState('')
   const [newMode, setNewMode] = useState(false)
   const [newName, setNewName] = useState('')
+  
+  // import state
   const [importMode, setImportMode] = useState(false)
+  const [importStep, setImportStep] = useState(1) // 1: select folder, 2: select tickers
+  const [importTargetFolder, setImportTargetFolder] = useState(null)
+  const [importTickers, setImportTickers] = useState([])
+
   const newRef = useRef(null)
 
   const startEdit = (f) => { setEditingId(f.id); setEditName(f.name) }
@@ -20,6 +26,29 @@ export function Sidebar({
     if (newName.trim()) onCreateFolder(newName.trim())
     setNewMode(false)
     setNewName('')
+  }
+
+  // start the ticker selection step
+  const handleStartImport = (mf) => {
+    setImportTargetFolder(mf)
+    setImportTickers(mf.tickers || []) // pre-select all by default
+    setImportStep(2)
+  }
+
+  // toggle ticker inclusion
+  const toggleImportTicker = (t) => {
+    setImportTickers(prev => 
+      prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
+    )
+  }
+
+  // finalize import
+  const handleConfirmImport = async () => {
+    await onImportFolder(importTargetFolder.name, importTickers)
+    setImportMode(false)
+    setImportStep(1)
+    setImportTargetFolder(null)
+    setImportTickers([])
   }
 
   return (
@@ -38,7 +67,7 @@ export function Sidebar({
 
       <nav className="sidebar-nav">
         {fetchingFolders ? (
-          <p className="sidebar-loading">loading...</p>
+          <p className="sidebar-loading">Loading...</p>
         ) : (
           <>
             {folders.map(f => (
@@ -76,7 +105,7 @@ export function Sidebar({
                   ref={newRef}
                   className="vault-edit-input"
                   autoFocus
-                  placeholder="folder name..."
+                  placeholder="Folder name..."
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
                   onBlur={commitNew}
@@ -88,22 +117,47 @@ export function Sidebar({
               </div>
             ) : importMode ? (
               <div className="import-picker-menu">
-                <span className="import-label">select market folder:</span>
-                <div className="import-list">
-                  {marketFolders?.map(mf => (
-                    <button key={mf.id} className="import-item-btn" onClick={() => { onImportFolder(mf); setImportMode(false); }}>
-                      ↳ {mf.name} <span className="import-count">({mf.tickers?.length || 0})</span>
-                    </button>
-                  ))}
-                  {marketFolders?.length === 0 && <span className="import-empty">no market folders found.</span>}
-                </div>
-                <button className="btn-text btn-cancel" onClick={() => setImportMode(false)}>cancel</button>
+                {importStep === 1 ? (
+                  <>
+                    <span className="import-label">Select Market Folder:</span>
+                    <div className="import-list">
+                      {marketFolders?.map(mf => (
+                        <button key={mf.id} className="import-item-btn" onClick={() => handleStartImport(mf)}>
+                          ↳ {mf.name} <span className="import-count">({mf.tickers?.length || 0})</span>
+                        </button>
+                      ))}
+                      {marketFolders?.length === 0 && <span className="import-empty">No market folders found.</span>}
+                    </div>
+                    <button className="btn-text btn-cancel" onClick={() => setImportMode(false)}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="import-label">Select Tickers from {importTargetFolder?.name}:</span>
+                    <div className="import-list ticker-select-list">
+                      {importTargetFolder?.tickers?.map(t => (
+                        <label key={t} className="import-ticker-label">
+                          <input
+                            type="checkbox"
+                            checked={importTickers.includes(t)}
+                            onChange={() => toggleImportTicker(t)}
+                          />
+                          {t}
+                        </label>
+                      ))}
+                      {(!importTargetFolder?.tickers || importTargetFolder.tickers.length === 0) && <span className="import-empty">Empty folder.</span>}
+                    </div>
+                    <div className="import-actions">
+                      <button className="btn-text btn-cancel" onClick={() => setImportStep(1)}>Back</button>
+                      <button className="btn-primary btn-small" onClick={handleConfirmImport}>Confirm</button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="sidebar-btn-row">
-                <button className="new-vault-btn" onClick={() => setNewMode(true)}>+ new folder</button>
+                <button className="new-vault-btn" onClick={() => setNewMode(true)}>+ New Folder</button>
                 {activeTab === 'portfolio' && (
-                  <button className="new-vault-btn import-btn" onClick={() => setImportMode(true)}>↓ import</button>
+                  <button className="new-vault-btn import-btn" onClick={() => { setImportMode(true); setImportStep(1); }}>↓ Import</button>
                 )}
               </div>
             )}
