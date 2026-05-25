@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ChartTooltip, Legend,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as LineTooltip, ReferenceLine
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as LineTooltip, ReferenceLine,
+  BarChart, Bar
 } from 'recharts'
 import { HoldingModal } from '../components/HoldingModal'
 import { EmptyState } from '../components/EmptyState'
@@ -40,17 +41,18 @@ function PieLegend({ data }) {
   )
 }
 
-// build mock portfolio growth from holdings
-function buildGrowthData(pieData, totalPortfolioValue, totalCostBasis) {
-  if (pieData.length === 0) return []
-  const months = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'Now']
+// build portfolio growth trajectory: cost basis -> current value
+// Easing curve so gain/loss direction is always clearly visible
+function buildGrowthData(totalPortfolioValue, totalCostBasis) {
+  if (totalCostBasis <= 0) return []
+  const months = ['6mo ago', '5mo ago', '4mo ago', '3mo ago', '2mo ago', '1mo ago', 'Now']
+  const pnlRatio = totalPortfolioValue / totalCostBasis
+
   return months.map((m, i) => {
     const t = i / (months.length - 1)
-    
-    // Inject a slight curve if live prices perfectly match cost basis so the graph doesn't look broken/flat
-    const variance = totalPortfolioValue === totalCostBasis ? (1 + (t - 0.5) * 0.05) : 1;
-    const val = totalCostBasis + ((totalPortfolioValue * variance) - totalCostBasis) * Math.pow(t, 1.2)
-    
+    // ease-in so the curve starts flat then accelerates toward the real value
+    const eased = Math.pow(t, 1.4)
+    const val = totalCostBasis * (1 + (pnlRatio - 1) * eased)
     return { month: m, value: parseFloat(val.toFixed(2)) }
   })
 }
@@ -116,7 +118,7 @@ export function PortfolioView({
 
   const totalPnL = totalPortfolioValue - totalCostBasis
   const totalPnLPct = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0
-  const growthData = buildGrowthData(pieDataWithPct, totalPortfolioValue, totalCostBasis)
+  const growthData = buildGrowthData(totalPortfolioValue, totalCostBasis)
 
   // yield data — P&L per holding
   const yieldData = pieDataWithPct.map(h => ({
@@ -275,25 +277,30 @@ export function PortfolioView({
                 <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: '#2563eb' }} />
               </LineChart>
             ) : (
-              <LineChart data={yieldData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <BarChart data={yieldData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }} axisLine={false} tickLine={false} />
                 <YAxis
                   tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'DM Mono, monospace' }}
-                  axisLine={false} tickLine={false} width={48}
+                  axisLine={false} tickLine={false} width={52}
                   tickFormatter={v => v.toFixed(1) + '%'}
                 />
                 <LineTooltip
                   formatter={(v, key) => [
-                    key === 'yield' ? v.toFixed(2) + '%' : fmt(Math.abs(v), currency, thbRate),
+                    key === 'yield'
+                      ? (v >= 0 ? '+' : '') + v.toFixed(2) + '%'
+                      : (v >= 0 ? '+' : '-') + fmt(Math.abs(v), currency, thbRate),
                     key === 'yield' ? 'Return %' : 'P&L'
                   ]}
                   contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 8, fontSize: 12 }}
                 />
                 <ReferenceLine y={0} stroke="var(--muted)" strokeDasharray="4 2" />
-                {/* Yield line is now YELLOW */}
-                <Line type="monotone" dataKey="yield" stroke="#ffcc00" strokeWidth={2.5} dot={{ r: 5, fill: '#ffcc00', strokeWidth: 0 }} activeDot={{ r: 6 }} />
-              </LineChart>
+                <Bar dataKey="yield" radius={[4, 4, 0, 0]}>
+                  {yieldData.map((entry, i) => (
+                    <Cell key={i} fill={entry.yield >= 0 ? '#16a34a' : '#dc2626'} />
+                  ))}
+                </Bar>
+              </BarChart>
             )}
           </ResponsiveContainer>
         </div>
