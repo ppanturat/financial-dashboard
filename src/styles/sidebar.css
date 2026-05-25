@@ -1,1 +1,123 @@
-/* Sidebar module */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+/* ==========================================================================
+   APP STYLESHEET
+   --------------------------------------------------------------------------
+   Structure:
+   1. Design Tokens
+   2. Base / Reset
+   3. Layout
+   4. Sidebar
+   5. Header & Navigation
+   6. Search
+   7. Content Sections
+   8. Shared Components
+   9. Modals
+   10. Authentication
+   11. Utilities
+   12. Responsive Rules
+
+   Refactor goals:
+   - Easier navigation
+   - Lower selector duplication
+   - Consistent spacing / naming
+   - Predictable responsive structure
+   ========================================================================== */
+
+/* ==========================================================================
+   4. SIDEBAR
+   ========================================================================== */
+
+/* ── sidebar ────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  display: flex; flex-direction: column;
+  flex-shrink: 0; overflow-x: hidden; overflow-y: auto;
+  transition: transform .25s ease;
+  z-index: 50;
+}
+.sidebar-brand {
+  display: flex; align-items: center; gap: 9px;
+  padding: 20px 18px 18px;
+  border-bottom: 1px solid var(--sidebar-line);
+  flex-shrink: 0;
+}
+.brand-mark { font-size: 18px; color: #fff; }
+.brand-name { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .08em; text-transform: uppercase; }
+
+.sidebar-label {
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,.55);
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 18px 18px 8px; flex-shrink: 0;
+}
+.sidebar-loading { padding: 8px 18px; font-size: 13px; color: rgba(255,255,255,.3); }
+
+.sidebar-nav { flex: 1; padding: 4px 10px; overflow-y: auto; min-height: 0; }
+.sidebar-nav::-webkit-scrollbar { width: 3px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+.vault-row {
+  display: flex; align-items: center;
+  border-radius: 7px; margin-bottom: 2px; min-height: 36px;
+}
+.vault-row.active              { background: rgba(255,255,255,.09); }
+.vault-row:not(.active):hover  { background: rgba(255,255,255,.05); }
+
+.vault-btn {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  background: none; border: none;
+  color: rgba(255,255,255,.5);
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 500;
+  padding: 8px 10px; text-align: left; cursor: pointer;
+  transition: color .15s; min-width: 0;
+}
+.vault-row.active .vault-btn { color: #fff; }
+.vault-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.25); flex-shrink: 0; }
+.vault-row.active .vault-dot { background: #fff; }
+.vault-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,255,255,.7); font-size: 13px; }
+.vault-count {
+  font-family: 'DM Mono', monospace; font-size: 10px;
+  color: rgba(255,255,255,.3); background: rgba(255,255,255,.07);
+  padding: 1px 6px; border-radius: 10px; flex-shrink: 0;
+}
+.vault-actions { display: flex; gap: 2px; padding-right: 6px; opacity: 0; transition: opacity .15s; flex-shrink: 0; }
+.vault-row:hover .vault-actions { opacity: 1; }
+.vault-actions button {
+  background: none; border: none;
+  color: rgba(255,255,255,.3); font-size: 11px;
+  padding: 4px 5px; cursor: pointer; border-radius: 4px;
+  transition: color .12s, background .12s;
+}
+.vault-actions button:hover { color: #fff; background: rgba(255,255,255,.1); }
+
+.vault-edit-input {
+  flex: 1; background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15); border-radius: 6px; color: #fff;
+  font-family: 'Syne', sans-serif; font-size: 12px;
+  padding: 6px 10px; margin: 3px 6px; outline: none; min-width: 0;
+}
+.new-vault-btn {
+  width: 100%; background: none;
+  border: 1px dashed rgba(255,255,255,.25); border-radius: 7px;
+  color: rgba(255,255,255,.55);
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
+  padding: 8px 10px; cursor: pointer; text-align: left;
+  transition: all .15s; margin-top: 4px;
+}
+.new-vault-btn:hover { color: rgba(255,255,255,.85); border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.06); }
+
+.sidebar-footer {
+  padding: 14px 14px 18px;
+  border-top: 1px solid var(--sidebar-line);
+  display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+}
+.user-email { font-size: 12px; color: rgba(255,255,255,.55); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.signout-btn {
+  background: none; border: 1px solid rgba(220,38,38,.3); border-radius: 7px;
+  color: var(--red-text);
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 500;
+  padding: 8px; cursor: pointer; text-align: center; transition: all .15s;
+}
+.signout-btn:hover { border-color: var(--red); color: #fff; background: var(--red); }

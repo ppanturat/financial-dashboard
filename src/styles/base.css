@@ -1,9 +1,40 @@
-/* Base */
-* {
-  box-sizing: border-box;
-}
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
+/* ==========================================================================
+   APP STYLESHEET
+   --------------------------------------------------------------------------
+   Structure:
+   1. Design Tokens
+   2. Base / Reset
+   3. Layout
+   4. Sidebar
+   5. Header & Navigation
+   6. Search
+   7. Content Sections
+   8. Shared Components
+   9. Modals
+   10. Authentication
+   11. Utilities
+   12. Responsive Rules
+
+   Refactor goals:
+   - Easier navigation
+   - Lower selector duplication
+   - Consistent spacing / naming
+   - Predictable responsive structure
+   ========================================================================== */
+
+/* ==========================================================================
+   2. BASE / RESET
+   ========================================================================== */
+
+/* ── reset ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
 body {
-  margin: 0;
   font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100svh; /* safe viewport on mobile */
 }

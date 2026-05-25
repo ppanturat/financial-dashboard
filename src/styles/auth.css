@@ -1,1 +1,53 @@
-/* Auth module */
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+/* ==========================================================================
+   APP STYLESHEET
+   --------------------------------------------------------------------------
+   Structure:
+   1. Design Tokens
+   2. Base / Reset
+   3. Layout
+   4. Sidebar
+   5. Header & Navigation
+   6. Search
+   7. Content Sections
+   8. Shared Components
+   9. Modals
+   10. Authentication
+   11. Utilities
+   12. Responsive Rules
+
+   Refactor goals:
+   - Easier navigation
+   - Lower selector duplication
+   - Consistent spacing / naming
+   - Predictable responsive structure
+   ========================================================================== */
+
+/* ==========================================================================
+   10. AUTHENTICATION
+   ========================================================================== */
+
+/* ── auth screens ───────────────────────────────── */
+.auth-wrap {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100svh; background: var(--bg); padding: 20px;
+}
+.auth-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 44px 36px;
+  width: 100%; max-width: 380px; text-align: center;
+  box-shadow: 0 4px 28px rgba(0,0,0,.07);
+}
+.auth-logo    { font-size: 32px; color: var(--accent); margin-bottom: 16px; }
+.auth-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; letter-spacing: -.02em; }
+.auth-sub     { font-size: 14px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+.auth-form    { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.auth-form input {
+  width: 100%; padding: 12px 14px;
+  background: var(--surface-2); border: 1px solid var(--border-md);
+  border-radius: 8px;
+  font-family: 'Syne', sans-serif; font-size: 14px; color: var(--text);
+  outline: none; transition: border-color .15s;
+}
+.auth-form input:focus { border-color: var(--accent); background: var(--surface); }
