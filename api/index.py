@@ -63,6 +63,26 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         "description": info.get('longBusinessSummary', '')
     }
 
+@app.get("/api/dividends")
+def get_dividends(tickers: str):
+    """
+    Returns real annual dividend per share for each ticker using yfinance.
+    Response: { "AAPL": { "dps": 0.96, "yield": 0.005 }, ... }
+    """
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+    result = {}
+    for t in ticker_list:
+        try:
+            stock = yf.Ticker(t)
+            info = stock.info
+            # dividendRate = declared annual cash dividend per share
+            dps = info.get("dividendRate") or info.get("trailingAnnualDividendRate") or 0.0
+            dy  = info.get("dividendYield") or 0.0
+            result[t] = {"dps": round(float(dps), 4), "yield": round(float(dy), 6)}
+        except Exception:
+            result[t] = {"dps": 0.0, "yield": 0.0}
+    return result
+
 @app.get("/api/bulk_prices")
 def get_bulk_prices(tickers: str):
     ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]

@@ -77,61 +77,49 @@ function buildGrowthData(costBasis, currentValue, range) {
   return values.map((v, i) => ({ label: labelFn(i), value: parseFloat(v.toFixed(2)) }))
 }
 
-// ── Dividend chart helpers ────────────────────────────────────────────────────
+import { api } from '../lib/api'
+
+// ── Dividend data from Yahoo Finance via backend ──────────────────────────────
 
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+// Typical quarterly payout weights (Mar/Jun/Sep/Dec heavy)
+const MONTHLY_WEIGHTS = [0.05, 0.05, 0.18, 0.05, 0.05, 0.18, 0.05, 0.05, 0.18, 0.05, 0.05, 0.18]
 
-// Estimate annual dividend income from holdings that have a ticker with known dividend yield
-// We don't have real dividend data, so we synthesise plausible per-stock estimates
-function buildDividendData(holdings, currency, thbRate) {
-  // Rough dividend yield assumptions per common stock category
-  // In a real app you'd pull this from an API; here we use buy_price * amount as proxy
-  const SEED_YIELDS = { default: 0.018, high: 0.045, low: 0.005 }
-
-  // Generate a stable pseudo-random yield for each ticker
-  function tickerYield(ticker) {
-    let h = 0
-    for (let i = 0; i < ticker.length; i++) h = (Math.imul(31, h) + ticker.charCodeAt(i)) | 0
-    const norm = ((h >>> 0) % 1000) / 1000
-    return SEED_YIELDS.low + norm * (SEED_YIELDS.high - SEED_YIELDS.low)
-  }
-
-  // Annual dividend per holding
-  const holdingDivs = holdings.map(h => {
-    const val = (parseFloat(h.amount) || 0) * (parseFloat(h.buy_price) || 0)
-    const dy = tickerYield(h.ticker)
-    return { ticker: h.ticker, annual: val * dy }
-  })
-
-  const totalAnnual = holdingDivs.reduce((s, d) => s + d.annual, 0)
-  const monthly = totalAnnual / 12
-  const daily = totalAnnual / 365
-
-  // Spread dividends across months (quarterly pattern typical)
-  // Bigger spikes in Mar, Jun, Sep, Dec
-  const MONTHLY_WEIGHTS = [0.05, 0.05, 0.18, 0.05, 0.05, 0.18, 0.05, 0.05, 0.18, 0.05, 0.05, 0.18]
-  const monthData = MONTH_LABELS.map((m, i) => ({
-    month: m,
-    amount: parseFloat((totalAnnual * MONTHLY_WEIGHTS[i]).toFixed(2))
-  }))
-
-  // Per-holding breakdown for the "By Stock" view
-  const stockData = holdingDivs.map(d => ({
-    ticker: d.ticker,
-    annual: parseFloat(d.annual.toFixed(2)),
-    monthly: parseFloat((d.annual / 12).toFixed(2))
-  })).sort((a, b) => b.annual - a.annual)
-
+function buildDividendDisplay(holdings, divData, currency, thbRate) {
   const applyRate = v => currency === 'THB' ? v * thbRate : v
   const s = currency === 'THB' ? '฿' : '$'
 
+  // dps (dividend per share) comes from Yahoo; multiply by shares held
+  const holdingDivs = holdings.map(h => {
+    const shares = parseFloat(h.amount) || 0
+    const dps = divData?.[h.ticker.toUpperCase()]?.dps ?? 0
+    return { ticker: h.ticker, annual: shares * dps }
+  })
+
+  const totalAnnual = holdingDivs.reduce((s, d) => s + d.annual, 0)
+  const costBasisTotal = holdings.reduce((s, h) => s + (parseFloat(h.amount)||0)*(parseFloat(h.buy_price)||0), 0)
+
+  const monthData = MONTH_LABELS.map((m, i) => ({
+    month: m,
+    amount: applyRate(parseFloat((totalAnnual * MONTHLY_WEIGHTS[i]).toFixed(4)))
+  }))
+
+  const stockData = holdingDivs
+    .filter(d => d.annual > 0)
+    .map(d => ({
+      ticker: d.ticker,
+      annual: applyRate(parseFloat(d.annual.toFixed(4))),
+      monthly: applyRate(parseFloat((d.annual / 12).toFixed(4)))
+    }))
+    .sort((a, b) => b.annual - a.annual)
+
   return {
     totalAnnual: applyRate(totalAnnual),
-    monthly: applyRate(monthly),
-    daily: applyRate(daily),
-    yieldPct: holdings.length > 0 ? (totalAnnual / holdings.reduce((s, h) => s + (parseFloat(h.amount)||0)*(parseFloat(h.buy_price)||0), 0)) * 100 : 0,
-    monthData: monthData.map(d => ({ ...d, amount: applyRate(d.amount) })),
-    stockData: stockData.map(d => ({ ...d, annual: applyRate(d.annual), monthly: applyRate(d.monthly) })),
+    monthly: applyRate(totalAnnual / 12),
+    daily: applyRate(totalAnnual / 365),
+    yieldPct: costBasisTotal > 0 ? (totalAnnual / costBasisTotal) * 100 : 0,
+    monthData,
+    stockData,
     symb: s
   }
 }
@@ -272,9 +260,27 @@ const DIV_VIEWS = ['Monthly', 'By Stock']
 function DividendChart({ holdings, defaultCurrency, thbRate }) {
   const [view, setView] = useState('Monthly')
   const [currency, setCurrency] = useState(defaultCurrency || 'USD')
-  const div = useMemo(() => buildDividendData(holdings, currency, thbRate), [holdings, currency, thbRate])
+  const [divData, setDivData] = useState(null)   // raw Yahoo data: { TICKER: {dps, yield} }
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const accentColor = '#d97706'
+
+  // Fetch real dividend data whenever holdings change
+  useEffect(() => {
+    if (!holdings.length) return
+    const tickers = [...new Set(holdings.map(h => h.ticker.toUpperCase()))].join(',')
+    setLoading(true)
+    setError(null)
+    api.dividends(tickers)
+      .then(data => { setDivData(data); setLoading(false) })
+      .catch(() => { setError('Could not load dividend data.'); setLoading(false) })
+  }, [holdings])
+
+  const div = useMemo(
+    () => buildDividendDisplay(holdings, divData, currency, thbRate),
+    [holdings, divData, currency, thbRate]
+  )
 
   return (
     <div className="chart-card">
@@ -284,13 +290,13 @@ function DividendChart({ holdings, defaultCurrency, thbRate }) {
           <p className="desc-title" style={{ marginBottom: 6 }}>Dividend Income</p>
           <div className="port-balance-row">
             <span className="price-value">
-              {div.symb}{div.totalAnnual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {loading ? '—' : `${div.symb}${div.totalAnnual.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             </span>
             <span className="price-delta" style={{ color: 'var(--muted)' }}>/ year</span>
           </div>
         </div>
 
-        {/* Controls: currency toggle + view toggle */}
+        {/* Controls */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
           <div className="currency-toggle">
             <button className={currency === 'USD' ? 'active' : ''} onClick={() => setCurrency('USD')}>USD</button>
@@ -306,12 +312,15 @@ function DividendChart({ holdings, defaultCurrency, thbRate }) {
 
       {/* Stats row */}
       <div style={{ display: 'flex', gap: 20, padding: '0 8px', marginBottom: 16, flexWrap: 'wrap' }}>
-        <StatPill label="Monthly" value={`${div.symb}${div.monthly.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`} highlight={accentColor} />
-        <StatPill label="Daily" value={`${div.symb}${div.daily.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`} />
-        <StatPill label="Yield" value={`${div.yieldPct.toFixed(2)}%`} />
+        <StatPill label="Monthly" value={loading ? '—' : `${div.symb}${div.monthly.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`} highlight={accentColor} />
+        <StatPill label="Daily"   value={loading ? '—' : `${div.symb}${div.daily.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`} />
+        <StatPill label="Yield"   value={loading ? '—' : `${div.yieldPct.toFixed(2)}%`} />
       </div>
 
-      {holdings.length > 0 ? (
+      {loading && <div className="chart-empty">Loading dividend data…</div>}
+      {error && <div className="chart-empty" style={{ color: 'var(--red)' }}>{error}</div>}
+
+      {!loading && !error && holdings.length > 0 ? (
         <ResponsiveContainer width="100%" height={200}>
           {view === 'Monthly' ? (
             <BarChart data={div.monthData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
@@ -359,13 +368,7 @@ function DividendChart({ holdings, defaultCurrency, thbRate }) {
             </BarChart>
           )}
         </ResponsiveContainer>
-      ) : (
-        <div className="chart-empty">Add holdings to see dividend estimates.</div>
-      )}
-
-      <p style={{ fontSize: 10, color: 'var(--faint)', padding: '8px 8px 0', fontStyle: 'italic' }}>
-        * Dividend estimates are approximated from position value. Connect a data provider for live dividend data.
-      </p>
+      ) : (!loading && !error && <div className="chart-empty">Add holdings to see dividend income.</div>)}
     </div>
   )
 }
