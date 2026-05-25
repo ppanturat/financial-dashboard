@@ -1,21 +1,9 @@
-/* ==========================================================================
-   BASE.CSS
-   Modular stylesheet generated from App.css refactor
-   ========================================================================== */
-
-2. Base / Reset
-   2. BASE / RESET
-   ========================================================================== */
-
-/* ── reset ──────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; -webkit-text-size-adjust: 100%; }
-body {
-  font-family: 'Syne', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  -webkit-font-smoothing: antialiased;
-  min-height: 100svh; /* safe viewport on mobile */
+/* Base */
+* {
+  box-sizing: border-box;
 }
 
-/* ==========================================================================
+body {
+  margin: 0;
+  font-family: 'Syne', sans-serif;
+}

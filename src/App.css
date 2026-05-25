@@ -1,13 +1,5 @@
 /* ==========================================================================
-   APP.CSS
-   --------------------------------------------------------------------------
-   This file is intentionally minimal.
-
-   Purpose:
-   - Import modular stylesheets
-   - Keep architecture scalable
-   - Reduce debugging complexity
-   - Make feature-level styling easier to maintain
+   APP ENTRY STYLESHEET
    ========================================================================== */
 
 @import "./styles/variables.css";
