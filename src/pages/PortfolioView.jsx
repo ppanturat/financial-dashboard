@@ -152,7 +152,7 @@ export function PortfolioView({
           {/* currency toggle */}
           <div className="currency-toggle">
             <button className={currency === 'USD' ? 'active' : ''} onClick={() => setCurrency('USD')}>USD</button>
-            <button className={currency === 'THB' ? 'active' : ''} onClick={() => setCurrency('THB')}>฿ THB</button>
+            <button className={currency === 'THB' ? 'active' : ''} onClick={() => setCurrency('THB')}>THB</button>
           </div>
           <button className="btn-primary" style={{ width: 'auto' }} onClick={() => handleOpenModal()}>+ Add Holding</button>
         </div>
