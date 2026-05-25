@@ -39,9 +39,9 @@ export function AuthPage({ onSignIn, onSignUp }) {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="auth-logo">◈</div>
-        <h2>check your email</h2>
+        <h2>Check your email</h2>
         <p className="auth-sub">confirmation link sent to {sentEmail}</p>
-        <button className="btn-text" onClick={() => setView('login')}>back to sign in</button>
+        <button className="btn-text" onClick={() => setView('login')}>Back to sign in</button>
       </div>
     </div>
   )
@@ -50,9 +50,9 @@ export function AuthPage({ onSignIn, onSignUp }) {
     <div className="auth-wrap">
       <div className="auth-card">
         <div className="auth-logo">◈</div>
-        <h2>{view === 'login' ? 'welcome back' : 'create account'}</h2>
+        <h2>{view === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
         <p className="auth-sub">
-          {view === 'login' ? 'sign in to your dashboard' : 'start tracking your portfolio'}
+          {view === 'login' ? 'Sign in to your dashboard' : 'Start tracking your portfolio'}
         </p>
 
         {view === 'login' ? (
@@ -78,7 +78,7 @@ export function AuthPage({ onSignIn, onSignUp }) {
               required 
             />
             <button className="btn-primary" type="submit" disabled={loading}>
-              {loading ? 'loading...' : 'sign in'}
+              {loading ? 'Loading...' : 'Sign in'}
             </button>
           </form>
         ) : (
@@ -104,13 +104,13 @@ export function AuthPage({ onSignIn, onSignUp }) {
               required 
             />
             <button className="btn-primary" type="submit" disabled={loading}>
-              {loading ? 'loading...' : 'create account'}
+              {loading ? 'Loading...' : 'Create account'}
             </button>
           </form>
         )}
 
         <button className="btn-text" onClick={handleToggleView} type="button">
-          {view === 'login' ? "don't have an account? register" : 'already have an account? sign in'}
+          {view === 'login' ? "Don't have an account? Register" : 'Already have an account? Sign in'}
         </button>
       </div>
     </div>
