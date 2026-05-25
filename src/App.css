@@ -60,7 +60,7 @@ body {
   width: var(--sidebar-w);
   background: var(--sidebar-bg);
   display: flex; flex-direction: column;
-  flex-shrink: 0; overflow: hidden;
+  flex-shrink: 0; overflow-x: hidden; overflow-y: auto;
   transition: transform .25s ease;
   z-index: 50;
 }
@@ -74,8 +74,8 @@ body {
 .brand-name { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: .08em; text-transform: uppercase; }
 
 .sidebar-label {
-  font-size: 10px; font-weight: 700;
-  color: rgba(255,255,255,.28);
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,.55);
   letter-spacing: .12em; text-transform: uppercase;
   padding: 18px 18px 8px; flex-shrink: 0;
 }
@@ -103,7 +103,7 @@ body {
 .vault-row.active .vault-btn { color: #fff; }
 .vault-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.25); flex-shrink: 0; }
 .vault-row.active .vault-dot { background: #fff; }
-.vault-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vault-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: rgba(255,255,255,.7); font-size: 13px; }
 .vault-count {
   font-family: 'DM Mono', monospace; font-size: 10px;
   color: rgba(255,255,255,.3); background: rgba(255,255,255,.07);
@@ -127,20 +127,20 @@ body {
 }
 .new-vault-btn {
   width: 100%; background: none;
-  border: 1px dashed rgba(255,255,255,.15); border-radius: 7px;
-  color: rgba(255,255,255,.3);
-  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 500;
+  border: 1px dashed rgba(255,255,255,.25); border-radius: 7px;
+  color: rgba(255,255,255,.55);
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600;
   padding: 8px 10px; cursor: pointer; text-align: left;
   transition: all .15s; margin-top: 4px;
 }
-.new-vault-btn:hover { color: rgba(255,255,255,.6); border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.04); }
+.new-vault-btn:hover { color: rgba(255,255,255,.85); border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.06); }
 
 .sidebar-footer {
   padding: 14px 14px 18px;
   border-top: 1px solid var(--sidebar-line);
   display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
 }
-.user-email { font-size: 11px; color: rgba(255,255,255,.28); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-email { font-size: 12px; color: rgba(255,255,255,.55); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .signout-btn {
   background: none; border: 1px solid rgba(220,38,38,.3); border-radius: 7px;
   color: var(--red-text);
@@ -232,6 +232,7 @@ body {
   padding: 24px 28px 32px;
   display: flex; flex-direction: column; gap: 18px;
   min-height: 0; /* critical — lets flex child scroll */
+  min-width: 0; /* prevents children from overflowing on small screens */
 }
 .content::-webkit-scrollbar { width: 4px; }
 .content::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 2px; }
@@ -392,11 +393,11 @@ body {
 .dim-muted{ color: var(--faint); font-style: italic; }
 
 /* ── ai assessment card ─────────────────────────── */
-.ai-card  { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--r); padding: 18px 20px; }
+.ai-card  { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--r); padding: 18px 20px; overflow: hidden; min-width: 0; }
 .ai-head  { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .ai-badge { font-size: 10px; font-weight: 700; color: #fff; background: var(--accent); padding: 4px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: .05em; }
 .ai-sub   { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--faint); }
-.ai-body  { font-size: 14px; color: var(--text); line-height: 1.65; font-weight: 500; }
+.ai-body  { font-size: 14px; color: var(--text); line-height: 1.65; font-weight: 500; overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 .ai-body p { margin-bottom: 10px; }
 .ai-body p:last-child { margin-bottom: 0; }
 
@@ -563,7 +564,7 @@ body {
 /* append to src/App.css */
 
 /* sidebar tabs */
-.sidebar-tabs { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-bottom: 1px solid var(--sidebar-border); }
+.sidebar-tabs { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-bottom: 1px solid var(--sidebar-line); }
 .sidebar-tabs button { background: none; border: none; color: rgba(255,255,255,0.5); padding: 10px; text-align: left; font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
 .sidebar-tabs button.active { background: rgba(255,255,255,0.1); color: #fff; }
 .sidebar-tabs button:hover:not(.active) { background: rgba(255,255,255,0.05); color: #fff; }
@@ -624,11 +625,11 @@ body {
 
 /* import picker */
 .import-picker-menu { background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 12px; margin-top: 4px; }
-.import-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 8px; display: block; }
+.import-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.55); text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: .08em; }
 .import-list { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; margin-bottom: 8px; }
 .import-item-btn { background: none; border: none; text-align: left; color: rgba(255,255,255,0.6); font-family: 'Syne', sans-serif; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; transition: all 0.15s; display: flex; justify-content: space-between; }
 .import-item-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-.import-count { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.3); }
+.import-count { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.45); }
 .import-empty { font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; }
 .btn-cancel { width: 100%; font-size: 11px; background: rgba(255,255,255,0.05); }
 .btn-cancel:hover { background: rgba(255,255,255,0.1); color: #fff; }

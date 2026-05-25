@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 export function Sidebar({ 
   session, activeTab, setActiveTab, folders, activeFolderId, fetchingFolders, marketFolders, 
@@ -14,8 +14,18 @@ export function Sidebar({
   const [importStep, setImportStep] = useState(1) 
   const [importTargetFolder, setImportTargetFolder] = useState(null)
   const [importTickers, setImportTickers] = useState([])
-  const [isImporting, setIsImporting] = useState(false)
 
+  // reset import/new mode when switching tabs
+  useEffect(() => {
+    setImportMode(false)
+    setImportStep(1)
+    setImportTargetFolder(null)
+    setImportTickers([])
+    setNewMode(false)
+    setNewName('')
+  }, [activeTab])
+
+  const [isImporting, setIsImporting] = useState(false)
   const newRef = useRef(null)
 
   const startEdit = (f) => { setEditingId(f.id); setEditName(f.name) }
