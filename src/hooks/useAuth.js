@@ -20,12 +20,13 @@ export function useAuth() {
   const signIn = (email, password) =>
     supabase.auth.signInWithPassword({ email, password })
 
-  const signUp = (email, password) =>
+  const signUp = (email, password, name, username) =>
     supabase.auth.signUp({ 
       email, 
       password,
       options: {
-        emailRedirectTo: window.location.origin
+        emailRedirectTo: window.location.origin,
+        data: { name, username }
       }
     })
 

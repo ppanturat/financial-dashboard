@@ -161,7 +161,7 @@ export default function App() {
               openConfirmModal={confirm} 
             />
           ) : (
-            <SocialView social={social} />
+            <SocialView social={social} portfolioFolders={portfolioFolders} />
           )}
         </div>
       </main>
