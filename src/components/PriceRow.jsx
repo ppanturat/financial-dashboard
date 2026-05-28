@@ -1,21 +1,25 @@
 import { TIMEFRAMES } from '../lib/constants'
-import { getStockSegments, SEGMENT_COLORS } from '../lib/stockSegments'
+import { getSector } from '../lib/sectors'
 
-export function PriceRow({ ticker, isEtf, currentPrice, priceChange, timeframe, onTimeframeChange }) {
-  const segments = getStockSegments(ticker, isEtf)
+export function SectorBadge({ sector }) {
+  const s = getSector(sector)
+  if (!s) return null
+  return (
+    <span className="sector-badge" style={{ background: s.bg, color: s.color, borderColor: s.color }}>
+      {s.label}
+    </span>
+  )
+}
+
+export function PriceRow({ ticker, isEtf, sector, currentPrice, priceChange, timeframe, onTimeframeChange }) {
   return (
     <div className="price-row">
       <div className="price-left">
         <span className="price-ticker">{ticker}</span>
-        {segments.map(segment => (
-          <span
-            key={segment}
-            className="segment-badge"
-            style={{ backgroundColor: SEGMENT_COLORS[segment] + '22', color: SEGMENT_COLORS[segment] }}
-          >
-            {segment}
-          </span>
-        ))}
+        {isEtf
+          ? <span className="etf-badge">ETF</span>
+          : <SectorBadge sector={sector} />
+        }
         {currentPrice != null ? (
           <span className="price-value">
             ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

@@ -3,12 +3,13 @@ import { api } from '../lib/api'
 import { cleanDescription } from '../lib/formatters'
 
 export function useStockData(ticker, timeframe) {
-  const [chartData, setChartData] = useState([])
+  const [chartData, setChartData]       = useState([])
   const [currentPrice, setCurrentPrice] = useState(null)
-  const [quoteType, setQuoteType] = useState('EQUITY')
-  const [metrics, setMetrics] = useState(null)
-  const [description, setDescription] = useState('')
-  const [loadingData, setLoadingData] = useState(false)
+  const [quoteType, setQuoteType]       = useState('EQUITY')
+  const [sector, setSector]             = useState(null)
+  const [metrics, setMetrics]           = useState(null)
+  const [description, setDescription]   = useState('')
+  const [loadingData, setLoadingData]   = useState(false)
 
   const prevTickerRef = useRef(null)
 
@@ -25,6 +26,7 @@ export function useStockData(ticker, timeframe) {
         setMetrics(null)
         setCurrentPrice(null)
         setDescription('')
+        setSector(null)
       }
 
       try {
@@ -36,13 +38,14 @@ export function useStockData(ticker, timeframe) {
 
         if (isNewTicker) {
           setQuoteType(data.quoteType ?? 'EQUITY')
+          setSector(data.sector ?? null)
           setMetrics(data.metrics ?? null)
           setDescription(cleanDescription(data.description ?? ''))
           setLoadingData(false)
         }
       } catch (e) {
         if (e.name !== 'AbortError' && isNewTicker) {
-          setDescription('failed to fetch data.')
+          setDescription('Failed to fetch data.')
           setLoadingData(false)
         }
       }
@@ -60,7 +63,7 @@ export function useStockData(ticker, timeframe) {
     : null
 
   return {
-    chartData, currentPrice, quoteType, metrics, description,
+    chartData, currentPrice, quoteType, sector, metrics, description,
     loadingData, graphColor, priceChange,
   }
 }

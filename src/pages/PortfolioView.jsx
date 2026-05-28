@@ -78,6 +78,7 @@ function buildGrowthData(costBasis, currentValue, range) {
 }
 
 import { api } from '../lib/api'
+import { SectorBadge } from '../components/PriceRow'
 
 // ── Dividend data from Yahoo Finance via backend ──────────────────────────────
 
@@ -376,7 +377,7 @@ function DividendChart({ holdings, defaultCurrency, thbRate }) {
 // ── Main PortfolioView ────────────────────────────────────────────────────────
 
 export function PortfolioView({
-  activePortfolioId, holdings, livePrices, loadingHoldings,
+  activePortfolioId, holdings, livePrices, tickerMeta, loadingHoldings,
   marketFolders, saveHolding, removeHolding, openConfirmModal
 }) {
   const [modalOpen, setModalOpen] = useState(false)
@@ -491,6 +492,10 @@ export function PortfolioView({
                   <td>
                     <span className="port-ticker-dot" style={{ background: COLORS[idx % COLORS.length] }} />
                     <span className="font-mono font-bold">{h.ticker}</span>
+                    {tickerMeta?.[h.ticker]?.quoteType === 'ETF'
+                      ? <span className="etf-badge" style={{ marginLeft: 6 }}>ETF</span>
+                      : <SectorBadge sector={tickerMeta?.[h.ticker]?.sector} />
+                    }
                   </td>
                   <td className="num">{h.amount}</td>
                   <td className="num">{fmt(h.buy_price, currency, thbRate)}</td>

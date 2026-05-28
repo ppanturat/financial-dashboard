@@ -23,9 +23,15 @@ export const api = {
     return res.json()
   },
 
-  bulkPrices: async (tickers, signal) => {
-    const res = await fetch(`${BASE}/bulk_prices?tickers=${encodeURIComponent(tickers)}`, { signal })
-    if (!res.ok) throw new Error('bulk prices fetch failed')
+  bulkPrices: async (tickers) => {
+    const res = await fetch(`${BASE}/bulk_prices?tickers=${encodeURIComponent(tickers)}`)
+    if (!res.ok) throw new Error('bulk prices failed')
+    return res.json()
+  },
+
+  bulkSectors: async (tickers) => {
+    const res = await fetch(`${BASE}/bulk_sectors?tickers=${encodeURIComponent(tickers)}`)
+    if (!res.ok) throw new Error('bulk sectors failed')
     return res.json()
   },
 }
