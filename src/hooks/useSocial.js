@@ -13,7 +13,7 @@ export function useSocial(session) {
       const [{ data: users }, { data: reqs }, { data: portfolios }] = await Promise.all([
         supabase.from('profiles').select('*').neq('id', session.user.id).limit(25),
         supabase.from('follow_requests').select('*').eq('target_user_id', session.user.id),
-        supabase.from('portfolio_folders').select('*, profiles(username,name)').eq('is_public', true).limit(20)
+        supabase.from('portfolio_folders').select('*').eq('is_public', true).limit(20)
       ])
 
       setProfiles(users || [])

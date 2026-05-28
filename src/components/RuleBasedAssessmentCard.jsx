@@ -2,11 +2,11 @@ function buildSignals(metrics = {}) {
   const score = { bull: 0, bear: 0 }
   const insights = []
 
-  const pe = Number(metrics.trailingPE)
-  const margin = Number(metrics.profitMargins)
-  const roe = Number(metrics.returnOnEquity)
-  const growth = Number(metrics.revenueGrowth)
-  const debt = Number(metrics.debtToEquity)
+  const pe = Number(metrics?.trailingPE ?? 0)
+  const margin = Number(metrics?.profitMargins ?? 0)
+  const roe = Number(metrics?.returnOnEquity ?? 0)
+  const growth = Number(metrics?.revenueGrowth ?? 0)
+  const debt = Number(metrics?.debtToEquity ?? 0)
 
   if (pe > 0 && pe < 25) {
     score.bull += 2
