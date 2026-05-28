@@ -1,5 +1,5 @@
 import { TIMEFRAMES } from '../lib/constants'
-import { getStockSegments } from '../lib/stockSegments'
+import { getStockSegments, SEGMENT_COLORS } from '../lib/stockSegments'
 
 export function PriceRow({ ticker, isEtf, currentPrice, priceChange, timeframe, onTimeframeChange }) {
   const segments = getStockSegments(ticker, isEtf)
@@ -7,7 +7,15 @@ export function PriceRow({ ticker, isEtf, currentPrice, priceChange, timeframe, 
     <div className="price-row">
       <div className="price-left">
         <span className="price-ticker">{ticker}</span>
-        {segments.map(segment => <span key={segment} className="etf-badge">{segment}</span>)}
+        {segments.map(segment => (
+          <span
+            key={segment}
+            className="segment-badge"
+            style={{ backgroundColor: SEGMENT_COLORS[segment] + '22', color: SEGMENT_COLORS[segment] }}
+          >
+            {segment}
+          </span>
+        ))}
         {currentPrice != null ? (
           <span className="price-value">
             ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

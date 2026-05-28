@@ -63,6 +63,7 @@
 .price-left { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; line-height: 1; }
 .price-ticker  { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--muted); align-self: center; }
 .etf-badge     { font-size: 9px; font-weight: 700; color: #fff; background: var(--muted); padding: 2px 6px; border-radius: 4px; letter-spacing: .06em; text-transform: uppercase; align-self: center; }
+.segment-badge { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 5px; letter-spacing: .06em; text-transform: uppercase; align-self: center; border: 1px solid; transition: all .15s; }
 .price-value   { font-family: 'DM Mono', monospace; font-size: 32px; font-weight: 400; letter-spacing: -.03em; color: var(--text); line-height: 1; font-variant-numeric: tabular-nums; }
 .price-skeleton{ color: var(--faint); }
 .price-delta   { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 400; line-height: 1; align-self: center; font-variant-numeric: tabular-nums; }

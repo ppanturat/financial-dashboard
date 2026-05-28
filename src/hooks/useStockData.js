@@ -8,9 +8,7 @@ export function useStockData(ticker, timeframe) {
   const [quoteType, setQuoteType] = useState('EQUITY')
   const [metrics, setMetrics] = useState(null)
   const [description, setDescription] = useState('')
-  const [aiScan, setAiScan] = useState(null)
   const [loadingData, setLoadingData] = useState(false)
-  const [loadingAi, setLoadingAi] = useState(false)
 
   const prevTickerRef = useRef(null)
 
@@ -24,9 +22,7 @@ export function useStockData(ticker, timeframe) {
     const run = async () => {
       if (isNewTicker) {
         setLoadingData(true)
-        setLoadingAi(true)
         setMetrics(null)
-        setAiScan(null)
         setCurrentPrice(null)
         setDescription('')
       }
@@ -43,23 +39,11 @@ export function useStockData(ticker, timeframe) {
           setMetrics(data.metrics ?? null)
           setDescription(cleanDescription(data.description ?? ''))
           setLoadingData(false)
-
-          if (data.quoteType !== 'ETF') {
-            setLoadingAi(true)
-            try {
-              const ai = await api.aiScan(ticker, ctrl.signal)
-              setAiScan(ai)
-            } catch { /* ai is optional */ }
-            setLoadingAi(false)
-          } else {
-            setLoadingAi(false)
-          }
         }
       } catch (e) {
         if (e.name !== 'AbortError' && isNewTicker) {
           setDescription('failed to fetch data.')
           setLoadingData(false)
-          setLoadingAi(false)
         }
       }
     }
@@ -76,7 +60,7 @@ export function useStockData(ticker, timeframe) {
     : null
 
   return {
-    chartData, currentPrice, quoteType, metrics, description, aiScan,
-    loadingData, loadingAi, graphColor, priceChange,
+    chartData, currentPrice, quoteType, metrics, description,
+    loadingData, graphColor, priceChange,
   }
 }
