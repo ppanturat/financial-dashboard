@@ -1,0 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+/* ==========================================================================
+   APP STYLESHEET
+   --------------------------------------------------------------------------
+   Structure:
+   1. Design Tokens
+   2. Base / Reset
+   3. Layout
+   4. Sidebar
+   5. Header & Navigation
+   6. Search
+   7. Content Sections
+   8. Shared Components
+   9. Modals
+   10. Authentication
+   11. Utilities
+   12. Responsive Rules
+
+   Refactor goals:
+   - Easier navigation
+   - Lower selector duplication
+   - Consistent spacing / naming
+   - Predictable responsive structure
+   ========================================================================== */
+
+/* ==========================================================================
+   8. SHARED COMPONENTS
+   ========================================================================== */
+
+/* ── shared buttons ─────────────────────────────── */
+.btn-primary {
+  width: 100%; background: var(--accent); color: #fff;
+  border: none; border-radius: 8px;
+  font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600;
+  padding: 12px; cursor: pointer; transition: opacity .15s;
+}
+.btn-primary:hover    { opacity: .88; }
+.btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.btn-danger { background: var(--red); width: auto; padding: 10px 18px; font-size: 14px; }
+.btn-text {
+  background: none; border: none;
+  font-family: 'Syne', sans-serif; font-size: 14px; color: var(--muted);
+  cursor: pointer; padding: 4px 2px; transition: color .12s;
+}
+.btn-text:hover { color: var(--text); }
+
+/* ── spinner ────────────────────────────────────── */
+.spinner {
+  display: inline-block; flex-shrink: 0;
+  width: 15px; height: 15px;
+  border: 2px solid var(--border-md);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .65s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   11. UTILITIES
+   ========================================================================== */
+
+/* ── form group (shared) ────────────────────────── */
+.form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 0; text-align: left; }
+.form-group label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.mt-4 { margin-top: 24px; }
+
+/* ── ticker dropdown (mobile market view) ───────── */
+.desktop-ticker-tabs { display: flex; }
+.mobile-ticker-dropdown { display: none; }
+
+.ticker-dropdown-wrap { position: relative; }
+.ticker-dropdown-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-2); border: 1px solid var(--border-md); border-radius: 8px;
+  color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700;
+  padding: 6px 12px; cursor: pointer; transition: border-color .15s; min-width: 96px;
+}
+.ticker-dropdown-btn:hover { border-color: var(--accent); }
+.ticker-dropdown-active { flex: 1; }
+.ticker-dropdown-arrow { font-size: 9px; color: var(--muted); }
+
+.ticker-dropdown-menu {
+  position: absolute; top: calc(100% + 6px); left: 0; min-width: 140px;
+  background: var(--surface); border: 1px solid var(--border-md); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  z-index: 300; overflow: hidden;
+}
+.ticker-dropdown-item {
+  display: flex; align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.ticker-dropdown-item:last-child { border-bottom: none; }
+.ticker-dropdown-item.active { background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+.ticker-drop-select {
+  flex: 1; background: none; border: none;
+  color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 700;
+  padding: 10px 12px; cursor: pointer; text-align: left;
+  transition: background .1s;
+}
+.ticker-drop-select:hover { background: var(--surface-2); }
+.ticker-dropdown-item.active .ticker-drop-select { color: var(--accent); }
+.ticker-drop-remove {
+  background: none; border: none; padding: 10px 12px;
+  color: var(--muted); font-size: 11px; cursor: pointer; transition: color .15s;
+}
+.ticker-drop-remove:hover { color: var(--red); }
+
+@media (max-width: 768px) {
+  .desktop-ticker-tabs { display: none; }
+  .mobile-ticker-dropdown { display: block; }
+}
+
+@media (max-width: 900px) {
+  .portfolio-grid { grid-template-columns: 1fr; }
+}
+
+/* sidebar action row */
+.sidebar-btn-row { display: flex; gap: 8px; margin-top: 4px; }
+.import-btn { border-color: rgba(37,99,235,0.3); color: #60a5fa; }
+.import-btn:hover { background: rgba(37,99,235,0.1); border-color: #60a5fa; color: #fff; }
+
+/* import picker */
+.import-picker-menu { background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 8px; padding: 12px; margin-top: 4px; }
+.import-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.55); text-transform: uppercase; margin-bottom: 8px; display: block; letter-spacing: .08em; }
+.import-list { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; margin-bottom: 8px; }
+.import-item-btn { background: none; border: none; text-align: left; color: rgba(255,255,255,0.6); font-family: 'Syne', sans-serif; font-size: 12px; cursor: pointer; padding: 6px; border-radius: 4px; transition: all 0.15s; display: flex; justify-content: space-between; }
+.import-item-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.import-count { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.45); }
+.import-empty { font-size: 11px; color: rgba(255,255,255,0.3); font-style: italic; }
+.btn-cancel { width: 100%; font-size: 11px; background: rgba(255,255,255,0.05); }
+.btn-cancel:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+/* import menu additions */
+.ticker-select-list { gap: 8px; }
+.import-ticker-label { display: flex; align-items: center; gap: 10px; font-family: 'DM Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.8); cursor: pointer; padding: 6px 8px; border-radius: 6px; transition: background 0.15s; }
+.import-ticker-label:hover { background: rgba(255,255,255,0.05); }
+.import-ticker-label input { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+.import-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; }
+.btn-small { padding: 6px 16px; font-size: 12px; width: auto; }

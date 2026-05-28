@@ -17,6 +17,12 @@ export const api = {
     return res.json()
   },
 
+  dividends: async (tickers, signal) => {
+    const res = await fetch(`${BASE}/dividends?tickers=${encodeURIComponent(tickers)}`, { signal })
+    if (!res.ok) throw new Error('dividends fetch failed')
+    return res.json()
+  },
+
   // checks supabase cache first, only calls the api if no cached result exists
   aiScan: async (ticker, signal) => {
     // 1. check cache

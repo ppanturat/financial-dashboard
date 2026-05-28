@@ -63,6 +63,26 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         "description": info.get('longBusinessSummary', '')
     }
 
+@app.get("/api/dividends")
+def get_dividends(tickers: str):
+    """
+    Returns real annual dividend per share for each ticker using yfinance.
+    Response: { "AAPL": { "dps": 0.96, "yield": 0.005 }, ... }
+    """
+    ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+    result = {}
+    for t in ticker_list:
+        try:
+            stock = yf.Ticker(t)
+            info = stock.info
+            # dividendRate = declared annual cash dividend per share
+            dps = info.get("dividendRate") or info.get("trailingAnnualDividendRate") or 0.0
+            dy  = info.get("dividendYield") or 0.0
+            result[t] = {"dps": round(float(dps), 4), "yield": round(float(dy), 6)}
+        except Exception:
+            result[t] = {"dps": 0.0, "yield": 0.0}
+    return result
+
 @app.get("/api/bulk_prices")
 def get_bulk_prices(tickers: str):
     ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
@@ -70,8 +90,23 @@ def get_bulk_prices(tickers: str):
     for t in ticker_list:
         try:
             stock = yf.Ticker(t)
-            last_price = stock.fast_info.get('last_price')
-            if last_price: result[t] = round(last_price, 2)
+            # Try fast_info first (cheapest)
+            price = None
+            try:
+                price = stock.fast_info.get('last_price') or stock.fast_info.get('previousClose')
+            except Exception:
+                pass
+            # Fallback: pull last 2 days of history and grab the Close
+            if not price:
+                hist = stock.history(period="2d", interval="1d")
+                if not hist.empty:
+                    price = float(hist['Close'].iloc[-1])
+            # Fallback: info dict
+            if not price:
+                info = stock.info
+                price = info.get('regularMarketPrice') or info.get('previousClose') or info.get('currentPrice')
+            if price:
+                result[t] = round(float(price), 2)
         except Exception:
             pass
     return result

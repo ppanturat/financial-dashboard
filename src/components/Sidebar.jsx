@@ -81,9 +81,10 @@ export function Sidebar({
       <div className="sidebar-tabs">
         <button className={activeTab === 'market' ? 'active' : ''} onClick={() => setActiveTab('market')}>Market View</button>
         <button className={activeTab === 'portfolio' ? 'active' : ''} onClick={() => setActiveTab('portfolio')}>Portfolio</button>
+        <button className={activeTab === 'social' ? 'active' : ''} onClick={() => setActiveTab('social')}>Social</button>
       </div>
 
-      <p className="sidebar-label">{activeTab === 'market' ? 'Market Folders' : 'Portfolio Folders'}</p>
+      <p className="sidebar-label">{activeTab === 'market' ? 'Market Folders' : activeTab === 'portfolio' ? 'Portfolio Folders' : 'Investor Network'}</p>
 
       <nav className="sidebar-nav">
         {fetchingFolders ? (

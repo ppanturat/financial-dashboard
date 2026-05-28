@@ -1,0 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+/* ==========================================================================
+   APP STYLESHEET
+   --------------------------------------------------------------------------
+   Structure:
+   1. Design Tokens
+   2. Base / Reset
+   3. Layout
+   4. Sidebar
+   5. Header & Navigation
+   6. Search
+   7. Content Sections
+   8. Shared Components
+   9. Modals
+   10. Authentication
+   11. Utilities
+   12. Responsive Rules
+
+   Refactor goals:
+   - Easier navigation
+   - Lower selector duplication
+   - Consistent spacing / naming
+   - Predictable responsive structure
+   ========================================================================== */
+
+/* ==========================================================================
+   3. LAYOUT
+   ========================================================================== */
+
+/* ── root layout ────────────────────────────────── */
+.layout {
+  display: flex;
+  width: 100vw;
+  height: 100svh; /* use small viewport height — avoids mobile browser chrome overlap */
+  overflow: hidden;
+  position: relative;
+}
+.main { 
+  flex: 1; 
+  display: flex; 
+  flex-direction: column; 
+  overflow: hidden; 
+  min-width: 0; 
+  min-height: 0; /* Allows inner contents to push scrolling state */
+}
+.overlay { display: none; }

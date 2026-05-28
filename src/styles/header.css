@@ -1,0 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+/* ==========================================================================
+   APP STYLESHEET
+   --------------------------------------------------------------------------
+   Structure:
+   1. Design Tokens
+   2. Base / Reset
+   3. Layout
+   4. Sidebar
+   5. Header & Navigation
+   6. Search
+   7. Content Sections
+   8. Shared Components
+   9. Modals
+   10. Authentication
+   11. Utilities
+   12. Responsive Rules
+
+   Refactor goals:
+   - Easier navigation
+   - Lower selector duplication
+   - Consistent spacing / naming
+   - Predictable responsive structure
+   ========================================================================== */
+
+/* ==========================================================================
+   5. HEADER & NAVIGATION
+   ========================================================================== */
+
+/* ── header ─────────────────────────────────────── */
+.header {
+  height: var(--header-h); background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 20px; flex-shrink: 0;
+  position: relative; z-index: 20;
+}
+.hamburger { display: none; }
+
+.header-left { flex: 1; display: flex; align-items: center; gap: 12px; min-width: 0; overflow: hidden; }
+.header-vault-name { font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+
+.ticker-tabs { display: flex; gap: 4px; overflow-x: auto; flex-shrink: 1; min-width: 0; }
+.ticker-tabs::-webkit-scrollbar { display: none; }
+
+.ticker-chip {
+  display: flex; align-items: center; flex-shrink: 0;
+  border-radius: 6px; border: 1px solid var(--border-md);
+  background: var(--surface-2); overflow: hidden; transition: all .15s;
+}
+.ticker-chip.active { background: var(--accent); border-color: var(--accent); }
+.chip-ticker {
+  background: none; border: none;
+  font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+  color: var(--muted); padding: 5px 8px; cursor: pointer;
+}
+.ticker-chip.active .chip-ticker { color: #fff; }
+.chip-remove {
+  background: none; border: none;
+  border-left: 1px solid rgba(0,0,0,.07);
+  color: var(--faint); font-size: 9px;
+  padding: 5px 7px; cursor: pointer; line-height: 1; transition: color .12s;
+}
+.ticker-chip.active .chip-remove { border-color: rgba(255,255,255,.15); color: rgba(255,255,255,.35); }
+.chip-remove:hover { color: var(--red); }
+
+/* ==========================================================================
+   6. SEARCH
+   ========================================================================== */
+
+/* ── search ─────────────────────────────────────── */
+.search-wrap { position: relative; width: 260px; flex-shrink: 0; }
+.search-box {
+  display: flex; align-items: center;
+  background: var(--surface-2); border: 1px solid var(--border-md);
+  border-radius: 8px; overflow: hidden; transition: border-color .15s;
+}
+.search-box:focus-within { border-color: var(--accent); background: var(--surface); }
+.search-icon { padding: 0 8px 0 10px; color: var(--faint); font-size: 17px; flex-shrink: 0; }
+.search-box input {
+  flex: 1; background: none; border: none; outline: none;
+  font-family: 'Syne', sans-serif; font-size: 13px; color: var(--text);
+  padding: 8px 0; min-width: 0;
+}
+.search-box input::placeholder { color: var(--faint); }
+.search-clear {
+  background: none; border: none; color: var(--faint); font-size: 10px;
+  padding: 8px 10px; cursor: pointer; transition: color .12s; flex-shrink: 0;
+}
+.search-clear:hover { color: var(--text); }
+
+.search-drop {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--border-md);
+  border-radius: 10px; list-style: none;
+  max-height: 280px; overflow-y: auto;
+  z-index: 200; padding: 4px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.1);
+}
+.drop-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 7px; cursor: pointer;
+  transition: background .1s;
+}
+.drop-item:hover, .drop-item.highlighted { background: var(--surface-2); }
+.drop-symbol { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text); min-width: 54px; flex-shrink: 0; }
+.drop-name   { font-size: 12px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.drop-type   { font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; }
+.drop-empty  { padding: 12px 10px; font-size: 12px; color: var(--muted); cursor: pointer; }
+
+/* ==========================================================================
+   SHARED SURFACE PATTERNS
+   --------------------------------------------------------------------------
+   These classes centralize the repeated "card" appearance used throughout
+   the dashboard. Reusing them reduces visual drift and makes future bug
+   fixes safer because shared changes only happen in one place.
+   ========================================================================== */
+
+.chart-card,
+.metric-card,
+.desc-card,
+.summary-card,
+.ai-card,
+.auth-card,
+.modal,
+.hmodal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+/* Shared focus styling */
+.search-box:focus-within,
+.auth-form input:focus,
+.hmodal-input:focus {
+  border-color: var(--accent);
+}

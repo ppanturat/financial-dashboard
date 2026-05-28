@@ -5,10 +5,12 @@ import { usePortfolio } from './hooks/usePortfolio'
 import { useStockData } from './hooks/useStockData'
 import { useSearch } from './hooks/useSearch'
 import { useModal } from './hooks/useModal'
+import { useSocial } from './hooks/useSocial'
 
 import { AuthPage } from './pages/AuthPage'
 import { MarketView } from './pages/MarketView'
 import { PortfolioView } from './pages/PortfolioView'
+import { SocialView } from './pages/SocialView'
 
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
@@ -37,6 +39,7 @@ export default function App() {
 
   const { modal, confirm, close: closeModal, execute: executeModal } = useModal()
   const search = useSearch()
+  const social = useSocial(session)
   const searchRef = useRef(null)
 
   // auto-select first market folder + ticker
@@ -146,7 +149,7 @@ export default function App() {
               activeTicker={activeTicker} 
               foldersLoading={foldersLoading} 
             />
-          ) : (
+          ) : activeTab === 'portfolio' ? (
             <PortfolioView 
               activePortfolioId={activePortfolioId}
               holdings={holdings}
@@ -157,6 +160,8 @@ export default function App() {
               removeHolding={removeHolding}
               openConfirmModal={confirm} 
             />
+          ) : (
+            <SocialView social={social} />
           )}
         </div>
       </main>

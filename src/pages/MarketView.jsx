@@ -4,7 +4,7 @@ import { PriceRow } from '../components/PriceRow'
 import { StockChart } from '../components/StockChart'
 import { MetricsGrid } from '../components/MetricsGrid'
 import { MetricsSummaryCard } from '../components/MetricsSummaryCard'
-import { AiScanCard } from '../components/AiScanCard'
+import { RuleBasedAssessmentCard } from '../components/RuleBasedAssessmentCard'
 import { EmptyState } from '../components/EmptyState'
 
 export function MarketView({ activeTicker, foldersLoading }) {
@@ -33,7 +33,7 @@ export function MarketView({ activeTicker, foldersLoading }) {
       )}
       <MetricsGrid metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
       <MetricsSummaryCard metrics={stock.metrics} ticker={activeTicker} isEtf={isEtf} loading={stock.loadingData} />
-      <AiScanCard ticker={activeTicker} timeframe={timeframe} aiScan={stock.aiScan} isEtf={isEtf} loading={stock.loadingAi} />
+      <RuleBasedAssessmentCard ticker={activeTicker} metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
     </>
   )
 }
