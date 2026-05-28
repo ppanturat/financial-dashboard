@@ -4,44 +4,69 @@ import { useState } from 'react'
 export function SocialView({ social, portfolioFolders }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(social.profile?.name || 'Investor')
-  const [username, setUsername] = useState(social.profile?.username || `user_${Math.floor(Math.random()*9999)}`)
+  const [username, setUsername] = useState(
+    social.profile?.username || `user_${Math.floor(Math.random() * 9999)}`
+  )
 
   return (
-    <div style={{ display: 'grid', gap: 20 }}>
-      <div className="desc-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+    <div className="network-layout">
+      <div className="network-card">
+        <div className="network-card-header">
           <div>
             <h3 className="desc-title">Your Profile</h3>
             <p className="desc-text">Configure your public investor identity.</p>
           </div>
 
-          <button className="new-vault-btn" onClick={() => {
-            if (editing) {
-              social.updateProfile({ name, username })
-            }
-            setEditing(!editing)
-          }}>
+          <button
+            className="new-vault-btn"
+            onClick={() => {
+              if (editing) {
+                social.updateProfile({ name, username })
+              }
+              setEditing(!editing)
+            }}
+          >
             {editing ? 'Save' : 'Edit'}
           </button>
         </div>
 
-        <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-          <input value={name} disabled={!editing} onChange={e => setName(e.target.value)} placeholder="name" />
-          <input value={username} disabled={!editing} onChange={e => setUsername(e.target.value)} placeholder="username" />
+        <div className="network-input-grid">
+          <input
+            className="network-input"
+            value={name}
+            disabled={!editing}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Display name"
+          />
+
+          <input
+            className="network-input"
+            value={username}
+            disabled={!editing}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Username"
+          />
         </div>
       </div>
 
-      <div className="desc-card">
+      <div className="network-card">
         <h3 className="desc-title">Portfolio Privacy</h3>
 
-        <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-          {portfolioFolders.map(folder => (
-            <div key={folder.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
-              <div>{folder.name}</div>
+        <div className="network-list">
+          {portfolioFolders.map((folder) => (
+            <div key={folder.id} className="network-row">
+              <div>
+                <div className="network-name">{folder.name}</div>
+                <div className="network-subtext">
+                  {folder.is_public ? 'Visible to followers' : 'Private portfolio'}
+                </div>
+              </div>
 
               <button
-                className="new-vault-btn"
-                onClick={() => social.togglePortfolioPrivacy(folder.id, !folder.is_public)}
+                className={`privacy-toggle ${folder.is_public ? 'public' : 'private'}`}
+                onClick={() =>
+                  social.togglePortfolioPrivacy(folder.id, !folder.is_public)
+                }
               >
                 {folder.is_public ? 'Public' : 'Private'}
               </button>
@@ -50,26 +75,40 @@ export function SocialView({ social, portfolioFolders }) {
         </div>
       </div>
 
-      <div className="desc-card">
+      <div className="network-card">
         <h3 className="desc-title">Find Investors</h3>
-        <p className="desc-text">Search username and send follow requests.</p>
+        <p className="desc-text">Search usernames and expand your network.</p>
 
         <input
-          style={{ marginTop: 16 }}
+          className="network-input"
           placeholder="Search username..."
           value={social.searchTerm}
-          onChange={e => social.setSearchTerm(e.target.value)}
+          onChange={(e) => social.setSearchTerm(e.target.value)}
         />
 
-        <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-          {social.profiles.map(profile => (
-            <div key={profile.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
-              <div>
-                <div>{profile.name || 'Unnamed User'}</div>
-                <div style={{ opacity: .7, fontSize: 12 }}>@{profile.username || profile.id}</div>
+        <div className="network-list">
+          {social.profiles.map((profile) => (
+            <div key={profile.id} className="network-row">
+              <div className="network-user">
+                <div className="network-avatar">
+                  {(profile.name || 'U').charAt(0).toUpperCase()}
+                </div>
+
+                <div>
+                  <div className="network-name">
+                    {profile.name || 'Unnamed User'}
+                  </div>
+
+                  <div className="network-subtext">
+                    @{profile.username || profile.id}
+                  </div>
+                </div>
               </div>
 
-              <button className="new-vault-btn" onClick={() => social.sendFollowRequest(profile.id)}>
+              <button
+                className="new-vault-btn"
+                onClick={() => social.sendFollowRequest(profile.id)}
+              >
                 Follow
               </button>
             </div>
@@ -77,20 +116,31 @@ export function SocialView({ social, portfolioFolders }) {
         </div>
       </div>
 
-      <div className="desc-card">
+      <div className="network-card">
         <h3 className="desc-title">Pending Requests</h3>
 
-        <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-          {social.requests.map(req => (
-            <div key={req.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>{req.requester_user_id}</span>
+        <div className="network-list">
+          {social.requests.map((req) => (
+            <div key={req.id} className="network-row">
+              <div>
+                <div className="network-name">New Follow Request</div>
+                <div className="network-subtext">
+                  {req.requester_user_id}
+                </div>
+              </div>
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="new-vault-btn" onClick={() => social.respondToRequest(req.id, 'accepted')}>
+              <div className="network-actions">
+                <button
+                  className="new-vault-btn"
+                  onClick={() => social.respondToRequest(req.id, 'accepted')}
+                >
                   Accept
                 </button>
 
-                <button className="new-vault-btn" onClick={() => social.respondToRequest(req.id, 'rejected')}>
+                <button
+                  className="danger-btn"
+                  onClick={() => social.respondToRequest(req.id, 'rejected')}
+                >
                   Decline
                 </button>
               </div>
@@ -99,19 +149,31 @@ export function SocialView({ social, portfolioFolders }) {
         </div>
       </div>
 
-      <div className="desc-card">
-        <h3 className="desc-title">Following Feed</h3>
+      <div className="network-card">
+        <h3 className="desc-title">Your Network</h3>
 
-        <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
-          {social.feed.map(item => (
-            <div key={item.id} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <strong>{item.name}</strong>
-                <span>Public Portfolio</span>
+        <div className="network-feed">
+          {social.feed.map((item) => (
+            <div key={item.id} className="feed-card">
+              <div className="feed-top">
+                <div className="network-user">
+                  <div className="network-avatar">
+                    {(item.name || 'U').charAt(0).toUpperCase()}
+                  </div>
+
+                  <div>
+                    <div className="network-name">{item.name}</div>
+                    <div className="network-subtext">
+                      Public Portfolio
+                    </div>
+                  </div>
+                </div>
+
+                <div className="feed-badge">Following</div>
               </div>
 
-              <div style={{ marginTop: 10, opacity: .7 }}>
-                Visible because the user accepted your request.
+              <div className="feed-body">
+                Visible because this user accepted your follow request.
               </div>
             </div>
           ))}
