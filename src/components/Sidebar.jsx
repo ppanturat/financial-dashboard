@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 
 export function Sidebar({ 
   session, activeTab, setActiveTab, folders, activeFolderId, fetchingFolders, marketFolders, 
-  isOpen, onSelectFolder, onCreateFolder, onImportFolder, onRenameFolder, onDeleteFolder, onSignOut 
+  isOpen, onSelectFolder, onCreateFolder, onImportFolder, onRenameFolder, onDeleteFolder, onSignOut,
+  followedUsers, pendingRequests
 }) {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
@@ -84,10 +85,51 @@ export function Sidebar({
         <button className={activeTab === 'social' ? 'active' : ''} onClick={() => setActiveTab('social')}>Network</button>
       </div>
 
-      <p className="sidebar-label">{activeTab === 'market' ? 'Market Folders' : activeTab === 'portfolio' ? 'Portfolio Folders' : 'Your Network'}</p>
+      <p className="sidebar-label">{activeTab === 'market' ? 'Market Folders' : activeTab === 'portfolio' ? 'Portfolio Folders' : 'Following'}</p>
 
       <nav className="sidebar-nav">
-        {fetchingFolders ? (
+        {activeTab === 'social' ? (
+          <>
+            {pendingRequests?.length > 0 && (
+              <div style={{
+                margin: '0 0 8px', padding: '8px 10px', borderRadius: 7,
+                background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.25)',
+                display: 'flex', alignItems: 'center', gap: 7,
+              }}>
+                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', flex: 1 }}>
+                  {pendingRequests.length} follow request{pendingRequests.length > 1 ? 's' : ''}
+                </span>
+                <span style={{
+                  fontSize: 9, fontWeight: 700, background: 'rgba(234,179,8,0.7)',
+                  color: '#111', padding: '2px 6px', borderRadius: 99,
+                }}>{pendingRequests.length}</span>
+              </div>
+            )}
+            {followedUsers?.length === 0 && (
+              <p className="sidebar-loading">No one followed yet.</p>
+            )}
+            {followedUsers?.map(u => (
+              <div key={u.id} className="vault-row">
+                <div className="vault-btn" style={{ cursor: 'default' }}>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                    background: `hsl(${(u.name||u.username||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360}, 55%, 62%)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontSize: 9, fontWeight: 700,
+                  }}>
+                    {(u.name||u.username||'?')[0].toUpperCase()}
+                  </div>
+                  <span className="vault-label">{u.name || u.username || 'Investor'}</span>
+                  {u.username && (
+                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                      @{u.username}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </>
+        ) : fetchingFolders ? (
           <p className="sidebar-loading">Loading...</p>
         ) : (
           <>

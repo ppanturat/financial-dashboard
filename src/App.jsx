@@ -124,6 +124,8 @@ export default function App() {
         onRenameFolder={handleRenameFolder}
         onDeleteFolder={handleDeleteFolder}
         onSignOut={signOut}
+        followedUsers={social.followedUsers}
+        pendingRequests={social.requests}
       />
 
       <main className="main">

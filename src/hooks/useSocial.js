@@ -8,6 +8,7 @@ export function useSocial(session) {
   const [feed, setFeed] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [profile, setProfile] = useState(null)
+  const [followedUsers, setFollowedUsers] = useState([])
 
   useEffect(() => {
     if (!session) return
@@ -27,15 +28,16 @@ export function useSocial(session) {
       if (accepted?.length) {
         const ids = accepted.map(x => x.target_user_id)
 
-        const { data: portfolios } = await supabase
-          .from('portfolio_folders')
-          .select('*')
-          .in('user_id', ids)
-          .eq('is_public', true)
+        const [{ data: portfolios }, { data: followedProfiles }] = await Promise.all([
+          supabase.from('portfolio_folders').select('*').in('user_id', ids).eq('is_public', true),
+          supabase.from('profiles').select('*').in('id', ids)
+        ])
 
         setFeed(portfolios || [])
+        setFollowedUsers(followedProfiles || [])
       } else {
         setFeed([])
+        setFollowedUsers([])
       }
     }
 
@@ -83,6 +85,7 @@ export function useSocial(session) {
     profiles: filteredProfiles,
     requests,
     feed,
+    followedUsers,
     sendFollowRequest,
     respondToRequest,
     searchTerm,

@@ -56,7 +56,7 @@ export function Header({ activeTab, folderName, tickers, activeTicker, onSelectT
         )}
       </div>
 
-      <SearchBar {...search} />
+      {activeTab !== "social" && <SearchBar {...search} />}
     </header>
   )
 }
