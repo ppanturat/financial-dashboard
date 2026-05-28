@@ -4,6 +4,7 @@ import { useState } from 'react'
 export function SocialView({ social, portfolioFolders }) {
   const [editing, setEditing] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const [profile, setProfile] = useState({
     name: social.profile?.name || 'Investor',
@@ -11,6 +12,20 @@ export function SocialView({ social, portfolioFolders }) {
       social.profile?.username ||
       `user_${Math.floor(Math.random() * 9999)}`,
   })
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      await social.uploadProfilePicture(file)
+    } catch (err) {
+      console.error('Upload failed:', err)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   return (
     <div className="network-layout">
@@ -54,9 +69,16 @@ export function SocialView({ social, portfolioFolders }) {
                 {profile.name.charAt(0).toUpperCase()}
               </div>
 
-              <label className="upload-btn">
-                Upload Profile Picture
-                <input type="file" hidden />
+              <input
+                id="file-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="file-upload" className="upload-btn">
+                {uploading ? '⏳ Uploading...' : '📸 Upload Picture'}
               </label>
             </div>
 
@@ -115,7 +137,7 @@ export function SocialView({ social, portfolioFolders }) {
             <h3>Save Profile Changes?</h3>
 
             <p>
-              Your avatar, name and username will be updated.
+              Your name and username will be updated.
             </p>
 
             <div className="modal-actions">
@@ -141,8 +163,41 @@ export function SocialView({ social, portfolioFolders }) {
         </div>
       )}
 
+      {social.following && social.following.length > 0 && (
+        <div className="network-card">
+          <h3 className="section-title">📍 Following ({social.following.length})</h3>
+
+          <div className="network-list">
+            {social.following.map((follow) => (
+              <div key={follow.id} className="network-row">
+                <div className="network-user">
+                  <div className="network-avatar">
+                    {follow.profile?.name?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                  <div>
+                    <div className="network-name">
+                      {follow.profile?.name}
+                    </div>
+
+                    <div className="network-subtext">
+                      @{follow.profile?.username}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="network-actions">
+                  <button className="privacy-toggle public">
+                    ✓ Following
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="network-card">
-        <h3 className="section-title">Portfolio Privacy</h3>
+        <h3 className="section-title">🔒 Portfolio Privacy</h3>
 
         <div className="network-list">
           {portfolioFolders.map((folder) => (
@@ -179,7 +234,7 @@ export function SocialView({ social, portfolioFolders }) {
 
       {social.requests && social.requests.length > 0 && (
         <div className="network-card">
-          <h3 className="section-title">Follow Requests ({social.requests.length})</h3>
+          <h3 className="section-title">🔔 Follow Requests ({social.requests.length})</h3>
           <div className="network-list">
             {social.requests.map((req) => (
               <div key={req.id} className="network-row">
@@ -212,7 +267,7 @@ export function SocialView({ social, portfolioFolders }) {
       )}
 
       <div className="network-card">
-        <h3 className="section-title">Find Investors</h3>
+        <h3 className="section-title">🔍 Find Investors</h3>
 
         <input
           className="network-input"
@@ -239,7 +294,7 @@ export function SocialView({ social, portfolioFolders }) {
                     className="privacy-toggle public"
                     onClick={() => social.sendFollowRequest(prof.id)}
                   >
-                    Follow
+                    + Follow
                   </button>
                 </div>
               ))
@@ -254,7 +309,7 @@ export function SocialView({ social, portfolioFolders }) {
 
       {social.feed && social.feed.length > 0 && (
         <div className="network-card">
-          <h3 className="section-title">Following Feed</h3>
+          <h3 className="section-title">📊 Following Feed</h3>
           <div className="network-feed">
             {social.feed.map((portfolio) => (
               <div key={portfolio.id} className="feed-card">

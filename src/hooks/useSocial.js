@@ -6,6 +6,7 @@ export function useSocial(session) {
   const [profiles, setProfiles] = useState([])
   const [requests, setRequests] = useState([])
   const [feed, setFeed] = useState([])
+  const [following, setFollowing] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [profile, setProfile] = useState(null)
 
@@ -25,6 +26,13 @@ export function useSocial(session) {
       setProfile(me)
 
       if (accepted?.length) {
+        const acceptedFollowing = accepted.map(x => ({
+          ...x,
+          profile: users?.find(u => u.id === x.target_user_id)
+        })).filter(x => x.profile)
+
+        setFollowing(acceptedFollowing)
+
         const ids = accepted.map(x => x.target_user_id)
 
         const { data: portfolios } = await supabase
@@ -35,6 +43,7 @@ export function useSocial(session) {
 
         setFeed(portfolios || [])
       } else {
+        setFollowing([])
         setFeed([])
       }
     }
@@ -65,10 +74,15 @@ export function useSocial(session) {
   }
 
   const togglePortfolioPrivacy = async (folderId, isPublic) => {
-    await supabase
+    setFeed(prev => prev.map(p => p.id === folderId ? { ...p, is_public: isPublic } : p))
+
+    supabase
       .from('portfolio_folders')
       .update({ is_public: isPublic })
       .eq('id', folderId)
+      .catch(() => {
+        setFeed(prev => prev.map(p => p.id === folderId ? { ...p, is_public: !isPublic } : p))
+      })
   }
 
   const filteredProfiles = profiles.filter(p => {
@@ -79,16 +93,40 @@ export function useSocial(session) {
     )
   })
 
+  const uploadProfilePicture = async (file) => {
+    if (!file) return
+
+    const ext = file.name.split('.').pop()
+    const fileName = `${session.user.id}_avatar.${ext}`
+    const filePath = `avatars/${fileName}`
+
+    const { error: uploadErr } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true })
+
+    if (uploadErr) throw uploadErr
+
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath)
+
+    if (data?.publicUrl) {
+      await updateProfile({ avatar_url: data.publicUrl })
+    }
+  }
+
   return {
     profiles: filteredProfiles,
     requests,
     feed,
+    following,
     sendFollowRequest,
     respondToRequest,
     searchTerm,
     setSearchTerm,
     profile,
     updateProfile,
-    togglePortfolioPrivacy
+    togglePortfolioPrivacy,
+    uploadProfilePicture
   }
 }
