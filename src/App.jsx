@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useFolders } from './hooks/useFolders'
 import { usePortfolio } from './hooks/usePortfolio'
+import { useStockData } from './hooks/useStockData'
 import { useSearch } from './hooks/useSearch'
 import { useModal } from './hooks/useModal'
 import { useSocial } from './hooks/useSocial'
@@ -19,27 +20,29 @@ import './App.css'
 
 export default function App() {
   const { session, loading: authLoading, signIn, signUp, signOut } = useAuth()
-
+  
+  // market state
   const { folders, loading: foldersLoading, createFolder, renameFolder, deleteFolder, addTicker, removeTicker } = useFolders(session)
-
-  const {
+  
+  // portfolio state
+  const { 
     portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading,
-    holdings, livePrices, tickerMeta, loadingHoldings,
-    createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder,
-    saveHolding, removeHolding
+    holdings, livePrices, loadingHoldings, 
+    createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder, 
+    saveHolding, removeHolding 
   } = usePortfolio(session)
 
-  const social = useSocial(session)
-
-  const [activeTab, setActiveTab]           = useState('market')
-  const [activeFolderId, setActiveFolderId] = useState(null)
-  const [activeTicker, setActiveTicker]     = useState('')
-  const [sidebarOpen, setSidebarOpen]       = useState(false)
+  const [activeTab, setActiveTab]             = useState('market')
+  const [activeFolderId, setActiveFolderId]   = useState(null)
+  const [activeTicker, setActiveTicker]       = useState('')
+  const [sidebarOpen, setSidebarOpen]         = useState(false)
 
   const { modal, confirm, close: closeModal, execute: executeModal } = useModal()
   const search = useSearch()
+  const social = useSocial(session)
   const searchRef = useRef(null)
 
+  // auto-select first market folder + ticker
   useEffect(() => {
     if (!foldersLoading && folders.length > 0 && !activeFolderId) {
       setActiveFolderId(folders[0].id)
@@ -56,15 +59,14 @@ export default function App() {
   if (authLoading) return null
   if (!session) return <AuthPage onSignIn={signIn} onSignUp={signUp} />
 
-  const isSocialTab = activeTab === 'social'
-
-  const activeFolder = activeTab === 'market'
+  const activeFolder = activeTab === 'market' 
     ? folders.find(f => f.id === activeFolderId)
     : portfolioFolders.find(f => f.id === activePortfolioId)
 
-  const currentFolders  = activeTab === 'market' ? folders : portfolioFolders
+  // dynamic folder actions passed to sidebar
+  const currentFolders = activeTab === 'market' ? folders : portfolioFolders
   const currentActiveId = activeTab === 'market' ? activeFolderId : activePortfolioId
-  const currentLoading  = activeTab === 'market' ? foldersLoading : portfolioLoading
+  const currentLoading = activeTab === 'market' ? foldersLoading : portfolioLoading
 
   const handleSelectFolder = (folder) => {
     if (activeTab === 'market') {
@@ -77,8 +79,7 @@ export default function App() {
   }
 
   const handleCreateFolder = (name) => activeTab === 'market' ? createFolder(name) : createPortfolioFolder(name)
-  const handleRenameFolder = (id, name) => confirm('Rename Folder', `Rename to "${name}"?`, () =>
-    activeTab === 'market' ? renameFolder(id, name) : renamePortfolioFolder(id, name))
+  const handleRenameFolder = (id, name) => confirm('Rename Folder', `Rename to "${name}"?`, () => activeTab === 'market' ? renameFolder(id, name) : renamePortfolioFolder(id, name))
   const handleDeleteFolder = (id) => confirm('Delete Folder', 'Permanently delete this folder?', () => {
     if (activeTab === 'market') {
       deleteFolder(id)
@@ -89,6 +90,7 @@ export default function App() {
     }
   })
 
+  // market view ticker addition
   const handleAddTicker = async (symbol) => {
     if (activeTab === 'portfolio') setActiveTab('market')
     let fid = activeFolderId
@@ -104,32 +106,30 @@ export default function App() {
   return (
     <div className="layout">
       {sidebarOpen && <div className="overlay" onClick={() => setSidebarOpen(false)} />}
-
+      
       <ConfirmModal modal={modal} onClose={closeModal} onExecute={executeModal} />
 
       <Sidebar
         isOpen={sidebarOpen}
         session={session}
         activeTab={activeTab}
-        setActiveTab={(t) => { setActiveTab(t); setSidebarOpen(false) }}
+        setActiveTab={setActiveTab}
         folders={currentFolders}
         activeFolderId={currentActiveId}
         fetchingFolders={currentLoading}
-        marketFolders={folders}
+        marketFolders={folders} 
         onSelectFolder={handleSelectFolder}
         onCreateFolder={handleCreateFolder}
         onImportFolder={importMarketFolder}
         onRenameFolder={handleRenameFolder}
         onDeleteFolder={handleDeleteFolder}
         onSignOut={signOut}
-        socialProfile={social.profile}
-        pendingIncomingCount={social.pendingIncoming.length}
       />
 
       <main className="main">
         <Header
           activeTab={activeTab}
-          folderName={isSocialTab ? 'Feed' : activeFolder?.name}
+          folderName={activeFolder?.name}
           tickers={activeTab === 'market' ? (activeFolder?.tickers ?? []) : []}
           activeTicker={activeTicker}
           onSelectTicker={setActiveTicker}
@@ -145,21 +145,23 @@ export default function App() {
 
         <div className="content">
           {activeTab === 'market' ? (
-            <MarketView activeTicker={activeTicker} foldersLoading={foldersLoading} />
+            <MarketView 
+              activeTicker={activeTicker} 
+              foldersLoading={foldersLoading} 
+            />
           ) : activeTab === 'portfolio' ? (
-            <PortfolioView
+            <PortfolioView 
               activePortfolioId={activePortfolioId}
               holdings={holdings}
               livePrices={livePrices}
-              tickerMeta={tickerMeta}
               loadingHoldings={loadingHoldings}
               marketFolders={folders}
               saveHolding={saveHolding}
               removeHolding={removeHolding}
-              openConfirmModal={confirm}
+              openConfirmModal={confirm} 
             />
           ) : (
-            <SocialView social={social} />
+            <SocialView social={social} portfolioFolders={portfolioFolders} />
           )}
         </div>
       </main>

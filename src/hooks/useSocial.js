@@ -1,159 +1,94 @@
-import { useState, useEffect, useCallback } from 'react'
+
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 export function useSocial(session) {
-  const [profile, setProfile]                 = useState(null)
-  const [following, setFollowing]             = useState([])   // profiles I follow (accepted)
-  const [pendingOutgoing, setPendingOutgoing] = useState([])   // requests I sent, pending
-  const [pendingIncoming, setPendingIncoming] = useState([])   // requests sent to me
-  const [loading, setLoading]                 = useState(true)
-
-  const userId = session?.user?.id
-
-  // ── Profile ───────────────────────────────────────────────────────────────
-
-  const loadProfile = useCallback(async () => {
-    if (!userId) return
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    setProfile(data ?? null)
-  }, [userId])
-
-  const upsertProfile = async (displayName, username) => {
-    if (!userId) return
-    const { data, error } = await supabase
-      .from('profiles')
-      .upsert({ id: userId, display_name: displayName.trim(), username: username.trim().toLowerCase() })
-      .select()
-      .single()
-    if (error) throw error
-    setProfile(data)
-    return data
-  }
-
-  // ── Follow Requests ───────────────────────────────────────────────────────
-
-  const loadFollowData = useCallback(async () => {
-    if (!userId) return
-    setLoading(true)
-
-    const [{ data: accepted }, { data: outgoing }, { data: incoming }] = await Promise.all([
-      // people I follow and they accepted
-      supabase.from('follows')
-        .select('followee_id, profiles!follows_followee_id_fkey(id, display_name, username, portfolio_public)')
-        .eq('follower_id', userId)
-        .eq('status', 'accepted'),
-      // requests I sent but not yet accepted
-      supabase.from('follows')
-        .select('followee_id, profiles!follows_followee_id_fkey(id, display_name, username)')
-        .eq('follower_id', userId)
-        .eq('status', 'pending'),
-      // requests sent to me
-      supabase.from('follows')
-        .select('id, follower_id, profiles!follows_follower_id_fkey(id, display_name, username)')
-        .eq('followee_id', userId)
-        .eq('status', 'pending'),
-    ])
-
-    setFollowing((accepted ?? []).map(r => r.profiles).filter(Boolean))
-    setPendingOutgoing((outgoing ?? []).map(r => r.profiles).filter(Boolean))
-    setPendingIncoming(incoming ?? [])
-    setLoading(false)
-  }, [userId])
+  const [profiles, setProfiles] = useState([])
+  const [requests, setRequests] = useState([])
+  const [feed, setFeed] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [profile, setProfile] = useState(null)
 
   useEffect(() => {
-    if (userId) { loadProfile(); loadFollowData() }
-    else { setProfile(null); setFollowing([]); setPendingOutgoing([]); setPendingIncoming([]); setLoading(false) }
-  }, [userId])
+    if (!session) return
 
-  const sendFollowRequest = async (targetUserId) => {
-    if (!userId) return
-    const { error } = await supabase.from('follows').insert([{
-      follower_id: userId,
-      followee_id: targetUserId,
+    const load = async () => {
+      const [{ data: users }, { data: reqs }, { data: accepted }, { data: me }] = await Promise.all([
+        supabase.from('profiles').select('*').neq('id', session.user.id).limit(25),
+        supabase.from('follow_requests').select('*').eq('target_user_id', session.user.id).eq('status', 'pending'),
+        supabase.from('follow_requests').select('*').eq('requester_user_id', session.user.id).eq('status', 'accepted'),
+        supabase.from('profiles').select('*').eq('id', session.user.id).single()
+      ])
+
+      setProfiles(users || [])
+      setRequests(reqs || [])
+      setProfile(me)
+
+      if (accepted?.length) {
+        const ids = accepted.map(x => x.target_user_id)
+
+        const { data: portfolios } = await supabase
+          .from('portfolio_folders')
+          .select('*')
+          .in('user_id', ids)
+          .eq('is_public', true)
+
+        setFeed(portfolios || [])
+      } else {
+        setFeed([])
+      }
+    }
+
+    load()
+  }, [session])
+
+  const sendFollowRequest = async (targetId) => {
+    await supabase.from('follow_requests').insert({
+      requester_user_id: session.user.id,
+      target_user_id: targetId,
       status: 'pending'
-    }])
-    if (error) throw error
-    await loadFollowData()
+    })
   }
 
-  const acceptFollowRequest = async (followId) => {
-    const { error } = await supabase.from('follows')
-      .update({ status: 'accepted' })
-      .eq('id', followId)
-    if (error) throw error
-    await loadFollowData()
+  const respondToRequest = async (id, status) => {
+    await supabase.from('follow_requests').update({ status }).eq('id', id)
+    setRequests(prev => prev.filter(r => r.id !== id))
   }
 
-  const declineFollowRequest = async (followId) => {
-    const { error } = await supabase.from('follows').delete().eq('id', followId)
-    if (error) throw error
-    await loadFollowData()
+  const updateProfile = async (payload) => {
+    await supabase.from('profiles').upsert({
+      id: session.user.id,
+      ...payload
+    })
+
+    setProfile(prev => ({ ...prev, ...payload }))
   }
 
-  const removeFollowing = async (targetUserId) => {
-    const { error } = await supabase.from('follows')
-      .delete()
-      .eq('follower_id', userId)
-      .eq('followee_id', targetUserId)
-    if (error) throw error
-    await loadFollowData()
-  }
-
-  // ── Portfolio visibility ──────────────────────────────────────────────────
-
-  const setPortfolioPublic = async (isPublic) => {
-    if (!userId) return
-    const { error } = await supabase.from('profiles')
-      .update({ portfolio_public: isPublic })
-      .eq('id', userId)
-    if (error) throw error
-    setProfile(p => ({ ...p, portfolio_public: isPublic }))
-  }
-
-  // ── Search users ──────────────────────────────────────────────────────────
-
-  const searchUsers = async (query) => {
-    if (!query.trim()) return []
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, display_name, username, portfolio_public')
-      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
-      .neq('id', userId)
-      .limit(10)
-    return data ?? []
-  }
-
-  // ── View someone's public portfolio ──────────────────────────────────────
-
-  const getPublicPortfolio = async (targetUserId) => {
-    // get their default (first) folder
-    const { data: folders } = await supabase
+  const togglePortfolioPrivacy = async (folderId, isPublic) => {
+    await supabase
       .from('portfolio_folders')
-      .select('id, name')
-      .eq('user_id', targetUserId)
-      .order('created_at', { ascending: true })
-      .limit(1)
-
-    if (!folders?.length) return { holdings: [], folderName: null }
-
-    const { data: holdings } = await supabase
-      .from('portfolio_holdings')
-      .select('*')
-      .eq('user_id', targetUserId)
-      .eq('folder_id', folders[0].id)
-
-    return { holdings: holdings ?? [], folderName: folders[0].name }
+      .update({ is_public: isPublic })
+      .eq('id', folderId)
   }
+
+  const filteredProfiles = profiles.filter(p => {
+    const q = searchTerm.toLowerCase()
+    return (
+      p.username?.toLowerCase().includes(q) ||
+      p.name?.toLowerCase().includes(q)
+    )
+  })
 
   return {
-    profile, loading, following, pendingOutgoing, pendingIncoming,
-    loadProfile, upsertProfile,
-    sendFollowRequest, acceptFollowRequest, declineFollowRequest, removeFollowing,
-    setPortfolioPublic, searchUsers, getPublicPortfolio,
-    refresh: loadFollowData,
+    profiles: filteredProfiles,
+    requests,
+    feed,
+    sendFollowRequest,
+    respondToRequest,
+    searchTerm,
+    setSearchTerm,
+    profile,
+    updateProfile,
+    togglePortfolioPrivacy
   }
 }

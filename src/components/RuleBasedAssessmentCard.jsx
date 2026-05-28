@@ -1,180 +1,264 @@
+import { getSegmentStyle } from '../lib/stockSegments'
+
+// Verdict color scheme
+const VERDICT_STYLES = {
+  'Strong Buy':   { bg: '#f0fdf4', border: '#16a34a', text: '#15803d', dot: '#16a34a' },
+  'Bullish':      { bg: '#f0fdf4', border: '#22c55e', text: '#15803d', dot: '#22c55e' },
+  'Neutral':      { bg: '#fefce8', border: '#ca8a04', text: '#92400e', dot: '#ca8a04' },
+  'Caution':      { bg: '#fff7ed', border: '#ea580c', text: '#c2410c', dot: '#ea580c' },
+  'Risk Elevated':{ bg: '#fef2f2', border: '#dc2626', text: '#b91c1c', dot: '#dc2626' },
+}
+
 function buildSignals(metrics = {}) {
-  const score = { bull: 0, bear: 0 }
-  const insights = []
+  // All metrics come from the API /api/data response:
+  // war_chest_ratio, fcf, gross_margin, forward_pe, revenue_yoy
+  const signals = []
+  let bullScore = 0, bearScore = 0
 
-  const pe = Number(metrics?.trailingPE ?? metrics?.forwardPE ?? 0)
-  const peg = Number(metrics?.peg ?? 0)
-  const margin = Number(metrics?.profitMargins ?? 0)
-  const roe = Number(metrics?.returnOnEquity ?? 0)
-  const growth = Number(metrics?.revenueGrowth ?? 0)
-  const debt = Number(metrics?.debtToEquity ?? 0)
-  const fcf = Number(metrics?.fcf ?? 0)
-  const wcr = Number(metrics?.war_chest_ratio ?? 0)
-  const asset_turnover = Number(metrics?.assetTurnover ?? 1)
-
-  // ===== VALUATION (P/E) =====
-  if (pe > 0 && pe < 15) {
-    score.bull += 3
-    insights.push('🟢 Attractive valuation: P/E under 15 signals undervaluation.')
-  } else if (pe >= 15 && pe < 25) {
-    score.bull += 2
-    insights.push('🟡 Fair valuation: P/E between 15-25 is reasonable for growth.')
-  } else if (pe >= 25 && pe < 35) {
-    score.bear += 1
-    insights.push('🟠 Premium valuation: Higher P/E may limit upside potential.')
-  } else if (pe >= 35) {
-    score.bear += 3
-    insights.push('🔴 Expensive valuation: P/E above 35 carries significant downside risk.')
+  // 1. War Chest Ratio (cash/debt)
+  const wcr = metrics?.war_chest_ratio
+  if (wcr != null) {
+    if (wcr >= 2) {
+      bullScore += 2
+      signals.push({ type: 'bull', label: 'Cash Fortress', note: `Cash-to-debt ratio of ${wcr === 999 ? '∞' : wcr.toFixed(2)}x — company can comfortably cover its obligations.` })
+    } else if (wcr >= 1) {
+      bullScore += 1
+      signals.push({ type: 'bull', label: 'Healthy Liquidity', note: `Cash covers debt (${wcr.toFixed(2)}x). Balance sheet is in solid shape.` })
+    } else if (wcr >= 0.5) {
+      bearScore += 1
+      signals.push({ type: 'warn', label: 'Leverage Watch', note: `Cash-to-debt ratio of ${wcr.toFixed(2)}x. Debt is manageable but warrants monitoring.` })
+    } else {
+      bearScore += 2
+      signals.push({ type: 'bear', label: 'Debt Pressure', note: `Cash only covers ${(wcr * 100).toFixed(0)}% of debt. High leverage could strain operations.` })
+    }
   }
 
-  // ===== PEG RATIO =====
-  if (peg > 0 && peg < 1) {
-    score.bull += 2
-    insights.push('🟢 Strong PEG: Growth is priced reasonably relative to P/E.')
+  // 2. Free Cash Flow
+  const fcf = metrics?.fcf
+  if (fcf != null) {
+    const fcfB = fcf / 1e9
+    if (fcf > 5e9) {
+      bullScore += 2
+      signals.push({ type: 'bull', label: 'Cash Machine', note: `Generating $${fcfB.toFixed(1)}B in free cash flow — strong fuel for buybacks, dividends, and R&D.` })
+    } else if (fcf > 0) {
+      bullScore += 1
+      signals.push({ type: 'bull', label: 'FCF Positive', note: `Positive free cash flow of $${fcfB.toFixed(2)}B. Business generates more than it spends.` })
+    } else if (fcf > -1e9) {
+      bearScore += 1
+      signals.push({ type: 'warn', label: 'Cash Burn', note: `Burning $${Math.abs(fcfB).toFixed(2)}B in FCF. Acceptable for growth-stage, risky for mature businesses.` })
+    } else {
+      bearScore += 2
+      signals.push({ type: 'bear', label: 'Heavy Cash Burn', note: `FCF of -$${Math.abs(fcfB).toFixed(1)}B. Company requires external capital to sustain operations.` })
+    }
   }
 
-  // ===== PROFITABILITY (Margins) =====
-  if (margin > 0.3) {
-    score.bull += 3
-    insights.push('🟢 Excellent margins: >30% signals strong pricing power and efficiency.')
-  } else if (margin > 0.15) {
-    score.bull += 2
-    insights.push('🟡 Solid margins: 15-30% indicates good operational leverage.')
-  } else if (margin > 0.05) {
-    score.bear += 1
-    insights.push('🟠 Thin margins: <15% reduces earnings cushion and limits durability.')
-  } else if (margin <= 0.05) {
-    score.bear += 2
-    insights.push('🔴 Weak margins: Very thin margins signal margin compression risks.')
+  // 3. Gross Margin
+  const gm = metrics?.gross_margin
+  if (gm != null) {
+    if (gm > 0.6) {
+      bullScore += 2
+      signals.push({ type: 'bull', label: 'High-Margin Business', note: `Gross margin of ${(gm * 100).toFixed(1)}% — exceptional pricing power and scalability.` })
+    } else if (gm > 0.3) {
+      bullScore += 1
+      signals.push({ type: 'bull', label: 'Solid Margins', note: `${(gm * 100).toFixed(1)}% gross margin. Healthy spread between revenue and cost of goods.` })
+    } else if (gm > 0.1) {
+      bearScore += 1
+      signals.push({ type: 'warn', label: 'Thin Margins', note: `${(gm * 100).toFixed(1)}% gross margin. Limited buffer against cost inflation or competitive pressure.` })
+    } else {
+      bearScore += 2
+      signals.push({ type: 'bear', label: 'Margin Risk', note: `Gross margin of just ${(gm * 100).toFixed(1)}%. Very little room for error on the cost side.` })
+    }
   }
 
-  // ===== RETURN ON EQUITY =====
-  if (roe > 0.2) {
-    score.bull += 3
-    insights.push('🟢 Exceptional ROE: >20% shows outstanding capital efficiency.')
-  } else if (roe > 0.15) {
-    score.bull += 2
-    insights.push('🟡 Strong ROE: 15-20% indicates good management capital allocation.')
-  } else if (roe > 0.1) {
-    score.bull += 1
-    insights.push('🟠 Adequate ROE: 10-15% is moderate but acceptable.')
-  } else if (roe > 0) {
-    score.bear += 1
-    insights.push('🟠 Weak ROE: <10% suggests poor capital returns.')
+  // 4. Forward P/E
+  const pe = metrics?.forward_pe
+  if (pe != null && pe > 0) {
+    if (pe < 15) {
+      bullScore += 2
+      signals.push({ type: 'bull', label: 'Attractive Valuation', note: `Forward P/E of ${pe.toFixed(1)}x — trading at a discount relative to historical market averages.` })
+    } else if (pe < 30) {
+      bullScore += 1
+      signals.push({ type: 'bull', label: 'Fair Valuation', note: `Forward P/E of ${pe.toFixed(1)}x. Reasonable for a quality business with growth prospects.` })
+    } else if (pe < 50) {
+      bearScore += 1
+      signals.push({ type: 'warn', label: 'Premium Priced', note: `Forward P/E of ${pe.toFixed(1)}x. Market is pricing in significant future growth — execution risk is elevated.` })
+    } else {
+      bearScore += 2
+      signals.push({ type: 'bear', label: 'Expensive', note: `Forward P/E of ${pe.toFixed(1)}x. Valuation leaves little margin of safety. Sentiment-driven risk.` })
+    }
   }
 
-  // ===== GROWTH =====
-  if (growth > 0.25) {
-    score.bull += 3
-    insights.push('🟢 Exceptional growth: >25% YoY revenue growth is remarkable.')
-  } else if (growth > 0.15) {
-    score.bull += 2
-    insights.push('🟡 Strong growth: 15-25% indicates above-market expansion.')
-  } else if (growth > 0.05) {
-    score.bull += 1
-    insights.push('🟡 Moderate growth: 5-15% is steady but not exceptional.')
-  } else if (growth >= 0) {
-    score.bear += 1
-    insights.push('🟠 Slow growth: <5% suggests maturity or headwinds.')
-  } else if (growth < 0) {
-    score.bear += 3
-    insights.push('🔴 Revenue decline: Negative growth requires investigation.')
+  // 5. Revenue YoY Growth
+  const rev = metrics?.revenue_yoy
+  if (rev != null) {
+    if (rev > 0.25) {
+      bullScore += 2
+      signals.push({ type: 'bull', label: 'Hyper Growth', note: `Revenue growing at ${(rev * 100).toFixed(1)}% YoY — well above market average. Strong demand momentum.` })
+    } else if (rev > 0.08) {
+      bullScore += 1
+      signals.push({ type: 'bull', label: 'Healthy Growth', note: `${(rev * 100).toFixed(1)}% revenue growth YoY. Business is expanding at a solid pace.` })
+    } else if (rev >= 0) {
+      signals.push({ type: 'warn', label: 'Slow Growth', note: `Revenue grew only ${(rev * 100).toFixed(1)}% YoY. Growth may be plateauing — watch for re-acceleration catalysts.` })
+    } else {
+      bearScore += 2
+      signals.push({ type: 'bear', label: 'Revenue Decline', note: `Revenue contracted ${(Math.abs(rev) * 100).toFixed(1)}% YoY. Demand headwinds or structural challenges present.` })
+    }
   }
 
-  // ===== LEVERAGE (Debt-to-Equity) =====
-  if (debt > 0 && debt < 0.5) {
-    score.bull += 2
-    insights.push('🟢 Conservative leverage: Low debt provides financial flexibility.')
-  } else if (debt >= 0.5 && debt < 1.5) {
-    score.bear += 0
-    insights.push('🟡 Moderate leverage: 0.5-1.5 D/E is manageable for most sectors.')
-  } else if (debt >= 1.5 && debt < 3) {
-    score.bear += 1
-    insights.push('🟠 Elevated debt: >1.5 D/E raises refinancing and default risk.')
-  } else if (debt >= 3) {
-    score.bear += 3
-    insights.push('🔴 High leverage: >3.0 D/E signals potential financial distress.')
-  }
+  // Derive verdict
+  const net = bullScore - bearScore
+  let verdict
+  if (net >= 5)       verdict = 'Strong Buy'
+  else if (net >= 2)  verdict = 'Bullish'
+  else if (net >= -1) verdict = 'Neutral'
+  else if (net >= -3) verdict = 'Caution'
+  else                verdict = 'Risk Elevated'
 
-  // ===== FREE CASH FLOW =====
-  if (fcf > 0) {
-    score.bull += 2
-    insights.push('🟢 Positive FCF: Strong cash generation supports dividends and buybacks.')
-  } else if (fcf === 0) {
-    score.bear += 1
-    insights.push('🟠 No FCF: Company burns cash—sustainability is questionable.')
-  } else if (fcf < 0) {
-    score.bear += 2
-    insights.push('🔴 Negative FCF: Cash burn limits growth optionality.')
-  }
+  const total = bullScore + bearScore || 1
+  const score = Math.round(50 + (net / total) * 40)
 
-  // ===== WAR CHEST RATIO (Cash/Debt) =====
-  if (wcr && wcr > 2) {
-    score.bull += 2
-    insights.push('🟢 Strong cash position: High cash/debt ratio enables M&A and weathering downturns.')
-  } else if (wcr && wcr > 1) {
-    score.bull += 1
-    insights.push('🟡 Adequate liquidity: More cash than debt provides safety.')
-  }
+  return { verdict, score: Math.min(95, Math.max(10, score)), signals, bullScore, bearScore }
+}
 
-  // ===== COMPOSITE VERDICT =====
-  const bull_threshold = 10
-  const bear_threshold = 10
-  
-  let verdict = 'Balanced outlook'
-  let color = '🟡'
-  
-  if (score.bull >= score.bear + 6) {
-    verdict = 'Strong bullish signal'
-    color = '🟢'
-  } else if (score.bull >= score.bear + 3) {
-    verdict = 'Moderately bullish'
-    color = '🟢'
-  } else if (score.bear >= score.bull + 6) {
-    verdict = 'Strong risk indicators'
-    color = '🔴'
-  } else if (score.bear >= score.bull + 3) {
-    verdict = 'Bearish headwinds'
-    color = '🟠'
-  }
-
-  const confidence = Math.min(92, Math.max(45, 55 + (score.bull - score.bear) * 6))
-
-  return {
-    verdict: `${color} ${verdict}`,
-    confidence: Math.round(confidence),
-    insights: insights.slice(0, 5),
-    score
-  }
+const SIGNAL_ICONS = {
+  bull: '↑',
+  warn: '~',
+  bear: '↓',
+}
+const SIGNAL_COLORS = {
+  bull: { bg: '#f0fdf4', border: '#bbf7d0', icon: '#16a34a', text: '#15803d', label: '#166534' },
+  warn: { bg: '#fefce8', border: '#fef08a', icon: '#ca8a04', text: '#92400e', label: '#854d0e' },
+  bear: { bg: '#fef2f2', border: '#fecaca', icon: '#dc2626', text: '#b91c1c', label: '#991b1b' },
 }
 
 export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, loading }) {
   if (loading) return null
 
-  const assessment = buildSignals(metrics)
+  if (isEtf) {
+    return (
+      <div style={{
+        background: 'var(--surface)', border: '1px solid var(--border)',
+        borderLeft: '3px solid #475569', borderRadius: 'var(--r)',
+        padding: '18px 20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700, color: '#fff', background: '#475569',
+            padding: '3px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em'
+          }}>Quantitative Assessment</span>
+          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--faint)' }}>
+            {ticker} · Fund Analysis
+          </span>
+        </div>
+        <p style={{ fontSize: 14, color: 'var(--muted)', lineHeight: 1.6 }}>
+          ETF detected. Individual company metrics are not applicable. Evaluate this fund based on 
+          its expense ratio, underlying index methodology, tracking error, and sector/geographic exposure.
+        </p>
+      </div>
+    )
+  }
+
+  const { verdict, score, signals, bullScore, bearScore } = buildSignals(metrics)
+  const vs = VERDICT_STYLES[verdict] || VERDICT_STYLES['Neutral']
+
+  const hasData = signals.length > 0
 
   return (
-    <div className="ai-card">
-      <div className="ai-head">
-        <span className="ai-badge">Rule-Based Assessment</span>
-        <span className="ai-sub">{ticker} · Deterministic Analysis Engine</span>
+    <div style={{
+      background: 'var(--surface)', border: '1px solid var(--border)',
+      borderLeft: `3px solid ${vs.border}`, borderRadius: 'var(--r)',
+      padding: '18px 20px', overflow: 'hidden'
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+        <span style={{
+          fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--accent)',
+          padding: '3px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em'
+        }}>Quantitative Assessment</span>
+        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--faint)' }}>
+          {ticker} · Rule-Based Engine
+        </span>
       </div>
 
-      <div className="ai-body">
-        {isEtf ? (
-          <p>📊 ETF detected. Portfolio-level diversification naturally reduces single-company risk concentration.</p>
-        ) : (
-          <>
-            <p><strong>Verdict:</strong> {assessment.verdict}</p>
-            <p><strong>Confidence:</strong> {assessment.confidence}%</p>
-            <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
-              {assessment.insights.map((insight, idx) => (
-                <div key={idx} className="metric-chip">{insight}</div>
-              ))}
+      {!hasData ? (
+        <p style={{ fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>
+          Insufficient data to generate a signal. Try a well-covered ticker.
+        </p>
+      ) : (
+        <>
+          {/* Verdict row */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16,
+            padding: '12px 14px', borderRadius: 10,
+            background: vs.bg, border: `1px solid ${vs.border}`
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: vs.text, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 2 }}>
+                Overall Verdict
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: vs.text }}>{verdict}</div>
             </div>
-          </>
-        )}
-      </div>
+            {/* Score gauge */}
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 28, fontWeight: 400, color: vs.border, lineHeight: 1 }}>
+                {score}
+              </div>
+              <div style={{ fontSize: 10, color: vs.text, fontWeight: 600, letterSpacing: '.06em' }}>/ 100</div>
+            </div>
+          </div>
+
+          {/* Bull/Bear tally */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <div style={{
+              flex: 1, padding: '7px 10px', borderRadius: 8,
+              background: '#f0fdf4', border: '1px solid #bbf7d0',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#16a34a' }}>{bullScore}</div>
+              <div style={{ fontSize: 10, color: '#15803d', fontWeight: 600, letterSpacing: '.06em' }}>BULL SIGNALS</div>
+            </div>
+            <div style={{
+              flex: 1, padding: '7px 10px', borderRadius: 8,
+              background: '#fef2f2', border: '1px solid #fecaca',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#dc2626' }}>{bearScore}</div>
+              <div style={{ fontSize: 10, color: '#b91c1c', fontWeight: 600, letterSpacing: '.06em' }}>BEAR SIGNALS</div>
+            </div>
+          </div>
+
+          {/* Individual signals */}
+          <div style={{ display: 'grid', gap: 8 }}>
+            {signals.map((sig, i) => {
+              const sc = SIGNAL_COLORS[sig.type]
+              return (
+                <div key={i} style={{
+                  display: 'flex', gap: 10, alignItems: 'flex-start',
+                  padding: '10px 12px', borderRadius: 9,
+                  background: sc.bg, border: `1px solid ${sc.border}`
+                }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: 6, flexShrink: 0,
+                    background: sc.icon, color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, fontWeight: 700, marginTop: 1
+                  }}>
+                    {SIGNAL_ICONS[sig.type]}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: sc.label, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 2 }}>
+                      {sig.label}
+                    </div>
+                    <div style={{ fontSize: 13, color: sc.text, lineHeight: 1.5 }}>
+                      {sig.note}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
     </div>
   )
 }

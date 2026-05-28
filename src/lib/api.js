@@ -23,15 +23,28 @@ export const api = {
     return res.json()
   },
 
-  bulkPrices: async (tickers) => {
-    const res = await fetch(`${BASE}/bulk_prices?tickers=${encodeURIComponent(tickers)}`)
-    if (!res.ok) throw new Error('bulk prices failed')
-    return res.json()
-  },
+  // checks supabase cache first, only calls the api if no cached result exists
+  aiScan: async (ticker, signal) => {
+    // 1. check cache
+    const { data } = await supabase
+      .from('global_metrics')
+      .select('ai_scan')
+      .eq('ticker', ticker)
+      .single()
 
-  bulkSectors: async (tickers) => {
-    const res = await fetch(`${BASE}/bulk_sectors?tickers=${encodeURIComponent(tickers)}`)
-    if (!res.ok) throw new Error('bulk sectors failed')
-    return res.json()
+    if (data?.ai_scan) return data.ai_scan
+
+    // 2. cache miss — call the api
+    const res = await fetch(`${BASE}/ai/${ticker}`, { signal })
+    if (!res.ok) throw new Error('ai scan failed')
+    const result = await res.json()
+
+    // 3. persist to supabase for next time
+    await supabase
+      .from('global_metrics')
+      .update({ ai_scan: result })
+      .eq('ticker', ticker)
+
+    return result
   },
 }

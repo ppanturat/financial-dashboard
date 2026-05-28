@@ -3,13 +3,14 @@ import { api } from '../lib/api'
 import { cleanDescription } from '../lib/formatters'
 
 export function useStockData(ticker, timeframe) {
-  const [chartData, setChartData]       = useState([])
+  const [chartData, setChartData] = useState([])
   const [currentPrice, setCurrentPrice] = useState(null)
-  const [quoteType, setQuoteType]       = useState('EQUITY')
-  const [sector, setSector]             = useState(null)
-  const [metrics, setMetrics]           = useState(null)
-  const [description, setDescription]   = useState('')
-  const [loadingData, setLoadingData]   = useState(false)
+  const [quoteType, setQuoteType] = useState('EQUITY')
+  const [metrics, setMetrics] = useState(null)
+  const [description, setDescription] = useState('')
+  const [aiScan, setAiScan] = useState(null)
+  const [loadingData, setLoadingData] = useState(false)
+  const [loadingAi, setLoadingAi] = useState(false)
 
   const prevTickerRef = useRef(null)
 
@@ -23,10 +24,11 @@ export function useStockData(ticker, timeframe) {
     const run = async () => {
       if (isNewTicker) {
         setLoadingData(true)
+        setLoadingAi(true)
         setMetrics(null)
+        setAiScan(null)
         setCurrentPrice(null)
         setDescription('')
-        setSector(null)
       }
 
       try {
@@ -38,15 +40,26 @@ export function useStockData(ticker, timeframe) {
 
         if (isNewTicker) {
           setQuoteType(data.quoteType ?? 'EQUITY')
-          setSector(data.sector ?? null)
           setMetrics(data.metrics ?? null)
           setDescription(cleanDescription(data.description ?? ''))
           setLoadingData(false)
+
+          if (data.quoteType !== 'ETF') {
+            setLoadingAi(true)
+            try {
+              const ai = await api.aiScan(ticker, ctrl.signal)
+              setAiScan(ai)
+            } catch { /* ai is optional */ }
+            setLoadingAi(false)
+          } else {
+            setLoadingAi(false)
+          }
         }
       } catch (e) {
         if (e.name !== 'AbortError' && isNewTicker) {
-          setDescription('Failed to fetch data.')
+          setDescription('failed to fetch data.')
           setLoadingData(false)
+          setLoadingAi(false)
         }
       }
     }
@@ -63,7 +76,7 @@ export function useStockData(ticker, timeframe) {
     : null
 
   return {
-    chartData, currentPrice, quoteType, sector, metrics, description,
-    loadingData, graphColor, priceChange,
+    chartData, currentPrice, quoteType, metrics, description, aiScan,
+    loadingData, loadingAi, graphColor, priceChange,
   }
 }

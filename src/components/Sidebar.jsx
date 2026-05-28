@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 
 export function Sidebar({ 
   session, activeTab, setActiveTab, folders, activeFolderId, fetchingFolders, marketFolders, 
-  isOpen, onSelectFolder, onCreateFolder, onImportFolder, onRenameFolder, onDeleteFolder, onSignOut,
-  socialProfile, pendingIncomingCount
+  isOpen, onSelectFolder, onCreateFolder, onImportFolder, onRenameFolder, onDeleteFolder, onSignOut 
 }) {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
@@ -82,21 +81,11 @@ export function Sidebar({
       <div className="sidebar-tabs">
         <button className={activeTab === 'market' ? 'active' : ''} onClick={() => setActiveTab('market')}>Market View</button>
         <button className={activeTab === 'portfolio' ? 'active' : ''} onClick={() => setActiveTab('portfolio')}>Portfolio</button>
-        <button className={activeTab === 'social' ? 'active' : ''} onClick={() => setActiveTab('social')} style={{ position: 'relative' }}>
-          Feed
-          {pendingIncomingCount > 0 && (
-            <span style={{
-              position: 'absolute', top: 2, right: 2,
-              width: 8, height: 8, borderRadius: '50%',
-              background: 'var(--red)', border: '1.5px solid var(--surface)',
-            }} />
-          )}
-        </button>
+        <button className={activeTab === 'social' ? 'active' : ''} onClick={() => setActiveTab('social')}>Network</button>
       </div>
 
-      {activeTab !== 'social' && <p className="sidebar-label">{activeTab === 'market' ? 'Market Folders' : 'Portfolio Folders'}</p>}
+      <p className="sidebar-label">{activeTab === 'market' ? 'Market Folders' : activeTab === 'portfolio' ? 'Portfolio Folders' : 'Your Network'}</p>
 
-      {activeTab !== 'social' && (
       <nav className="sidebar-nav">
         {fetchingFolders ? (
           <p className="sidebar-loading">Loading...</p>
@@ -198,7 +187,6 @@ export function Sidebar({
           </>
         )}
       </nav>
-      )}
 
       <div className="sidebar-footer">
         <span className="user-email">{session?.user?.email}</span>
