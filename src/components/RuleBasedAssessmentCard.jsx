@@ -88,26 +88,117 @@ function buildParagraph(metrics = {}) {
 }
 
 // ETF holdings breakdown component
+// Derive quick facts from holdings tickers to build a smart narrative
+function buildEtfNarrative(ticker, holdings) {
+  if (!holdings?.length) return null
+
+  const tickers = holdings.map(h => h.ticker?.toUpperCase())
+  const top5 = holdings.slice(0, 5)
+  const top10Weight = holdings.slice(0, 10).reduce((s, h) => s + (h.weight || 0), 0)
+  const top1Weight = holdings[0]?.weight || 0
+  const count = holdings.length
+
+  // Concentration check
+  const concentrated = top10Weight > 0.5
+  const megaConcentrated = top1Weight > 0.10
+
+  // Sector sniffing from well-known tickers
+  const TECH = ['AAPL','MSFT','NVDA','GOOGL','GOOG','META','AMZN','AVGO','TSM','ASML','AMD','INTC','ORCL','CRM','ADBE','QCOM','TXN','AMAT','LRCX','KLAC']
+  const HEALTH = ['JNJ','UNH','LLY','ABBV','PFE','MRK','TMO','ABT','DHR','BMY','AMGN','GILD','ISRG','REGN','VRTX','BSX','ELV','CI','CVS','HUM']
+  const FINANCE = ['BRK-B','JPM','V','MA','BAC','WFC','GS','MS','BLK','SCHW','AXP','USB','PNC','TFC','COF','ICE','CME','MMC','AON','SPGI']
+  const ENERGY = ['XOM','CVX','COP','SLB','EOG','OXY','PSX','VLO','MPC','KMI','WMB','PXD','DVN','HES','FANG']
+
+  const techCount = tickers.filter(t => TECH.includes(t)).length
+  const healthCount = tickers.filter(t => HEALTH.includes(t)).length
+  const financeCount = tickers.filter(t => FINANCE.includes(t)).length
+  const energyCount = tickers.filter(t => ENERGY.includes(t)).length
+
+  // Known dividend-focused ETFs
+  const DIVIDEND_ETFS = ['VYM','SCHD','DVY','HDV','DGRO','SDY','VIG','NOBL','SPHD','SPYD','IDV','PFF']
+  const GROWTH_ETFS = ['QQQ','VGT','XLK','ARKK','IGV','SOXX','SMH','WCLD','CLOU','SKYY']
+  const BROAD_ETFS = ['VOO','SPY','IVV','VTI','SCHB','ITOT','SPTM','VT','ACWI','URTH']
+  const INTL_ETFS = ['VEA','VWO','IEFA','EEM','EFA','VXUS','IXUS','ACWX','VEU','SCHF']
+  const BOND_ETFS = ['BND','AGG','LQD','HYG','TLT','IEF','SHY','VCIT','VCSH','BSV','BIV','BNDX']
+
+  const t = ticker.toUpperCase()
+  const isDividend = DIVIDEND_ETFS.includes(t)
+  const isGrowth = GROWTH_ETFS.includes(t)
+  const isBroad = BROAD_ETFS.includes(t)
+  const isIntl = INTL_ETFS.includes(t)
+  const isBond = BOND_ETFS.includes(t)
+  const isTechHeavy = techCount >= 3 || (techCount >= 2 && top5.some(h => TECH.includes(h.ticker?.toUpperCase())))
+
+  const lines = []
+
+  // Composition sentence
+  if (isBroad) {
+    lines.push(`Broad market U.S. equity fund with ${count} holdings — designed to track the overall market rather than a specific sector.`)
+  } else if (isGrowth || isTechHeavy) {
+    lines.push(`Tech-heavy growth fund — the top holdings are dominated by large-cap technology and semiconductors, giving it high beta and sensitivity to rate moves.`)
+  } else if (isDividend) {
+    lines.push(`Income-focused fund that selects stocks for dividend yield and consistency — expect lower volatility but limited upside in bull runs.`)
+  } else if (isIntl) {
+    lines.push(`International equity exposure outside the U.S. — useful for diversifying away from domestic market concentration.`)
+  } else if (isBond) {
+    lines.push(`Fixed income fund — returns driven by interest rate direction rather than equity market performance.`)
+  } else if (healthCount >= 3) {
+    lines.push(`Healthcare-tilted fund — defensive sector with lower cyclicality, but sensitive to drug pricing policy and regulatory risk.`)
+  } else if (financeCount >= 3) {
+    lines.push(`Financials-heavy fund — performance closely tied to interest rate spreads, credit conditions, and economic cycles.`)
+  } else if (energyCount >= 3) {
+    lines.push(`Energy sector fund — highly cyclical, driven by commodity prices and global supply-demand dynamics.`)
+  } else {
+    lines.push(`Diversified fund with ${count} positions spanning multiple sectors.`)
+  }
+
+  // Concentration warning or praise
+  if (megaConcentrated) {
+    lines.push(`Notably concentrated — the top holding alone accounts for ${(top1Weight * 100).toFixed(1)}% of assets, meaning single-stock risk is elevated.`)
+  } else if (concentrated) {
+    lines.push(`Moderately concentrated — the top 10 names make up ${(top10Weight * 100).toFixed(0)}% of the fund, so a handful of companies drive most of the return.`)
+  } else {
+    lines.push(`Well-diversified — top 10 holdings are only ${(top10Weight * 100).toFixed(0)}% of assets, limiting single-name impact.`)
+  }
+
+  // Dividend stance
+  if (isDividend) {
+    lines.push(`Distributions are paid out as dividends — suitable if you want regular income rather than reinvested growth.`)
+  } else if (isBroad || isTechHeavy || isGrowth) {
+    lines.push(`Most broad/growth ETFs reinvest or distribute minimal dividends — total return comes primarily from price appreciation.`)
+  }
+
+  // Who should buy
+  const buyers = []
+  if (isBroad) buyers.push('passive investors seeking low-cost market exposure')
+  if (isGrowth || isTechHeavy) buyers.push('growth-oriented investors comfortable with higher volatility')
+  if (isDividend) buyers.push('income-seekers and retirees prioritising cash flow')
+  if (isIntl) buyers.push('investors looking to reduce U.S. home-country bias')
+  if (isBond) buyers.push('conservative investors or those hedging equity risk')
+  if (!buyers.length) buyers.push('investors seeking targeted sector exposure')
+
+  lines.push(`Best suited for: ${buyers.join(' and ')}.`)
+
+  return lines
+}
+
 function EtfHoldingsBreakdown({ holdings }) {
   if (!holdings?.length) return null
 
   const topHoldings = holdings.slice(0, 10)
   const maxPct = topHoldings[0]?.weight || 1
 
-  const barColor = (i) => {
-    const colors = ['#16a34a', '#22c55e', '#4ade80', '#86efac', '#bbf7d0']
-    return colors[Math.min(i, colors.length - 1)]
-  }
+  // Blue-to-indigo gradient palette
+  const BAR_COLORS = ['#2563eb','#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#6366f1','#818cf8','#a5b4fc','#c7d2fe','#e0e7ff']
 
   return (
-    <div style={{ marginTop: 16 }}>
+    <div style={{ marginTop: 18 }}>
       <div style={{
         fontSize: 11, fontWeight: 700, color: 'var(--muted)',
         letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10,
       }}>
         Top Holdings
       </div>
-      <div style={{ display: 'grid', gap: 6 }}>
+      <div style={{ display: 'grid', gap: 7 }}>
         {topHoldings.map((h, i) => (
           <div key={h.ticker || i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{
@@ -118,8 +209,8 @@ function EtfHoldingsBreakdown({ holdings }) {
               <div style={{
                 height: '100%', borderRadius: 3,
                 width: `${(h.weight / maxPct) * 100}%`,
-                background: barColor(i),
-                transition: 'width .4s ease',
+                background: BAR_COLORS[i] || BAR_COLORS[BAR_COLORS.length - 1],
+                transition: 'width .5s ease',
               }} />
             </div>
             <span style={{
@@ -150,28 +241,37 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
 
   if (isEtf) {
     const hasHoldings = etfHoldings?.length > 0
-    const totalShown = etfHoldings?.slice(0, 10).reduce((s, h) => s + (h.weight || 0), 0) || 0
+    const narrative = hasHoldings ? buildEtfNarrative(ticker, etfHoldings) : null
 
     return (
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--border)',
-        borderLeft: '3px solid #475569', borderRadius: 'var(--r)',
+        borderLeft: '3px solid #3b82f6', borderRadius: 'var(--r)',
         padding: '18px 20px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#475569', padding: '3px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#2563eb', padding: '3px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
             Fund Analysis
           </span>
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--faint)' }}>
             {ticker} · ETF
           </span>
         </div>
-        <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7, margin: 0 }}>
-          {hasHoldings
-            ? `This ETF holds ${etfHoldings.length} positions. The top 10 holdings represent ${(totalShown * 100).toFixed(1)}% of fund assets. Evaluate this fund based on its expense ratio, underlying index methodology, tracking error, and sector or geographic exposure.`
-            : 'ETF detected. Individual company metrics are not applicable. Evaluate this fund based on its expense ratio, underlying index methodology, tracking error, and sector or geographic exposure.'
-          }
-        </p>
+
+        {narrative ? (
+          <div style={{ display: 'grid', gap: 6 }}>
+            {narrative.map((line, i) => (
+              <p key={i} style={{ fontSize: 13.5, color: i === narrative.length - 1 ? 'var(--muted)' : 'var(--text)', lineHeight: 1.65, margin: 0 }}>
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7, margin: 0 }}>
+            ETF detected. Evaluate this fund based on its expense ratio, underlying index methodology, tracking error, and sector or geographic exposure.
+          </p>
+        )}
+
         {hasHoldings && <EtfHoldingsBreakdown holdings={etfHoldings} />}
       </div>
     )
