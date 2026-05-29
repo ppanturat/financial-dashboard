@@ -160,7 +160,7 @@ export function usePortfolio(session) {
   }
 
   return { 
-    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders,
+    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders, togglePortfolioPrivacy,
     holdings, livePrices, loadingHoldings, 
     createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder, 
     saveHolding, removeHolding 

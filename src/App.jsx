@@ -26,7 +26,7 @@ export default function App() {
   
   // portfolio state
   const { 
-    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading,
+    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading, togglePortfolioPrivacy,
     holdings, livePrices, loadingHoldings, 
     createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder, 
     saveHolding, removeHolding 
@@ -163,7 +163,7 @@ export default function App() {
               openConfirmModal={confirm} 
             />
           ) : (
-            <SocialView social={social} portfolioFolders={portfolioFolders} session={session} />
+            <SocialView social={social} portfolioFolders={portfolioFolders} session={session} togglePortfolioPrivacy={togglePortfolioPrivacy} />
           )}
         </div>
       </main>

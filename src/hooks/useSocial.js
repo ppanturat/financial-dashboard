@@ -66,13 +66,6 @@ export function useSocial(session) {
     setProfile(prev => ({ ...prev, ...payload }))
   }
 
-  const togglePortfolioPrivacy = async (folderId, isPublic) => {
-    await supabase
-      .from('portfolio_folders')
-      .update({ is_public: isPublic })
-      .eq('id', folderId)
-  }
-
   const filteredProfiles = profiles.filter(p => {
     const q = searchTerm.toLowerCase()
     return (
@@ -92,6 +85,5 @@ export function useSocial(session) {
     setSearchTerm,
     profile,
     updateProfile,
-    togglePortfolioPrivacy
   }
 }

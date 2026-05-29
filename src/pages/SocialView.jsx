@@ -289,7 +289,7 @@ const searchInputStyle = {
 }
 
 // ── Main SocialView ───────────────────────────────────────────────────────────
-export function SocialView({ social, portfolioFolders, session }) {
+export function SocialView({ social, portfolioFolders, session, togglePortfolioPrivacy }) {
   const [editing, setEditing] = useState(false)
   const [searchVal, setSearchVal] = useState('')
   const [pendingSent, setPendingSent] = useState(new Set())
@@ -404,7 +404,7 @@ export function SocialView({ social, portfolioFolders, session }) {
                 </div>
                 <PrivacyToggle
                   isPublic={folder.is_public}
-                  onClick={() => social.togglePortfolioPrivacy(folder.id, !folder.is_public)}
+                  onClick={() => togglePortfolioPrivacy(folder.id, !folder.is_public)}
                 />
               </div>
             ))}
