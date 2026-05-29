@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { supabase } from './lib/supabaseClient'
 import { useAuth } from './hooks/useAuth'
 import { useFolders } from './hooks/useFolders'
 import { usePortfolio } from './hooks/usePortfolio'
@@ -26,11 +27,16 @@ export default function App() {
   
   // portfolio state
   const { 
-    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading, togglePortfolioPrivacy,
+    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading, togglePortfolioPrivacy: _togglePrivacy,
     holdings, livePrices, loadingHoldings, 
     createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder, 
     saveHolding, removeHolding 
   } = usePortfolio(session)
+
+  // safe wrapper — works whether usePortfolio exports it or not
+  const togglePortfolioPrivacy = _togglePrivacy ?? ((folderId, isPublic) => {
+    supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
+  })
 
   const [activeTab, setActiveTab]             = useState('market')
   const [activeFolderId, setActiveFolderId]   = useState(null)
