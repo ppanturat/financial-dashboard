@@ -169,23 +169,29 @@ def get_bulk_sectors(tickers: str):
 
 @app.get("/api/etf-holdings/{ticker}")
 def get_etf_holdings(ticker: str):
-    """Returns top holdings for an ETF with ticker symbol and weight."""
+    """Returns top holdings for an ETF.
+    
+    DataFrame from yfinance.funds_data.top_holdings has:
+      - index: "Symbol" (the ticker, e.g. "AAPL")
+      - columns: "Name", "Holding Percent" (0–1 float, e.g. 0.072 = 7.2%)
+    """
     try:
         stock = yf.Ticker(ticker)
-        holdings = stock.fund_top_holdings
+        df = stock.funds_data.top_holdings  # raises if Yahoo returns 403/empty
 
-        if holdings is None or holdings.empty:
+        if df is None or df.empty:
             return []
 
         result = []
-        for _, row in holdings.iterrows():
+        for symbol, row in df.iterrows():
+            weight = row.get("Holding Percent", 0)
+            # yfinance already gives it as 0–1 (e.g. 0.072), no /100 needed
             result.append({
-                "ticker": str(_.strip()) if isinstance(_, str) else str(_),
-                "weight": round(float(row.get("Holding Percent", 0)) / 100, 6),
-                "name": str(row.get("Holding Name", "")) or None,
+                "ticker": str(symbol),
+                "weight": round(float(weight), 6),
+                "name": str(row.get("Name", "")) or None,
             })
 
-        # Sort descending by weight, top 25
         result.sort(key=lambda x: x["weight"], reverse=True)
         return result[:25]
 
