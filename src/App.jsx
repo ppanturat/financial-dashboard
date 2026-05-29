@@ -1,14 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
+import { supabase } from './lib/supabaseClient'
 import { useAuth } from './hooks/useAuth'
 import { useFolders } from './hooks/useFolders'
 import { usePortfolio } from './hooks/usePortfolio'
 import { useStockData } from './hooks/useStockData'
 import { useSearch } from './hooks/useSearch'
 import { useModal } from './hooks/useModal'
+import { useSocial } from './hooks/useSocial'
 
 import { AuthPage } from './pages/AuthPage'
 import { MarketView } from './pages/MarketView'
 import { PortfolioView } from './pages/PortfolioView'
+import { SocialView } from './pages/SocialView'
 
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
@@ -24,11 +27,16 @@ export default function App() {
   
   // portfolio state
   const { 
-    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading,
+    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading, togglePortfolioPrivacy: _togglePrivacy,
     holdings, livePrices, loadingHoldings, 
     createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder, 
     saveHolding, removeHolding 
   } = usePortfolio(session)
+
+  // safe wrapper — works whether usePortfolio exports it or not
+  const togglePortfolioPrivacy = _togglePrivacy ?? ((folderId, isPublic) => {
+    supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
+  })
 
   const [activeTab, setActiveTab]             = useState('market')
   const [activeFolderId, setActiveFolderId]   = useState(null)
@@ -37,6 +45,7 @@ export default function App() {
 
   const { modal, confirm, close: closeModal, execute: executeModal } = useModal()
   const search = useSearch()
+  const social = useSocial(session)
   const searchRef = useRef(null)
 
   // auto-select first market folder + ticker
@@ -121,6 +130,8 @@ export default function App() {
         onRenameFolder={handleRenameFolder}
         onDeleteFolder={handleDeleteFolder}
         onSignOut={signOut}
+        followedUsers={social.followedUsers}
+        pendingRequests={social.requests}
       />
 
       <main className="main">
@@ -146,7 +157,7 @@ export default function App() {
               activeTicker={activeTicker} 
               foldersLoading={foldersLoading} 
             />
-          ) : (
+          ) : activeTab === 'portfolio' ? (
             <PortfolioView 
               activePortfolioId={activePortfolioId}
               holdings={holdings}
@@ -157,6 +168,8 @@ export default function App() {
               removeHolding={removeHolding}
               openConfirmModal={confirm} 
             />
+          ) : (
+            <SocialView social={social} portfolioFolders={portfolioFolders} session={session} togglePortfolioPrivacy={togglePortfolioPrivacy} />
           )}
         </div>
       </main>

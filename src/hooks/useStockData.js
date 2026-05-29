@@ -9,6 +9,7 @@ export function useStockData(ticker, timeframe) {
   const [metrics, setMetrics] = useState(null)
   const [description, setDescription] = useState('')
   const [aiScan, setAiScan] = useState(null)
+  const [etfHoldings, setEtfHoldings] = useState(null)
   const [loadingData, setLoadingData] = useState(false)
   const [loadingAi, setLoadingAi] = useState(false)
 
@@ -27,6 +28,7 @@ export function useStockData(ticker, timeframe) {
         setLoadingAi(true)
         setMetrics(null)
         setAiScan(null)
+        setEtfHoldings(null)
         setCurrentPrice(null)
         setDescription('')
       }
@@ -52,6 +54,11 @@ export function useStockData(ticker, timeframe) {
             } catch { /* ai is optional */ }
             setLoadingAi(false)
           } else {
+            // fetch ETF top holdings for the breakdown display
+            try {
+              const holdings = await api.etfHoldings(ticker, ctrl.signal)
+              setEtfHoldings(holdings ?? [])
+            } catch { setEtfHoldings([]) }
             setLoadingAi(false)
           }
         }
@@ -76,7 +83,7 @@ export function useStockData(ticker, timeframe) {
     : null
 
   return {
-    chartData, currentPrice, quoteType, metrics, description, aiScan,
+    chartData, currentPrice, quoteType, metrics, description, aiScan, etfHoldings,
     loadingData, loadingAi, graphColor, priceChange,
   }
 }

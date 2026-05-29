@@ -456,11 +456,11 @@ export function PortfolioView({
           <h3 className="desc-title">Asset Allocation</h3>
           {pieDataWithPct.length > 0 ? (
             <>
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
                     data={pieDataWithPct} dataKey="currentValue" nameKey="ticker"
-                    cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={2}
+                    cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}
                   >
                     {pieDataWithPct.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
