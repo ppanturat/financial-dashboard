@@ -246,11 +246,11 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
     return (
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--border)',
-        borderLeft: '3px solid #3b82f6', borderRadius: 'var(--r)',
+        borderLeft: '3px solid #000000', borderRadius: 'var(--r)',
         padding: '18px 20px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#2563eb', padding: '3px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#000000', padding: '3px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
             Fund Analysis
           </span>
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--faint)' }}>
