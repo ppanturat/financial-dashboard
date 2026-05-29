@@ -155,7 +155,7 @@
 
 /* portfolio table */
 .port-table-container { overflow-x: auto; padding: 0; }
-.port-table-container .desc-title { padding: 16px 20px; border-bottom: 1px solid var(--border); margin: 0; }
+.port-table-container .desc-title { font-family: 'Syne', sans-serif; padding: 16px 20px; border-bottom: 1px solid var(--border); margin: 0; }
 .port-table { width: 100%; border-collapse: collapse; text-align: left; }
 .port-table th { font-size: 11px; text-transform: uppercase; color: var(--faint); padding: 12px 20px; border-bottom: 1px solid var(--border); font-weight: 600; letter-spacing: .04em; }
 .port-table td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text); vertical-align: middle; }
