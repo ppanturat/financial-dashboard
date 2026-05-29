@@ -65,7 +65,7 @@ export function MarketView({ activeTicker, foldersLoading }) {
 
       <MetricsGrid metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
       <MetricsSummaryCard metrics={stock.metrics} ticker={activeTicker} isEtf={isEtf} loading={stock.loadingData} />
-      <RuleBasedAssessmentCard ticker={activeTicker} metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
+      <RuleBasedAssessmentCard ticker={activeTicker} metrics={stock.metrics} isEtf={isEtf} etfHoldings={stock.etfHoldings} loading={stock.loadingData} />
     </>
   )
 }

@@ -17,6 +17,12 @@ export const api = {
     return res.json()
   },
 
+  etfHoldings: async (ticker, signal) => {
+    const res = await fetch(`${BASE}/etf-holdings/${ticker}`, { signal })
+    if (!res.ok) throw new Error('etf holdings fetch failed')
+    return res.json()
+  },
+
   dividends: async (tickers, signal) => {
     const res = await fetch(`${BASE}/dividends?tickers=${encodeURIComponent(tickers)}`, { signal })
     if (!res.ok) throw new Error('dividends fetch failed')

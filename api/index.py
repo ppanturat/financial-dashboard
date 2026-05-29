@@ -165,3 +165,29 @@ def get_bulk_sectors(tickers: str):
         except Exception:
             result[t] = {"quoteType": "EQUITY", "sector": None}
     return result
+
+
+@app.get("/api/etf-holdings/{ticker}")
+def get_etf_holdings(ticker: str):
+    """Returns top holdings for an ETF with ticker symbol and weight."""
+    try:
+        stock = yf.Ticker(ticker)
+        holdings = stock.fund_top_holdings
+
+        if holdings is None or holdings.empty:
+            return []
+
+        result = []
+        for _, row in holdings.iterrows():
+            result.append({
+                "ticker": str(_.strip()) if isinstance(_, str) else str(_),
+                "weight": round(float(row.get("Holding Percent", 0)) / 100, 6),
+                "name": str(row.get("Holding Name", "")) or None,
+            })
+
+        # Sort descending by weight, top 25
+        result.sort(key=lambda x: x["weight"], reverse=True)
+        return result[:25]
+
+    except Exception:
+        return []

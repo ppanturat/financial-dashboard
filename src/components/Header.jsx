@@ -51,7 +51,7 @@ export function Header({ activeTab, folderName, tickers, activeTicker, onSelectT
               </div>
             )}
           </>
-        ) : (
+        ) : activeTab === 'social' ? null : (
           <span className="header-vault-name">{folderName ?? 'No Portfolio Selected'}</span>
         )}
       </div>
