@@ -9,6 +9,7 @@ import { EmptyState } from '../components/EmptyState'
 
 export function MarketView({ activeTicker, foldersLoading }) {
   const [timeframe, setTimeframe] = useState('1M')
+  const [profileOpen, setProfileOpen] = useState(false)
   const stock = useStockData(activeTicker, timeframe)
   const isEtf = stock.quoteType === 'ETF'
 
@@ -25,12 +26,43 @@ export function MarketView({ activeTicker, foldersLoading }) {
         onTimeframeChange={setTimeframe}
       />
       <StockChart chartData={stock.chartData} graphColor={stock.graphColor} timeframe={timeframe} loading={stock.loadingData} />
+
       {stock.description && (
         <div className="desc-card">
-          <h3 className="desc-title">Company Profile</h3>
-          <p className="desc-text">{stock.description}</p>
+          {/* Collapsible header */}
+          <button
+            onClick={() => setProfileOpen(o => !o)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+              padding: 0, textAlign: 'left',
+            }}
+          >
+            <h3 className="desc-title" style={{ margin: 0 }}>Company Profile</h3>
+            <span style={{
+              fontSize: 12, color: 'var(--faint)',
+              transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'transform .2s', display: 'inline-block',
+              lineHeight: 1, paddingLeft: 8,
+            }}>▼</span>
+          </button>
+
+          {/* Collapsed preview — first sentence */}
+          {!profileOpen && (
+            <p className="desc-text" style={{ marginTop: 10, marginBottom: 0, color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {stock.description}
+            </p>
+          )}
+
+          {/* Full text when open */}
+          {profileOpen && (
+            <p className="desc-text" style={{ marginTop: 10, marginBottom: 0 }}>
+              {stock.description}
+            </p>
+          )}
         </div>
       )}
+
       <MetricsGrid metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
       <MetricsSummaryCard metrics={stock.metrics} ticker={activeTicker} isEtf={isEtf} loading={stock.loadingData} />
       <RuleBasedAssessmentCard ticker={activeTicker} metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />

@@ -1,9 +1,5 @@
-// generates a comprehensive hardcoded assessment from raw metric values.
-// used as the primary summary — shown even when the ai quota is exhausted.
-
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
-// scores each metric 0–100 and returns a label + colour
 function scoreWarChest(v) {
   if (v == null) return null
   if (v >= 3)   return { score: 95, label: 'Exceptional', color: 'green', note: 'Cash reserves dwarf total debt — near-zero financial distress risk.' }
@@ -23,7 +19,7 @@ function scoreFcf(v) {
   if (b >= 1)   return { score: 75, label: 'Strong',      color: 'green', note: `FCF of $${b.toFixed(1)}B — healthy cash generation supporting operations and returns.` }
   if (b >= 0.1) return { score: 60, label: 'Positive',    color: 'green', note: `Positive FCF — operations generating more cash than they consume.` }
   if (b >= 0)   return { score: 45, label: 'Breakeven',   color: '',      note: 'Near-zero FCF — barely covering operational cash needs.' }
-  if (b >= -0.5) return { score: 30, label: 'Burning',    color: 'yellow', note: `Negative FCF of ${b.toFixed(2)}B — burning cash. Sustainable only with strong growth or reserves.` }
+  if (b >= -0.5) return { score: 30, label: 'Burning',    color: 'yellow', note: `Negative FCF of $${Math.abs(b).toFixed(2)}B — burning cash. Sustainable only with strong growth or reserves.` }
   if (b >= -2)   return { score: 15, label: 'High Burn',  color: 'red',   note: `Significant cash burn of $${Math.abs(b).toFixed(1)}B — survival depends on continued funding.` }
   return           { score: 5,  label: 'Severe Burn', color: 'red',   note: `Extreme cash burn of $${Math.abs(b).toFixed(1)}B — existential risk without immediate capital.` }
 }
@@ -65,38 +61,71 @@ function scoreRevenueYoY(v) {
   return            { score: 8,  label: 'Collapsing',   color: 'red',   note: `${pct.toFixed(1)}% YoY — severe revenue contraction. Business model under serious threat.` }
 }
 
-// builds the overall verdict from the composite score
-function buildVerdict(score, scores) {
+// Builds a rich, paragraph-style verdict from scores
+function buildVerdict(score, scores, metrics) {
   const redFlags = scores.filter(s => s?.color === 'red').length
   const yellows  = scores.filter(s => s?.color === 'yellow').length
   const greens   = scores.filter(s => s?.color === 'green').length
   const available = scores.filter(Boolean).length
 
-  if (available === 0) return { label: 'Insufficient Data', color: 'neutral', text: 'Not enough metrics available to form a meaningful assessment.' }
+  if (available === 0) return {
+    label: 'Insufficient Data', color: 'neutral',
+    text: 'Not enough metrics are available to form a meaningful assessment for this ticker.'
+  }
 
+  const [warChest, fcf, margin, pe, growth] = scores
+
+  // Build contextual phrases from available data
+  const parts = []
+
+  if (margin?.color === 'green') parts.push(`With a ${margin.note.split('—')[0].trim().toLowerCase()}, the business demonstrates strong pricing power`)
+  else if (margin?.color === 'red') parts.push(`Margin pressure is a concern — ${margin.note.toLowerCase()}`)
+
+  if (fcf?.color === 'green') parts.push(`cash generation is robust (${fcf.label.toLowerCase()})`)
+  else if (fcf?.color === 'red') parts.push(`cash burn poses a risk to long-term solvency`)
+
+  if (warChest?.color === 'green') parts.push(`and the balance sheet carries manageable debt`)
+  else if (warChest?.color === 'red') parts.push(`though the balance sheet is under notable leverage pressure`)
+
+  if (growth?.color === 'green') parts.push(`Revenue is expanding at a healthy pace`)
+  else if (growth?.color === 'red') parts.push(`Revenue momentum has weakened`)
+
+  if (pe?.color === 'green') parts.push(`with a valuation that still leaves room for upside`)
+  else if (pe?.color === 'red') parts.push(`while the valuation demands flawless execution`)
+  else if (pe?.color === 'yellow') parts.push(`though the market has priced in significant future growth`)
+
+  let narrative = ''
+  if (parts.length >= 3) {
+    narrative = parts[0] + ', ' + parts.slice(1, -1).join(', ') + '. ' + parts[parts.length - 1] + '.'
+    narrative = narrative.charAt(0).toUpperCase() + narrative.slice(1)
+  } else if (parts.length > 0) {
+    narrative = parts.join('. ') + '.'
+  }
+
+  // Verdict label + closing sentence
   if (score >= 80 && redFlags === 0) return {
     label: 'Strong Buy Signal', color: 'green',
-    text: `Across ${greens} of ${available} available metrics, this company shows institutional-grade financial health. No red flags detected.`
+    text: `${narrative} Overall, this is an institutionally compelling profile — strong fundamentals across every tracked dimension with no critical red flags. Suitable for core portfolio positioning.`
   }
   if (score >= 65 && redFlags === 0) return {
     label: 'Positive Outlook', color: 'green',
-    text: `Financial fundamentals are broadly healthy with ${greens} green signals. Minor areas to monitor but no critical concerns.`
+    text: `${narrative} The fundamental picture is broadly constructive with ${greens} out of ${available} metrics in healthy territory. Minor areas warrant monitoring, but there are no structural concerns that would deter a long position.`
   }
   if (score >= 50 && redFlags <= 1) return {
     label: 'Mixed but Stable', color: 'neutral',
-    text: `A balanced picture — ${greens} strengths offset by ${yellows + redFlags} cautionary signals. Suitable for position sizing with active monitoring.`
+    text: `${narrative} The overall picture is balanced — real strengths coexist with areas of caution. This is not a screaming buy, but fundamentals are stable enough for a sized position with active monitoring of the weaker signals.`
   }
   if (score >= 35 && redFlags <= 2) return {
     label: 'Proceed with Caution', color: 'yellow',
-    text: `${yellows} caution flags and ${redFlags} red flag(s) detected. Risk is elevated — only suitable for higher-risk portfolios with conviction.`
+    text: `${narrative} Multiple caution flags are present. The risk/reward requires conviction and a higher risk tolerance — position sizing should reflect the elevated uncertainty in the underlying fundamentals.`
   }
   if (redFlags >= 3) return {
     label: 'High Risk', color: 'red',
-    text: `${redFlags} critical red flags detected. Multiple dimensions of financial stress simultaneously — institutional risk managers would flag this position.`
+    text: `${narrative} With ${redFlags} critical red flags across the tracked metrics, this profile carries significant financial stress risk. Institutional risk managers would typically require a strong catalyst before initiating exposure.`
   }
   return {
     label: 'Below Average', color: 'red',
-    text: `Score of ${score}/100 — fundamentals are weak across multiple dimensions. Speculative at best without a clear catalyst for improvement.`
+    text: `${narrative} The composite score of ${score}/100 reflects weakness across multiple fundamental dimensions. Without a clear catalyst for improvement, the risk/reward is unfavorable at current levels.`
   }
 }
 
@@ -115,7 +144,7 @@ export function generateMetricsSummary(metrics) {
     ? Math.round(valid.reduce((sum, s) => sum + s.score, 0) / valid.length)
     : 0
 
-  const verdict = buildVerdict(avgScore, scores)
+  const verdict = buildVerdict(avgScore, scores, metrics)
 
   return {
     score: avgScore,
