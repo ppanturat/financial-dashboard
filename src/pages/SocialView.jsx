@@ -311,7 +311,7 @@ export function SocialView({ social, portfolioFolders, session }) {
 
   return (
     // ── Fluid width: fills the content area, no hardcoded max-width ──
-    <div style={{ display: 'grid', gap: 14, width: '100%', maxWidth: 720, alignContent: 'start' }}>
+    <div style={{ display: 'grid', gap: 14, width: '100%', alignContent: 'start' }}>
 
       {/* ── Profile Card ── */}
       <Card>
