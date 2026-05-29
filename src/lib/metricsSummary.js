@@ -61,6 +61,30 @@ function scoreRevenueYoY(v) {
   return            { score: 8,  label: 'Collapsing',   color: 'red',   note: `${pct.toFixed(1)}% YoY — severe revenue contraction. Business model under serious threat.` }
 }
 
+// Weighted scoring: FCF and Gross Margin are most predictive for long-term health
+// Balance sheet carries less weight when FCF is exceptional (company can service debt easily)
+function computeWeightedScore(warChest, fcf, margin, pe, growth) {
+  const weights = {
+    warChest: 0.15,  // less weight — strong FCF can offset leverage
+    fcf: 0.25,       // most important: cash actually generated
+    margin: 0.25,    // structural moat indicator
+    pe: 0.15,        // valuation context
+    growth: 0.20,    // future trajectory
+  }
+
+  let totalWeight = 0
+  let weightedSum = 0
+
+  if (warChest) { weightedSum += warChest.score * weights.warChest; totalWeight += weights.warChest }
+  if (fcf)      { weightedSum += fcf.score * weights.fcf;           totalWeight += weights.fcf }
+  if (margin)   { weightedSum += margin.score * weights.margin;     totalWeight += weights.margin }
+  if (pe)       { weightedSum += pe.score * weights.pe;             totalWeight += weights.pe }
+  if (growth)   { weightedSum += growth.score * weights.growth;     totalWeight += weights.growth }
+
+  if (!totalWeight) return 0
+  return Math.round(weightedSum / totalWeight)
+}
+
 // Builds a rich, paragraph-style verdict from scores
 function buildVerdict(score, scores, metrics) {
   const redFlags = scores.filter(s => s?.color === 'red').length
@@ -102,26 +126,30 @@ function buildVerdict(score, scores, metrics) {
     narrative = parts.join('. ') + '.'
   }
 
-  // Verdict label + closing sentence
-  if (score >= 80 && redFlags === 0) return {
+  // Score-aligned verdict thresholds — same scale used everywhere
+  // A red balance sheet alone shouldn't kill a company with world-class FCF/margin/growth
+  const criticalRedFlags = [warChest?.color === 'red', fcf?.color === 'red', margin?.color === 'red']
+    .filter(Boolean).length
+
+  if (score >= 80 && criticalRedFlags === 0) return {
     label: 'Strong Buy Signal', color: 'green',
     text: `${narrative} Overall, this is an institutionally compelling profile — strong fundamentals across every tracked dimension with no critical red flags. Suitable for core portfolio positioning.`
   }
-  if (score >= 65 && redFlags === 0) return {
+  if (score >= 70 && criticalRedFlags <= 1) return {
     label: 'Positive Outlook', color: 'green',
     text: `${narrative} The fundamental picture is broadly constructive with ${greens} out of ${available} metrics in healthy territory. Minor areas warrant monitoring, but there are no structural concerns that would deter a long position.`
   }
-  if (score >= 50 && redFlags <= 1) return {
+  if (score >= 55 && criticalRedFlags <= 1) return {
     label: 'Mixed but Stable', color: 'neutral',
     text: `${narrative} The overall picture is balanced — real strengths coexist with areas of caution. This is not a screaming buy, but fundamentals are stable enough for a sized position with active monitoring of the weaker signals.`
   }
-  if (score >= 35 && redFlags <= 2) return {
+  if (score >= 40 && criticalRedFlags <= 2) return {
     label: 'Proceed with Caution', color: 'yellow',
     text: `${narrative} Multiple caution flags are present. The risk/reward requires conviction and a higher risk tolerance — position sizing should reflect the elevated uncertainty in the underlying fundamentals.`
   }
-  if (redFlags >= 3) return {
+  if (criticalRedFlags >= 3) return {
     label: 'High Risk', color: 'red',
-    text: `${narrative} With ${redFlags} critical red flags across the tracked metrics, this profile carries significant financial stress risk. Institutional risk managers would typically require a strong catalyst before initiating exposure.`
+    text: `${narrative} With ${criticalRedFlags} critical red flags across the tracked metrics, this profile carries significant financial stress risk. Institutional risk managers would typically require a strong catalyst before initiating exposure.`
   }
   return {
     label: 'Below Average', color: 'red',
@@ -139,10 +167,7 @@ export function generateMetricsSummary(metrics) {
   const growth   = scoreRevenueYoY(metrics.revenue_yoy)
 
   const scores   = [warChest, fcf, margin, pe, growth]
-  const valid    = scores.filter(Boolean)
-  const avgScore = valid.length
-    ? Math.round(valid.reduce((sum, s) => sum + s.score, 0) / valid.length)
-    : 0
+  const avgScore = computeWeightedScore(warChest, fcf, margin, pe, growth)
 
   const verdict = buildVerdict(avgScore, scores, metrics)
 

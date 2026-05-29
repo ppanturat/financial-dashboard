@@ -55,20 +55,27 @@ function buildParagraph(metrics = {}) {
     else { bearScore += 2; parts.push(`Revenue contracted ${Math.abs(pct)}% YoY, a clear sign of demand headwinds or market share erosion that will need to reverse before the fundamental outlook can improve.`) }
   }
 
-  // Verdict
-  const net = bullScore - bearScore
-  const total = bullScore + bearScore || 1
-  const rawScore = Math.round(50 + (net / total) * 40)
-  const score = Math.min(95, Math.max(10, rawScore))
+  // Score and verdict — weighted: FCF and margin matter most
+  const fcfWeight = fcf != null ? (fcf > 5e9 ? 2 : fcf > 0 ? 1 : fcf > -1e9 ? -1 : -2) : 0
+  const gmWeight  = gm != null ? (gm > 0.6 ? 2 : gm > 0.3 ? 1 : gm > 0.1 ? -1 : -2) : 0
+  const wcrWeight = wcr != null ? (wcr >= 2 ? 2 : wcr >= 1 ? 1 : wcr >= 0.5 ? -1 : -2) : 0
+  const peWeight  = (pe != null && pe > 0) ? (pe < 15 ? 2 : pe < 30 ? 1 : pe < 50 ? -1 : -2) : 0
+  const revWeight = rev != null ? (rev > 0.25 ? 2 : rev > 0.08 ? 1 : rev >= 0 ? 0 : -2) : 0
 
+  // Weighted net: FCF + margin get 1.5x multiplier
+  const weightedNet = (fcfWeight * 1.5) + (gmWeight * 1.5) + wcrWeight + peWeight + revWeight
+  const weightedMax = 13.0 // max possible (2*1.5 + 2*1.5 + 2 + 2 + 2)
+  const rawScore = Math.round(50 + (weightedNet / weightedMax) * 45)
+  const score = Math.min(97, Math.max(10, rawScore))
+
+  // Verdict — strictly score-driven so both cards agree directionally
   let verdict, verdictColor
-  if (net >= 5)       { verdict = 'Strong Buy';    verdictColor = '#16a34a' }
-  else if (net >= 2)  { verdict = 'Bullish';       verdictColor = '#22c55e' }
-  else if (net >= -1) { verdict = 'Neutral';       verdictColor = '#ca8a04' }
-  else if (net >= -3) { verdict = 'Caution';       verdictColor = '#ea580c' }
-  else                { verdict = 'Risk Elevated'; verdictColor = '#dc2626' }
+  if (score >= 80)      { verdict = 'Strong Buy';    verdictColor = '#16a34a' }
+  else if (score >= 68) { verdict = 'Bullish';       verdictColor = '#22c55e' }
+  else if (score >= 52) { verdict = 'Neutral';       verdictColor = '#ca8a04' }
+  else if (score >= 38) { verdict = 'Caution';       verdictColor = '#ea580c' }
+  else                  { verdict = 'Risk Elevated'; verdictColor = '#dc2626' }
 
-  // Closing synthesis sentence
   const closers = {
     'Strong Buy':    'Taken together, the fundamentals present a compelling case — this is a well-run business with multiple financial strengths and no major red flags at this time.',
     'Bullish':       'On balance, the positives outweigh the negatives. The fundamental picture supports a constructive view, though active monitoring of the weaker areas remains prudent.',
@@ -80,10 +87,71 @@ function buildParagraph(metrics = {}) {
   return { paragraph: parts.join(' ') + ' ' + closers[verdict], verdict, score, verdictColor }
 }
 
-export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, loading }) {
+// ETF holdings breakdown component
+function EtfHoldingsBreakdown({ holdings }) {
+  if (!holdings?.length) return null
+
+  const topHoldings = holdings.slice(0, 10)
+  const maxPct = topHoldings[0]?.weight || 1
+
+  const barColor = (i) => {
+    const colors = ['#16a34a', '#22c55e', '#4ade80', '#86efac', '#bbf7d0']
+    return colors[Math.min(i, colors.length - 1)]
+  }
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: 'var(--muted)',
+        letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10,
+      }}>
+        Top Holdings
+      </div>
+      <div style={{ display: 'grid', gap: 6 }}>
+        {topHoldings.map((h, i) => (
+          <div key={h.ticker || i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{
+              fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 700,
+              color: 'var(--text)', minWidth: 52, flexShrink: 0,
+            }}>{h.ticker}</span>
+            <div style={{ flex: 1, height: 6, background: 'var(--surface-2)', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 3,
+                width: `${(h.weight / maxPct) * 100}%`,
+                background: barColor(i),
+                transition: 'width .4s ease',
+              }} />
+            </div>
+            <span style={{
+              fontFamily: "'DM Mono', monospace", fontSize: 11,
+              color: 'var(--faint)', minWidth: 38, textAlign: 'right', flexShrink: 0,
+            }}>{(h.weight * 100).toFixed(1)}%</span>
+            {h.name && (
+              <span style={{
+                fontSize: 11, color: 'var(--faint)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                maxWidth: 160, flexShrink: 1,
+              }}>{h.name}</span>
+            )}
+          </div>
+        ))}
+      </div>
+      {holdings.length > 10 && (
+        <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 8, fontStyle: 'italic' }}>
+          +{holdings.length - 10} more holdings not shown
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, loading }) {
   if (loading) return null
 
   if (isEtf) {
+    const hasHoldings = etfHoldings?.length > 0
+    const totalShown = etfHoldings?.slice(0, 10).reduce((s, h) => s + (h.weight || 0), 0) || 0
+
     return (
       <div style={{
         background: 'var(--surface)', border: '1px solid var(--border)',
@@ -92,15 +160,19 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, loading }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#475569', padding: '3px 8px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-            Quantitative Assessment
+            Fund Analysis
           </span>
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--faint)' }}>
-            {ticker} · Fund Analysis
+            {ticker} · ETF
           </span>
         </div>
-        <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7 }}>
-          ETF detected. Individual company metrics are not applicable. Evaluate this fund based on its expense ratio, underlying index methodology, tracking error, and sector or geographic exposure.
+        <p style={{ fontSize: 13.5, color: 'var(--muted)', lineHeight: 1.7, margin: 0 }}>
+          {hasHoldings
+            ? `This ETF holds ${etfHoldings.length} positions. The top 10 holdings represent ${(totalShown * 100).toFixed(1)}% of fund assets. Evaluate this fund based on its expense ratio, underlying index methodology, tracking error, and sector or geographic exposure.`
+            : 'ETF detected. Individual company metrics are not applicable. Evaluate this fund based on its expense ratio, underlying index methodology, tracking error, and sector or geographic exposure.'
+          }
         </p>
+        {hasHoldings && <EtfHoldingsBreakdown holdings={etfHoldings} />}
       </div>
     )
   }

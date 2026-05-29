@@ -85,7 +85,9 @@ export function Sidebar({
         <button className={activeTab === 'social' ? 'active' : ''} onClick={() => setActiveTab('social')}>Network</button>
       </div>
 
-      <p className="sidebar-label">{activeTab === 'market' ? 'Market Folders' : activeTab === 'portfolio' ? 'Portfolio Folders' : 'Following'}</p>
+      {activeTab !== 'social' && (
+        <p className="sidebar-label">{activeTab === 'market' ? 'Market Folders' : 'Portfolio Folders'}</p>
+      )}
 
       <nav className="sidebar-nav">
         {activeTab === 'social' ? (
@@ -102,32 +104,39 @@ export function Sidebar({
                 <span style={{
                   fontSize: 9, fontWeight: 700, background: 'rgba(234,179,8,0.7)',
                   color: '#111', padding: '2px 6px', borderRadius: 99,
+                  fontVariantNumeric: 'tabular-nums',
                 }}>{pendingRequests.length}</span>
               </div>
             )}
-            {followedUsers?.length === 0 && (
+            {followedUsers?.length === 0 ? (
               <p className="sidebar-loading">No one followed yet.</p>
-            )}
-            {followedUsers?.map(u => (
-              <div key={u.id} className="vault-row">
-                <div className="vault-btn" style={{ cursor: 'default' }}>
-                  <div style={{
-                    width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                    background: `hsl(${(u.name||u.username||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360}, 55%, 62%)`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff', fontSize: 9, fontWeight: 700,
-                  }}>
-                    {(u.name||u.username||'?')[0].toUpperCase()}
+            ) : (
+              <>
+                <p style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.1em', textTransform: 'uppercase', margin: '0 0 6px 4px' }}>
+                  Following · {followedUsers.length}
+                </p>
+                {followedUsers.map(u => (
+                  <div key={u.id} className="vault-row">
+                    <div className="vault-btn" style={{ cursor: 'default' }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                        background: `hsl(${(u.name||u.username||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360}, 55%, 62%)`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 9, fontWeight: 700,
+                      }}>
+                        {(u.name||u.username||'?')[0].toUpperCase()}
+                      </div>
+                      <span className="vault-label">{u.name || u.username || 'Investor'}</span>
+                      {u.username && (
+                        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
+                          @{u.username}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className="vault-label">{u.name || u.username || 'Investor'}</span>
-                  {u.username && (
-                    <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
-                      @{u.username}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+                ))}
+              </>
+            )}
           </>
         ) : fetchingFolders ? (
           <p className="sidebar-loading">Loading...</p>

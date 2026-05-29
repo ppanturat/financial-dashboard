@@ -57,9 +57,10 @@ function SectionLabel({ children, count }) {
       }}>{children}</span>
       {count != null && (
         <span style={{
-          fontFamily: "'DM Mono', monospace", fontSize: 10,
+          fontSize: 10,
           background: 'var(--surface-2)', color: 'var(--faint)',
-          border: '1px solid var(--border-md)', padding: '1px 7px', borderRadius: 99
+          border: '1px solid var(--border-md)', padding: '1px 7px', borderRadius: 99,
+          fontVariantNumeric: 'tabular-nums',
         }}>{count}</span>
       )}
     </div>
@@ -77,7 +78,6 @@ function AvatarUploader({ name, currentUrl, userId, onUploaded }) {
     if (!file) return
     if (file.size > 3 * 1024 * 1024) { alert('Max 3 MB'); return }
 
-    // Local preview immediately
     const objectUrl = URL.createObjectURL(file)
     setPreview(objectUrl)
     setUploading(true)
@@ -93,7 +93,7 @@ function AvatarUploader({ name, currentUrl, userId, onUploaded }) {
       if (upErr) throw upErr
 
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-      const publicUrl = data.publicUrl + '?t=' + Date.now() // bust cache
+      const publicUrl = data.publicUrl + '?t=' + Date.now()
       onUploaded(publicUrl)
     } catch (err) {
       console.error('Upload failed:', err)
@@ -178,7 +178,6 @@ function EditProfileModal({ profile, userId, onSave, onClose }) {
         width: '100%', maxWidth: 400,
         boxShadow: '0 8px 40px rgba(0,0,0,0.10)',
       }}>
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Edit Profile</span>
           <button onClick={onClose} style={{
@@ -189,7 +188,6 @@ function EditProfileModal({ profile, userId, onSave, onClose }) {
           }}>✕</button>
         </div>
 
-        {/* Avatar uploader */}
         <AvatarUploader
           name={form.name}
           currentUrl={form.avatar_url}
@@ -197,7 +195,6 @@ function EditProfileModal({ profile, userId, onSave, onClose }) {
           onUploaded={url => setForm(f => ({ ...f, avatar_url: url }))}
         />
 
-        {/* Fields */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
@@ -235,7 +232,6 @@ function EditProfileModal({ profile, userId, onSave, onClose }) {
           </div>
         </div>
 
-        {/* Actions */}
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
           <button onClick={onClose} style={{
             flex: 1, padding: '10px', borderRadius: 10,
@@ -279,7 +275,49 @@ function PrivacyToggle({ isPublic, onClick }) {
   )
 }
 
-// ── Input shared style ────────────────────────────────────────────────────────
+// ── Follow button with status ─────────────────────────────────────────────────
+function FollowButton({ status, onClick }) {
+  if (status === 'accepted') {
+    return (
+      <span style={{
+        padding: '6px 14px', borderRadius: 8, flexShrink: 0,
+        fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
+        background: '#f0fdf4', color: '#16a34a',
+        border: '1px solid #bbf7d0',
+      }}>Following</span>
+    )
+  }
+  if (status === 'pending') {
+    return (
+      <span style={{
+        padding: '6px 14px', borderRadius: 8, flexShrink: 0,
+        fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
+        background: 'var(--surface-2)', color: 'var(--muted)',
+        border: '1px solid var(--border-md)',
+      }}>Pending</span>
+    )
+  }
+  if (status === 'rejected') {
+    return (
+      <button onClick={onClick} style={{
+        padding: '6px 14px', borderRadius: 8, flexShrink: 0,
+        fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
+        background: 'var(--surface-2)', color: 'var(--muted)',
+        border: '1px solid var(--border-md)', cursor: 'pointer',
+      }}>Request Again</button>
+    )
+  }
+  return (
+    <button onClick={onClick} style={{
+      padding: '6px 14px', borderRadius: 8, flexShrink: 0,
+      cursor: 'pointer', border: 'none',
+      fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
+      background: 'var(--accent)', color: '#fff',
+      transition: 'opacity .15s',
+    }}>+ Follow</button>
+  )
+}
+
 const searchInputStyle = {
   width: '100%', padding: '10px 13px 10px 36px',
   background: 'var(--surface-2)', border: '1px solid var(--border-md)',
@@ -292,7 +330,6 @@ const searchInputStyle = {
 export function SocialView({ social, portfolioFolders, session, togglePortfolioPrivacy }) {
   const [editing, setEditing] = useState(false)
   const [searchVal, setSearchVal] = useState('')
-  const [pendingSent, setPendingSent] = useState(new Set())
 
   const profile = social.profile
   const displayName = profile?.name || 'Investor'
@@ -300,7 +337,6 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
   const avatarUrl = profile?.avatar_url || null
 
   const handleSendRequest = async (targetId) => {
-    setPendingSent(prev => new Set([...prev, targetId]))
     await social.sendFollowRequest(targetId)
   }
 
@@ -309,8 +345,15 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
     return p.username?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q)
   })
 
+  // Resolve status for a given profile
+  const getStatus = (profileId) => {
+    // Check if already following (accepted)
+    const isFollowing = social.followedUsers?.some(u => u.id === profileId)
+    if (isFollowing) return 'accepted'
+    return social.getSentRequestStatus?.(profileId) || null
+  }
+
   return (
-    // ── Fluid width: fills the content area, no hardcoded max-width ──
     <div style={{ display: 'grid', gap: 14, width: '100%', alignContent: 'start' }}>
 
       {/* ── Profile Card ── */}
@@ -339,7 +382,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
         </div>
       </Card>
 
-      {/* ── Follow Requests ── */}
+      {/* ── Follow Requests (incoming) ── */}
       {social.requests?.length > 0 && (
         <Card>
           <SectionLabel count={social.requests.length}>Follow Requests</SectionLabel>
@@ -369,6 +412,53 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                 </div>
               </div>
             ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Your Network (people you follow) ── */}
+      {social.followedUsers?.length > 0 && (
+        <Card>
+          <SectionLabel count={social.followedUsers.length}>Your Network</SectionLabel>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {social.followedUsers.map(u => {
+              const userPortfolios = social.feed?.filter(p => p.user_id === u.id) || []
+              return (
+                <div key={u.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                  padding: '11px 13px', borderRadius: 12,
+                  background: 'var(--surface-2)', border: '1px solid var(--border)',
+                }}>
+                  <Avatar name={u.name || u.username || '?'} avatarUrl={u.avatar_url} size={36} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {u.name || 'Investor'}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      {u.username && (
+                        <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--faint)' }}>
+                          @{u.username}
+                        </span>
+                      )}
+                      {userPortfolios.length > 0 && (
+                        <span style={{
+                          fontSize: 10, fontWeight: 600, color: '#16a34a',
+                          background: '#f0fdf4', border: '1px solid #bbf7d0',
+                          padding: '1px 6px', borderRadius: 99,
+                        }}>
+                          {userPortfolios.length} public portfolio{userPortfolios.length > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, color: '#16a34a',
+                    background: '#f0fdf4', border: '1px solid #bbf7d0',
+                    padding: '4px 10px', borderRadius: 99, flexShrink: 0,
+                  }}>Following</span>
+                </div>
+              )
+            })}
           </div>
         </Card>
       )}
@@ -412,35 +502,6 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
         )}
       </Card>
 
-      {/* ── Following Feed ── */}
-      {social.feed?.length > 0 && (
-        <Card>
-          <SectionLabel count={social.feed.length}>Following — Public Portfolios</SectionLabel>
-          <div style={{ display: 'grid', gap: 8 }}>
-            {social.feed.map(p => (
-              <div key={p.id} style={{
-                padding: '12px 14px', borderRadius: 12,
-                border: '1px solid var(--border)',
-                background: 'linear-gradient(135deg, var(--surface), var(--surface-2))',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <Avatar name={p.user_id?.slice(0, 2) || '?'} size={30} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                    <div style={{ fontSize: 11, color: 'var(--faint)' }}>public portfolio</div>
-                  </div>
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, background: '#f0fdf4', color: '#16a34a',
-                    border: '1px solid #bbf7d0', padding: '2px 7px', borderRadius: 99,
-                    textTransform: 'uppercase', letterSpacing: '.06em', flexShrink: 0,
-                  }}>Public</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
       {/* ── Find Investors ── */}
       <Card>
         <SectionLabel>Find Investors</SectionLabel>
@@ -467,7 +528,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
           ) : (
             <div style={{ display: 'grid', gap: 8 }}>
               {filteredProfiles.map(p => {
-                const sent = pendingSent.has(p.id)
+                const status = getStatus(p.id)
                 return (
                   <div key={p.id} style={{
                     display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
@@ -483,19 +544,10 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                         @{p.username || p.id?.slice(0, 10)}
                       </div>
                     </div>
-                    <button
-                      onClick={() => !sent && handleSendRequest(p.id)}
-                      disabled={sent}
-                      style={{
-                        padding: '6px 14px', borderRadius: 8, flexShrink: 0,
-                        cursor: sent ? 'default' : 'pointer', border: 'none',
-                        fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
-                        background: sent ? 'var(--surface-2)' : 'var(--accent)',
-                        color: sent ? 'var(--muted)' : '#fff',
-                        outline: sent ? '1px solid var(--border-md)' : 'none',
-                        transition: 'all .15s',
-                      }}
-                    >{sent ? 'Requested' : '+ Follow'}</button>
+                    <FollowButton
+                      status={status}
+                      onClick={() => handleSendRequest(p.id)}
+                    />
                   </div>
                 )
               })}
