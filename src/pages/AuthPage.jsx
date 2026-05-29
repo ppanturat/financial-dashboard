@@ -4,8 +4,6 @@ export function AuthPage({ onSignIn, onSignUp }) {
   const [view, setView] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
-  const [username, setUsername] = useState('')
   const [loading, setLoading] = useState(false)
   const [sentEmail, setSentEmail] = useState('')
 
@@ -27,7 +25,7 @@ export function AuthPage({ onSignIn, onSignUp }) {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    const { error } = await onSignUp(email, password, name, username)
+    const { error } = await onSignUp(email, password)
     setLoading(false)
     if (error) {
       alert(error.message)
@@ -59,20 +57,6 @@ export function AuthPage({ onSignIn, onSignUp }) {
 
         {view === 'login' ? (
           <form className="auth-form" onSubmit={handleLoginSubmit} id="login-form">
-            <input 
-              type="text" 
-              placeholder="name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
-            />
-            <input 
-              type="text" 
-              placeholder="username"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              required
-            />
             <input 
               type="email" 
               name="email"
