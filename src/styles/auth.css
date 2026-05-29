@@ -51,3 +51,42 @@
   outline: none; transition: border-color .15s;
 }
 .auth-form input:focus { border-color: var(--accent); background: var(--surface); }
+
+/* ── auth error states ──────────────────────────────── */
+.auth-field {
+  display: flex; flex-direction: column; gap: 4px;
+}
+
+/* Red border on invalid inputs */
+.auth-form input.auth-input-error {
+  border-color: #dc2626 !important;
+  background: #fff5f5;
+}
+.auth-form input.auth-input-error:focus {
+  border-color: #dc2626 !important;
+  background: #fff5f5;
+}
+
+/* Per-field error text below the input */
+.auth-field-error {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  color: #dc2626;
+  margin: 0;
+  padding-left: 2px;
+  text-align: left;
+}
+
+/* Top-of-form error banner */
+.auth-error {
+  display: flex; align-items: flex-start; gap: 8px;
+  background: #fef2f2; border: 1px solid #fecaca;
+  border-radius: 8px; padding: 10px 12px;
+  margin-bottom: 16px;
+  font-family: 'Syne', sans-serif;
+  font-size: 13px; color: #dc2626;
+  text-align: left; line-height: 1.45;
+}
+.auth-error-icon {
+  font-size: 14px; flex-shrink: 0; margin-top: 1px;
+}

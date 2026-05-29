@@ -136,8 +136,8 @@
 
 /* ── description card ───────────────────────────── */
 .desc-card  { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px; }
-.desc-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; }
-.desc-text  { font-size: 13px; color: var(--muted); line-height: 1.65; }
+.desc-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; font-family: 'Syne', sans-serif; }
+.desc-text  { font-size: 13px; color: var(--muted); line-height: 1.65; font-family: 'Syne', sans-serif; }
 
 /* ── metrics summary card ───────────────────────── */
 .summary-card {

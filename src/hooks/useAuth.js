@@ -20,14 +20,26 @@ export function useAuth() {
   const signIn = (email, password) =>
     supabase.auth.signInWithPassword({ email, password })
 
-  const signUp = (email, password) =>
-    supabase.auth.signUp({ 
-      email, 
+  // Accept name + username and immediately upsert a profiles row
+  const signUp = async (email, password, name, username) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
       password,
-      options: {
-        emailRedirectTo: window.location.origin
-      }
+      options: { emailRedirectTo: window.location.origin },
     })
+    if (error) return { error }
+
+    // Create the profile row right away so it's visible before email confirmation
+    if (data?.user?.id) {
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        name: name || '',
+        username: username || '',
+      })
+    }
+
+    return { data, error: null }
+  }
 
   const signOut = () => supabase.auth.signOut()
 
