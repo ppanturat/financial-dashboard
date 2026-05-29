@@ -159,6 +159,11 @@ export function usePortfolio(session) {
     loadHoldings()
   }
 
+  const togglePortfolioPrivacy = (folderId, isPublic) => {
+    setPortfolioFolders(f => f.map(x => x.id === folderId ? { ...x, is_public: isPublic } : x))
+    supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
+  }
+
   return { 
     portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders, togglePortfolioPrivacy,
     holdings, livePrices, loadingHoldings, 
