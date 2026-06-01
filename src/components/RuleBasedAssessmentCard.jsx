@@ -132,9 +132,9 @@ function buildEtfNarrative(ticker, holdings) {
 
   // Composition sentence
   if (isBroad) {
-    lines.push(`Broad market U.S. equity fund with ${count} holdings — designed to track the overall market rather than a specific sector.`)
+    lines.push(`Broad market U.S. equity fund — designed to track the overall market rather than a specific sector, holding hundreds of companies across all industries.`)
   } else if (isGrowth || isTechHeavy) {
-    lines.push(`Tech-heavy growth fund — the top holdings are dominated by large-cap technology and semiconductors, giving it high beta and sensitivity to rate moves.`)
+    lines.push(`Tech-heavy growth fund — top holdings are dominated by large-cap technology and semiconductors, giving it high beta and sensitivity to rate moves.`)
   } else if (isDividend) {
     lines.push(`Income-focused fund that selects stocks for dividend yield and consistency — expect lower volatility but limited upside in bull runs.`)
   } else if (isIntl) {
@@ -148,16 +148,16 @@ function buildEtfNarrative(ticker, holdings) {
   } else if (energyCount >= 3) {
     lines.push(`Energy sector fund — highly cyclical, driven by commodity prices and global supply-demand dynamics.`)
   } else {
-    lines.push(`Diversified fund with ${count} positions spanning multiple sectors.`)
+    lines.push(`Diversified fund spanning multiple sectors.`)
   }
 
   // Concentration warning or praise
   if (megaConcentrated) {
     lines.push(`Notably concentrated — the top holding alone accounts for ${(top1Weight * 100).toFixed(1)}% of assets, meaning single-stock risk is elevated.`)
   } else if (concentrated) {
-    lines.push(`Moderately concentrated — the top 10 names make up ${(top10Weight * 100).toFixed(0)}% of the fund, so a handful of companies drive most of the return.`)
+    lines.push(`Moderately top-heavy — the top 10 names make up ${(top10Weight * 100).toFixed(0)}% of the fund, so a handful of companies drive most of the return.`)
   } else {
-    lines.push(`Well-diversified — top 10 holdings are only ${(top10Weight * 100).toFixed(0)}% of assets, limiting single-name impact.`)
+    lines.push(`Well-spread across names — the top 10 shown here represent ${(top10Weight * 100).toFixed(0)}% of assets, so no single position dominates.`)
   }
 
   // Dividend stance

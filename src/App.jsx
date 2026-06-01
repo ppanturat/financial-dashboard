@@ -145,6 +145,7 @@ export default function App() {
           onHamburger={() => setSidebarOpen(o => !o)}
           search={{
             query: search.query, results: search.results, open: search.open,
+            selectedIndex: search.selectedIndex,
             onQueryChange: (q) => { search.setQuery(q); search.setOpen(true) },
             onFocus: () => search.setOpen(true), onKey: search.handleKey,
             onSelect: handleAddTicker, onClear: search.clear, searchRef,

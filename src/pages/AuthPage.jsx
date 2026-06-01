@@ -10,10 +10,8 @@ export function AuthPage({ onSignIn, onSignUp }) {
   const [sentEmail, setSentEmail] = useState('')
 
   const handleToggleView = () => {
-    setView(view === 'login' ? 'register' : 'login')
-    // Clear inputs when swapping to prevent credential mix-ups
-    setEmail('')
-    setPassword('')
+    setView(v => v === 'login' ? 'register' : 'login')
+    setEmail(''); setPassword(''); setName(''); setUsername('')
   }
 
   const handleLoginSubmit = async (e) => {
@@ -26,15 +24,13 @@ export function AuthPage({ onSignIn, onSignUp }) {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault()
+    if (!name.trim()) { alert('Please enter your display name'); return }
+    if (!username.trim()) { alert('Please enter a username'); return }
     setLoading(true)
-    const { error } = await onSignUp(email, password, name, username)
+    const { error } = await onSignUp(email, password, name.trim(), username.trim().toLowerCase().replace(/\s/g, ''))
     setLoading(false)
-    if (error) {
-      alert(error.message)
-    } else {
-      setSentEmail(email)
-      setView('check_email')
-    }
+    if (error) { alert(error.message) }
+    else { setSentEmail(email); setView('check_email') }
   }
 
   if (view === 'check_email') return (
@@ -42,7 +38,7 @@ export function AuthPage({ onSignIn, onSignUp }) {
       <div className="auth-card">
         <div className="auth-logo">◈</div>
         <h2>Check your email</h2>
-        <p className="auth-sub">confirmation link sent to {sentEmail}</p>
+        <p className="auth-sub">Confirmation link sent to {sentEmail}</p>
         <button className="btn-text" onClick={() => setView('login')}>Back to sign in</button>
       </div>
     </div>
@@ -59,68 +55,77 @@ export function AuthPage({ onSignIn, onSignUp }) {
 
         {view === 'login' ? (
           <form className="auth-form" onSubmit={handleLoginSubmit} id="login-form">
-            <input 
-              type="text" 
-              placeholder="name"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
-            />
-            <input 
-              type="text" 
-              placeholder="username"
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              required
-            />
-            <input 
-              type="email" 
+            <input
+              type="email"
               name="email"
               id="login-email"
-              placeholder="email address" 
+              placeholder="Email address"
               autoComplete="username email"
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              required 
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
             />
-            <input 
-              type="password" 
+            <input
+              type="password"
               name="password"
               id="login-password"
-              placeholder="password" 
+              placeholder="Password"
               autoComplete="current-password"
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              required 
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
             />
             <button className="btn-primary" type="submit" disabled={loading}>
-              {loading ? 'Loading...' : 'Sign in'}
+              {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
         ) : (
           <form className="auth-form" onSubmit={handleRegisterSubmit} id="register-form">
-            <input 
-              type="email" 
+            <input
+              type="text"
+              placeholder="Display name"
+              autoComplete="name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              required
+            />
+            <div style={{ position: 'relative' }}>
+              <span style={{
+                position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+                color: 'var(--muted)', fontSize: 14, pointerEvents: 'none',
+              }}>@</span>
+              <input
+                type="text"
+                placeholder="username"
+                autoComplete="username"
+                value={username}
+                onChange={e => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                style={{ paddingLeft: 28 }}
+                required
+              />
+            </div>
+            <input
+              type="email"
               name="email"
               id="register-email"
-              placeholder="email address" 
+              placeholder="Email address"
               autoComplete="email"
-              value={email} 
-              onChange={e => setEmail(e.target.value)} 
-              required 
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
             />
-            <input 
-              type="password" 
+            <input
+              type="password"
               name="password"
               id="register-password"
-              placeholder="password" 
+              placeholder="Password"
               autoComplete="new-password"
-              value={password} 
-              onChange={e => setPassword(e.target.value)} 
-              required 
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
             />
             <button className="btn-primary" type="submit" disabled={loading}>
-              {loading ? 'Loading...' : 'Create account'}
+              {loading ? 'Creating account…' : 'Create account'}
             </button>
           </form>
         )}
