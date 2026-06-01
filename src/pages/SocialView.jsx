@@ -208,11 +208,29 @@ function MiniSparkline({ data, color = '#16a34a' }) {
 
 const PIE_COLORS = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d']
 
+async function fetchThbRate() {
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD')
+    const data = await res.json()
+    return data.rates?.THB ?? 34.5
+  } catch { return 34.5 }
+}
+
+function fmtCurr(val, currency, thbRate) {
+  const num = parseFloat(val) || 0
+  if (currency === 'THB') {
+    return '฿' + (num * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 function UserDetailPanel({ user, feed, feedHoldings }) {
   const [prices, setPrices] = useState({})  // ticker → { price, change }
   const [charts, setCharts] = useState({})  // ticker → sparkline data
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
+  const [currency, setCurrency] = useState('USD')
+  const [thbRate, setThbRate] = useState(34.5)
 
   const folders = feed.filter(f => f.user_id === user.id)
   const allHoldings = feedHoldings.filter(h => folders.some(f => f.id === h.folder_id))
@@ -244,6 +262,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
   }, [tickers.join(',')])
 
   useEffect(() => { fetchPrices() }, [fetchPrices])
+  useEffect(() => { fetchThbRate().then(setThbRate) }, [])
 
   const totalCost = allHoldings.reduce((sum, h) => sum + (parseFloat(h.buy_price || 0) * parseFloat(h.amount || 0)), 0)
   const totalValue = allHoldings.reduce((sum, h) => {
@@ -300,19 +319,31 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
             </button>
           ))}
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 16, alignItems: 'center' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
+          {/* Currency toggle */}
+          <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 8, padding: 2, border: '1px solid var(--border-md)', gap: 2, flexShrink: 0 }}>
+            {['USD', 'THB'].map(c => (
+              <button key={c} onClick={() => setCurrency(c)} style={{
+                padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono', monospace",
+                transition: 'all .15s',
+                background: currency === c ? 'var(--accent)' : 'transparent',
+                color: currency === c ? '#fff' : 'var(--muted)',
+              }}>{c}</button>
+            ))}
+          </div>
           {!loading && (
             <>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Portfolio Value</div>
                 <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: 'var(--text)' }}>
-                  ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {fmtCurr(totalValue, currency, thbRate)}
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Total P&amp;L</div>
                 <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: pnlPositive ? '#16a34a' : '#dc2626' }}>
-                  {pnlPositive ? '+' : ''}{totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({pnlPositive ? '+' : ''}{totalPnLPct.toFixed(2)}%)
+                  {pnlPositive ? '+' : ''}{fmtCurr(totalPnL, currency, thbRate)} ({pnlPositive ? '+' : ''}{totalPnLPct.toFixed(2)}%)
                 </div>
               </div>
             </>
@@ -359,7 +390,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                 {[
                   { label: 'Holdings', value: allHoldings.length },
                   { label: 'Portfolios', value: folders.length },
-                  { label: 'Total Cost Basis', value: `$${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+                  { label: 'Total Cost Basis', value: fmtCurr(totalCost, currency, thbRate) },
                   { label: 'Unrealised P&L', value: `${pnlPositive ? '+' : ''}${totalPnLPct.toFixed(2)}%`, color: pnlPositive ? '#16a34a' : '#dc2626' },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '8px 12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -429,15 +460,15 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                             <tr key={h.id} style={{ borderBottom: i < fHoldings.length - 1 ? '1px solid var(--border)' : 'none' }}>
                               <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{h.ticker}</td>
                               <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{shares.toFixed(4)}</td>
-                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>${cost.toFixed(2)}</td>
+                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{fmtCurr(cost, currency, thbRate)}</td>
                               <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text)' }}>
-                                {loading ? '…' : currentPrice != null ? `$${currentPrice.toFixed(2)}` : '—'}
+                                {loading ? '…' : currentPrice != null ? fmtCurr(currentPrice, currency, thbRate) : '—'}
                               </td>
                               <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text)' }}>
-                                ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {fmtCurr(value, currency, thbRate)}
                               </td>
                               <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnl == null ? 'var(--faint)' : isPos ? '#16a34a' : '#dc2626' }}>
-                                {pnl == null ? '—' : `${isPos ? '+' : ''}$${pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                {pnl == null ? '—' : `${isPos ? '+' : ''}${fmtCurr(Math.abs(pnl), currency, thbRate)}`}
                               </td>
                               <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnlPct == null ? 'var(--faint)' : isPos ? '#16a34a' : '#dc2626' }}>
                                 {pnlPct == null ? '—' : `${isPos ? '+' : ''}${pnlPct.toFixed(2)}%`}
@@ -478,7 +509,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                            {t.currentPrice != null ? `$${t.currentPrice.toFixed(2)}` : '—'}
+                            {t.currentPrice != null ? fmtCurr(t.currentPrice, currency, thbRate) : '—'}
                           </div>
                           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 700, color: isPos ? '#16a34a' : '#dc2626' }}>
                             {t.pnlPct != null ? `${isPos ? '+' : ''}${t.pnlPct.toFixed(2)}%` : '—'}
@@ -492,7 +523,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                             <Tooltip
                               contentStyle={{ background: '#111', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 11 }}
                               itemStyle={{ color, fontFamily: "'DM Mono', monospace" }}
-                              formatter={v => [`$${v.toFixed(2)}`, '']}
+                              formatter={v => [fmtCurr(v, currency, thbRate), '']}
                               labelFormatter={() => ''}
                             />
                           </LineChart>
@@ -501,9 +532,9 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                         <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--faint)', fontStyle: 'italic' }}>No chart data</div>
                       )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                        <span style={{ fontSize: 10, color: 'var(--faint)' }}>Avg cost: <span style={{ fontFamily: "'DM Mono', monospace", color: 'var(--muted)' }}>${t.avgCost.toFixed(2)}</span></span>
+                        <span style={{ fontSize: 10, color: 'var(--faint)' }}>Avg cost: <span style={{ fontFamily: "'DM Mono', monospace", color: 'var(--muted)' }}>{fmtCurr(t.avgCost, currency, thbRate)}</span></span>
                         <span style={{ fontSize: 10, color: isPos ? '#16a34a' : '#dc2626', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
-                          {t.pnl != null ? `${isPos ? '+' : ''}$${Math.abs(t.pnl).toFixed(2)}` : '—'}
+                          {t.pnl != null ? `${isPos ? '+' : ''}${fmtCurr(Math.abs(t.pnl), currency, thbRate)}` : '—'}
                         </span>
                       </div>
                     </div>
