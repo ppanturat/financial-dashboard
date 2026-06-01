@@ -6,15 +6,27 @@ import { MetricsGrid } from '../components/MetricsGrid'
 import { MetricsSummaryCard } from '../components/MetricsSummaryCard'
 import { RuleBasedAssessmentCard } from '../components/RuleBasedAssessmentCard'
 import { EmptyState } from '../components/EmptyState'
-import { ErrorBoundary } from '../components/ErrorBoundary'
+import { ErrorBoundary } from '../components/ErrorBoundary' // Make sure this is imported
 
 export function MarketView({ activeTicker, foldersLoading }) {
   const [timeframe, setTimeframe] = useState('1M')
   const [profileOpen, setProfileOpen] = useState(false)
   const stock = useStockData(activeTicker, timeframe)
-  const isEtf = stock.quoteType === 'ETF'
 
+  // Guard 1: Prevent crash if there is no active ticker
   if (!activeTicker) return <EmptyState loading={foldersLoading} />
+
+  // Guard 2: Prevent the blank screen crash by waiting for stock data to initialize
+  if (!stock || stock.loadingData || stock.quoteType === undefined) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--muted)' }}>
+        Loading market data...
+      </div>
+    )
+  }
+
+  // Safe to evaluate now
+  const isEtf = stock.quoteType === 'ETF'
 
   return (
     <>
@@ -38,7 +50,10 @@ export function MarketView({ activeTicker, foldersLoading }) {
               padding: 0, textAlign: 'left',
             }}
           >
-            <h3 className="desc-title" style={{ margin: 0 }}>Company Profile</h3>
+            {/* UI Update: Syne Font applied here */}
+            <h3 className="desc-title" style={{ margin: 0, fontFamily: "'Syne', sans-serif", fontWeight: 700 }}>
+              Company Profile
+            </h3>
             <span style={{
               fontSize: 12, color: 'var(--faint)',
               transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -61,6 +76,7 @@ export function MarketView({ activeTicker, foldersLoading }) {
         </div>
       )}
 
+      {/* Blast shields added to prevent isolated data errors from crashing the page */}
       <ErrorBoundary>
         <MetricsGrid metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
       </ErrorBoundary>
