@@ -323,3 +323,22 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
     </div>
   )
 }
+
+
+export function buildEnhancedInsights(metrics = {}) {
+  const scores = []
+  if (metrics.revenue_yoy != null) scores.push(Math.min(100, Math.max(0, 50 + metrics.revenue_yoy * 100)))
+  if (metrics.gross_margin != null) scores.push(metrics.gross_margin * 100)
+  if (metrics.war_chest_ratio != null) scores.push(Math.min(100, metrics.war_chest_ratio * 40))
+  const qualityScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0)/scores.length) : null
+
+  return {
+    qualityScore,
+    valuationLabel:
+      metrics.forward_pe == null ? null :
+      metrics.forward_pe < 15 ? 'Potentially Undervalued' :
+      metrics.forward_pe < 30 ? 'Fairly Valued' :
+      metrics.forward_pe < 50 ? 'Premium Valuation' :
+      'Speculative Valuation'
+  }
+}

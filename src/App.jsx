@@ -43,6 +43,23 @@ export default function App() {
   const [activeTicker, setActiveTicker]       = useState('')
   const [sidebarOpen, setSidebarOpen]         = useState(false)
 
+  // restore persisted selection
+  useEffect(() => {
+    const savedFolder = localStorage.getItem('activeFolderId')
+    const savedTicker = localStorage.getItem('activeTicker')
+    if (savedFolder) setActiveFolderId(savedFolder)
+    if (savedTicker) setActiveTicker(savedTicker)
+  }, [])
+
+  useEffect(() => {
+    if (activeFolderId) localStorage.setItem('activeFolderId', activeFolderId)
+  }, [activeFolderId])
+
+  useEffect(() => {
+    if (activeTicker) localStorage.setItem('activeTicker', activeTicker)
+  }, [activeTicker])
+
+
   const { modal, confirm, close: closeModal, execute: executeModal } = useModal()
   const search = useSearch()
   const social = useSocial(session)
@@ -50,11 +67,27 @@ export default function App() {
 
   // auto-select first market folder + ticker
   useEffect(() => {
-    if (!foldersLoading && folders.length > 0 && !activeFolderId) {
+    if (foldersLoading) return
+
+    if (folders.length === 0) {
+      setActiveFolderId(null)
+      setActiveTicker('')
+      return
+    }
+
+    const folderExists = folders.some(f => f.id === activeFolderId)
+
+    if (!activeFolderId || !folderExists) {
       setActiveFolderId(folders[0].id)
       setActiveTicker(folders[0].tickers[0] ?? '')
+      return
     }
-  }, [folders, foldersLoading])
+
+    const activeFolder = folders.find(f => f.id === activeFolderId)
+    if (activeFolder && activeTicker && !activeFolder.tickers.includes(activeTicker)) {
+      setActiveTicker(activeFolder.tickers[0] ?? '')
+    }
+  }, [folders, foldersLoading, activeFolderId, activeTicker])
 
   useEffect(() => {
     const fn = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) search.close() }

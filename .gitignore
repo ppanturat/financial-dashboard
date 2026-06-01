@@ -24,6 +24,7 @@ dist/
 # some generated files
 .DS_Store
 Thumbs.db
+src.zip
 
 # jupyter 
 .ipynb_checkpoints/
