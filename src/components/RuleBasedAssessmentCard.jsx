@@ -299,25 +299,6 @@ function generateKeyInsights(metrics = {}) {
   return insights
 }
 
-function buildEtfNarrative(ticker, holdings) {
-  if (!Array.isArray(holdings) || holdings.length === 0) return null
-
-  const top10Weight = holdings.slice(0, 10).reduce((s, h) => s + (h.weight || 0), 0)
-  const top1Weight = holdings[0]?.weight || 0
-
-  const lines = []
-
-  if (top1Weight > 0.10) {
-    lines.push(`⚠ Notably concentrated: The top holding alone accounts for ${(top1Weight * 100).toFixed(1)}% of assets. Single-stock risk is elevated.`)
-  } else if (top10Weight > 0.5) {
-    lines.push(`⚠ Moderately top-heavy: The top 10 names make up ${(top10Weight * 100).toFixed(0)}% of the fund.`)
-  } else {
-    lines.push(`✓ Well-diversified: The top 10 names represent just ${(top10Weight * 100).toFixed(0)}% of assets.`)
-  }
-
-  return lines
-}
-
 export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, loading }) {
   if (loading) return null
 
