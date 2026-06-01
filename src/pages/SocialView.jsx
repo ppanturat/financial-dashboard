@@ -1,5 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { api } from '../lib/api'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 
 function Avatar({ name, avatarUrl, size = 40, style = {} }) {
   const initials = (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
@@ -192,9 +194,333 @@ function UserRow({ user, right, sub }) {
   )
 }
 
+// ── UserDetailPanel ──────────────────────────────────────────────────────────
+function MiniSparkline({ data, color = '#16a34a' }) {
+  if (!data?.length) return null
+  return (
+    <ResponsiveContainer width="100%" height={56}>
+      <LineChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
+        <Line type="monotone" dataKey="price" stroke={color} strokeWidth={1.5} dot={false} />
+      </LineChart>
+    </ResponsiveContainer>
+  )
+}
+
+const PIE_COLORS = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d']
+
+function UserDetailPanel({ user, feed, feedHoldings }) {
+  const [prices, setPrices] = useState({})  // ticker → { price, change }
+  const [charts, setCharts] = useState({})  // ticker → sparkline data
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('overview')
+
+  const folders = feed.filter(f => f.user_id === user.id)
+  const allHoldings = feedHoldings.filter(h => folders.some(f => f.id === h.folder_id))
+  const tickers = [...new Set(allHoldings.map(h => h.ticker))]
+
+  const fetchPrices = useCallback(async () => {
+    if (!tickers.length) { setLoading(false); return }
+    setLoading(true)
+    const results = {}
+    const chartResults = {}
+    await Promise.all(tickers.map(async (ticker) => {
+      try {
+        const data = await api.stockData(ticker, '1M')
+        if (data?.historical?.length) {
+          const prices = data.historical.slice(-30).map(d => ({ price: d.close, timestamp: d.date }))
+          chartResults[ticker] = prices
+          const latest = prices[prices.length - 1]?.price ?? 0
+          const prev = prices[prices.length - 2]?.price ?? latest
+          results[ticker] = { price: latest, change: prev ? ((latest - prev) / prev) * 100 : 0 }
+        }
+      } catch {
+        results[ticker] = { price: null, change: null }
+      }
+    }))
+    setPrices(results)
+    setCharts(chartResults)
+    setLoading(false)
+  }, [tickers.join(',')])
+
+  useEffect(() => { fetchPrices() }, [fetchPrices])
+
+  const totalCost = allHoldings.reduce((sum, h) => sum + (parseFloat(h.buy_price || 0) * parseFloat(h.amount || 0)), 0)
+  const totalValue = allHoldings.reduce((sum, h) => {
+    const p = prices[h.ticker]?.price
+    return sum + (p != null ? p * parseFloat(h.amount || 0) : parseFloat(h.buy_price || 0) * parseFloat(h.amount || 0))
+  }, 0)
+  const totalPnL = totalValue - totalCost
+  const totalPnLPct = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+  const pnlPositive = totalPnL >= 0
+
+  // per-ticker P&L for overview cards
+  const tickerStats = tickers.map(ticker => {
+    const holdings = allHoldings.filter(h => h.ticker === ticker)
+    const shares = holdings.reduce((s, h) => s + parseFloat(h.amount || 0), 0)
+    const avgCost = holdings.reduce((s, h) => s + parseFloat(h.buy_price || 0) * parseFloat(h.amount || 0), 0) / (shares || 1)
+    const currentPrice = prices[ticker]?.price
+    const value = currentPrice != null ? currentPrice * shares : avgCost * shares
+    const cost = avgCost * shares
+    const pnl = value - cost
+    const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
+    // weight for pie
+    const weight = totalValue > 0 ? (value / totalValue) * 100 : 0
+    return { ticker, shares, avgCost, currentPrice, value, cost, pnl, pnlPct, weight, sparkline: charts[ticker] }
+  }).sort((a, b) => b.value - a.value)
+
+  const pieData = tickerStats.map(t => ({ name: t.ticker, value: t.value }))
+
+  const tabs = ['overview', 'holdings', 'charts']
+
+  const tabStyle = (t) => ({
+    padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+    fontFamily: "'Syne', sans-serif", border: 'none', transition: 'all .15s',
+    background: activeTab === t ? 'var(--accent)' : 'var(--surface-2)',
+    color: activeTab === t ? '#fff' : 'var(--muted)',
+    outline: activeTab === t ? 'none' : '1px solid var(--border-md)',
+  })
+
+  return (
+    <div style={{
+      marginTop: 8, marginLeft: 16,
+      background: 'var(--surface)', border: '1px solid var(--border-md)',
+      borderRadius: 14, overflow: 'hidden',
+      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+    }}>
+      {/* Header bar */}
+      <div style={{
+        padding: '12px 16px', borderBottom: '1px solid var(--border)',
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {tabs.map(t => (
+            <button key={t} style={tabStyle(t)} onClick={() => setActiveTab(t)}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 16, alignItems: 'center' }}>
+          {!loading && (
+            <>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Portfolio Value</div>
+                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: 'var(--text)' }}>
+                  ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Total P&amp;L</div>
+                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: pnlPositive ? '#16a34a' : '#dc2626' }}>
+                  {pnlPositive ? '+' : ''}{totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({pnlPositive ? '+' : ''}{totalPnLPct.toFixed(2)}%)
+                </div>
+              </div>
+            </>
+          )}
+          {loading && <span style={{ fontSize: 12, color: 'var(--faint)' }}>Loading market data…</span>}
+        </div>
+      </div>
+
+      {/* Tab content */}
+      <div style={{ padding: '14px 16px' }}>
+
+        {/* OVERVIEW TAB */}
+        {activeTab === 'overview' && (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {/* Allocation pie + top stats row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {/* Pie chart */}
+              <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '12px', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Allocation</div>
+                {pieData.length > 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <PieChart width={90} height={90}>
+                      <Pie data={pieData} cx={40} cy={40} innerRadius={22} outerRadius={40} paddingAngle={2} dataKey="value">
+                        {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                      </Pie>
+                    </PieChart>
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      {tickerStats.slice(0, 5).map((t, i) => (
+                        <div key={t.ticker} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 700, color: 'var(--text)', minWidth: 40 }}>{t.ticker}</span>
+                          <span style={{ fontSize: 10, color: 'var(--faint)' }}>{t.weight.toFixed(1)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No data</div>
+                )}
+              </div>
+
+              {/* Summary stats */}
+              <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
+                {[
+                  { label: 'Holdings', value: allHoldings.length },
+                  { label: 'Portfolios', value: folders.length },
+                  { label: 'Total Cost Basis', value: `$${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+                  { label: 'Unrealised P&L', value: `${pnlPositive ? '+' : ''}${totalPnLPct.toFixed(2)}%`, color: pnlPositive ? '#16a34a' : '#dc2626' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '8px 12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: 'var(--faint)', fontWeight: 600 }}>{label}</span>
+                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: color || 'var(--text)' }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Top movers */}
+            {!loading && tickerStats.length > 0 && (
+              <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '12px', border: '1px solid var(--border)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Position Summary</div>
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {tickerStats.map((t, i) => (
+                    <div key={t.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 52 }}>{t.ticker}</span>
+                      <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${Math.min(t.weight, 100)}%`, background: PIE_COLORS[i % PIE_COLORS.length], borderRadius: 4, transition: 'width .4s' }} />
+                      </div>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--faint)', minWidth: 38, textAlign: 'right' }}>{t.weight.toFixed(1)}%</span>
+                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 700, color: t.pnl >= 0 ? '#16a34a' : '#dc2626', minWidth: 60, textAlign: 'right' }}>
+                        {t.pnl >= 0 ? '+' : ''}{t.pnlPct.toFixed(2)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* HOLDINGS TAB */}
+        {activeTab === 'holdings' && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {folders.map(folder => {
+              const fHoldings = feedHoldings.filter(h => h.folder_id === folder.id)
+              return (
+                <div key={folder.id} style={{ background: 'var(--surface-2)', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                  <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{folder.name}</span>
+                    <span style={{ fontSize: 10, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 99, fontWeight: 600 }}>Public</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--faint)', fontFamily: "'DM Mono', monospace" }}>{fHoldings.length} holding{fHoldings.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {fHoldings.length > 0 && (
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          {['Ticker', 'Shares', 'Avg Cost', 'Current', 'Value', 'P&L', 'P&L %'].map(h => (
+                            <th key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.06em', padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fHoldings.map((h, i) => {
+                          const stat = tickerStats.find(t => t.ticker === h.ticker)
+                          const currentPrice = prices[h.ticker]?.price
+                          const shares = parseFloat(h.amount || 0)
+                          const cost = parseFloat(h.buy_price || 0)
+                          const value = currentPrice != null ? currentPrice * shares : cost * shares
+                          const pnl = currentPrice != null ? (currentPrice - cost) * shares : null
+                          const pnlPct = currentPrice != null && cost > 0 ? ((currentPrice - cost) / cost) * 100 : null
+                          const isPos = pnl >= 0
+                          return (
+                            <tr key={h.id} style={{ borderBottom: i < fHoldings.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{h.ticker}</td>
+                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{shares.toFixed(4)}</td>
+                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>${cost.toFixed(2)}</td>
+                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text)' }}>
+                                {loading ? '…' : currentPrice != null ? `$${currentPrice.toFixed(2)}` : '—'}
+                              </td>
+                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text)' }}>
+                                ${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnl == null ? 'var(--faint)' : isPos ? '#16a34a' : '#dc2626' }}>
+                                {pnl == null ? '—' : `${isPos ? '+' : ''}$${pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                              </td>
+                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnlPct == null ? 'var(--faint)' : isPos ? '#16a34a' : '#dc2626' }}>
+                                {pnlPct == null ? '—' : `${isPos ? '+' : ''}${pnlPct.toFixed(2)}%`}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                  {fHoldings.length === 0 && (
+                    <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No holdings</div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* CHARTS TAB */}
+        {activeTab === 'charts' && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {loading ? (
+              <div style={{ fontSize: 13, color: 'var(--faint)', textAlign: 'center', padding: '16px 0' }}>Loading charts…</div>
+            ) : tickerStats.length === 0 ? (
+              <div style={{ fontSize: 13, color: 'var(--faint)', textAlign: 'center', padding: '16px 0', fontStyle: 'italic' }}>No holdings</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+                {tickerStats.map((t, i) => {
+                  const isPos = t.pnl >= 0
+                  const color = PIE_COLORS[i % PIE_COLORS.length]
+                  return (
+                    <div key={t.ticker} style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '12px', border: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{t.ticker}</div>
+                          <div style={{ fontSize: 10, color: 'var(--faint)', marginTop: 1 }}>{t.shares.toFixed(4)} shares</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                            {t.currentPrice != null ? `$${t.currentPrice.toFixed(2)}` : '—'}
+                          </div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 700, color: isPos ? '#16a34a' : '#dc2626' }}>
+                            {t.pnlPct != null ? `${isPos ? '+' : ''}${t.pnlPct.toFixed(2)}%` : '—'}
+                          </div>
+                        </div>
+                      </div>
+                      {t.sparkline?.length > 1 ? (
+                        <ResponsiveContainer width="100%" height={60}>
+                          <LineChart data={t.sparkline} margin={{ top: 2, right: 2, left: 0, bottom: 2 }}>
+                            <Line type="monotone" dataKey="price" stroke={color} strokeWidth={1.5} dot={false} />
+                            <Tooltip
+                              contentStyle={{ background: '#111', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 11 }}
+                              itemStyle={{ color, fontFamily: "'DM Mono', monospace" }}
+                              formatter={v => [`$${v.toFixed(2)}`, '']}
+                              labelFormatter={() => ''}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--faint)', fontStyle: 'italic' }}>No chart data</div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+                        <span style={{ fontSize: 10, color: 'var(--faint)' }}>Avg cost: <span style={{ fontFamily: "'DM Mono', monospace", color: 'var(--muted)' }}>${t.avgCost.toFixed(2)}</span></span>
+                        <span style={{ fontSize: 10, color: isPos ? '#16a34a' : '#dc2626', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                          {t.pnl != null ? `${isPos ? '+' : ''}$${Math.abs(t.pnl).toFixed(2)}` : '—'}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function SocialView({ social, portfolioFolders, session, togglePortfolioPrivacy }) {
   const [editing, setEditing] = useState(false)
   const [searchVal, setSearchVal] = useState('')
+  const [expandedUser, setExpandedUser] = useState(null)
 
   const profile = social.profile
   const displayName = profile?.name || 'Investor'
@@ -272,6 +598,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
           <div style={{ display: 'grid', gap: 12 }}>
             {social.followedUsers.map(u => {
               const pubFolders = social.feed?.filter(f => f.user_id === u.id) || []
+              const isExpanded = expandedUser === u.id
               return (
                 <div key={u.id}>
                   <UserRow user={u}
@@ -281,57 +608,40 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                       </span>
                     )}
                     right={
-                      <button onClick={() => social.unfollow(u.id)} style={{
-                        padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0,
-                        background: 'var(--surface)', border: '1px solid var(--border-md)',
-                        color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
-                      >Unfollow</button>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                        {pubFolders.length > 0 && (
+                          <button
+                            onClick={() => setExpandedUser(isExpanded ? null : u.id)}
+                            style={{
+                              padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                              background: isExpanded ? 'var(--accent)' : 'var(--surface-2)',
+                              border: isExpanded ? 'none' : '1px solid var(--border-md)',
+                              color: isExpanded ? '#fff' : 'var(--text)',
+                              fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
+                              transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 5,
+                            }}
+                          >
+                            {isExpanded ? '▲' : '▼'} {isExpanded ? 'Collapse' : 'View Details'}
+                          </button>
+                        )}
+                        <button onClick={() => social.unfollow(u.id)} style={{
+                          padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                          background: 'var(--surface)', border: '1px solid var(--border-md)',
+                          color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
+                        >Unfollow</button>
+                      </div>
                     }
                   />
-                  {/* Public portfolios expanded inline */}
-                  {pubFolders.map(folder => {
-                    const holdings = social.feedHoldings?.filter(h => h.folder_id === folder.id) || []
-                    return (
-                      <div key={folder.id} style={{
-                        marginTop: 8, marginLeft: 16,
-                        background: 'var(--surface-2)', border: '1px solid var(--border)',
-                        borderRadius: 12, overflow: 'hidden',
-                      }}>
-                        <div style={{ padding: '10px 14px', borderBottom: holdings.length ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{folder.name}</span>
-                          <span style={{ fontSize: 10, color: 'var(--faint)', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 99, color: '#16a34a', fontWeight: 600 }}>Public</span>
-                          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--faint)', fontFamily: "'DM Mono', monospace" }}>{holdings.length} holding{holdings.length !== 1 ? 's' : ''}</span>
-                        </div>
-                        {holdings.length > 0 && (
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                              <tr>
-                                {['Ticker', 'Shares', 'Avg Cost', 'Notes'].map(h => (
-                                  <th key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.06em', padding: '8px 14px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {holdings.map((h, i) => (
-                                <tr key={h.id} style={{ borderBottom: i < holdings.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                                  <td style={{ padding: '9px 14px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{h.ticker}</td>
-                                  <td style={{ padding: '9px 14px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{h.amount}</td>
-                                  <td style={{ padding: '9px 14px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>${parseFloat(h.buy_price || 0).toFixed(2)}</td>
-                                  <td style={{ padding: '9px 14px', fontSize: 11, color: 'var(--faint)', fontStyle: h.notes ? 'normal' : 'italic' }}>{h.notes || '—'}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                        {holdings.length === 0 && (
-                          <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No holdings in this portfolio</div>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {isExpanded && (
+                    <UserDetailPanel
+                      user={u}
+                      feed={social.feed || []}
+                      feedHoldings={social.feedHoldings || []}
+                    />
+                  )}
                 </div>
               )
             })}
