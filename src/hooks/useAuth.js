@@ -17,18 +17,33 @@ export function useAuth() {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signIn = (email, password) =>
-    supabase.auth.signInWithPassword({ email, password })
+  const signIn = async (email, password) => {
+    const result = await supabase.auth.signInWithPassword({ email, password })
+    return result
+  }
 
-  const signUp = (email, password, name, username) =>
-    supabase.auth.signUp({ 
-      email, 
+  const signUp = async (email, password, name, username) => {
+    // Check username uniqueness before creating auth account
+    const { data: existing } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username.toLowerCase().trim())
+      .maybeSingle()
+
+    if (existing) {
+      return { error: { message: 'Username @' + username + ' is already taken. Please choose another.' } }
+    }
+
+    const result = await supabase.auth.signUp({
+      email,
       password,
       options: {
         emailRedirectTo: window.location.origin,
-        data: { name, username }
+        data: { name, username: username.toLowerCase().trim() }
       }
     })
+    return result
+  }
 
   const signOut = () => supabase.auth.signOut()
 

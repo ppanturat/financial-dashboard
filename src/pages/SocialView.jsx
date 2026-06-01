@@ -269,27 +269,70 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
       {social.followedUsers?.length > 0 && (
         <Card>
           <SectionLabel count={social.followedUsers.length}>Following</SectionLabel>
-          <div style={{ display: 'grid', gap: 8 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
             {social.followedUsers.map(u => {
-              const pubPortfolios = social.feed?.filter(p => p.user_id === u.id) || []
+              const pubFolders = social.feed?.filter(f => f.user_id === u.id) || []
               return (
-                <UserRow key={u.id} user={u}
-                  sub={pubPortfolios.length > 0 && (
-                    <span style={{ fontSize: 10, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 99 }}>
-                      {pubPortfolios.length} public portfolio{pubPortfolios.length > 1 ? 's' : ''}
-                    </span>
-                  )}
-                  right={
-                    <button onClick={() => social.unfollow(u.id)} style={{
-                      padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0,
-                      background: 'var(--surface)', border: '1px solid var(--border-md)',
-                      color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
-                    >Unfollow</button>
-                  }
-                />
+                <div key={u.id}>
+                  <UserRow user={u}
+                    sub={pubFolders.length > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 99 }}>
+                        {pubFolders.length} public portfolio{pubFolders.length > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    right={
+                      <button onClick={() => social.unfollow(u.id)} style={{
+                        padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0,
+                        background: 'var(--surface)', border: '1px solid var(--border-md)',
+                        color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
+                      >Unfollow</button>
+                    }
+                  />
+                  {/* Public portfolios expanded inline */}
+                  {pubFolders.map(folder => {
+                    const holdings = social.feedHoldings?.filter(h => h.folder_id === folder.id) || []
+                    return (
+                      <div key={folder.id} style={{
+                        marginTop: 8, marginLeft: 16,
+                        background: 'var(--surface-2)', border: '1px solid var(--border)',
+                        borderRadius: 12, overflow: 'hidden',
+                      }}>
+                        <div style={{ padding: '10px 14px', borderBottom: holdings.length ? '1px solid var(--border)' : 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{folder.name}</span>
+                          <span style={{ fontSize: 10, color: 'var(--faint)', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 99, color: '#16a34a', fontWeight: 600 }}>Public</span>
+                          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--faint)', fontFamily: "'DM Mono', monospace" }}>{holdings.length} holding{holdings.length !== 1 ? 's' : ''}</span>
+                        </div>
+                        {holdings.length > 0 && (
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr>
+                                {['Ticker', 'Shares', 'Avg Cost', 'Notes'].map(h => (
+                                  <th key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.06em', padding: '8px 14px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {holdings.map((h, i) => (
+                                <tr key={h.id} style={{ borderBottom: i < holdings.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                                  <td style={{ padding: '9px 14px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{h.ticker}</td>
+                                  <td style={{ padding: '9px 14px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{h.amount}</td>
+                                  <td style={{ padding: '9px 14px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>${parseFloat(h.buy_price || 0).toFixed(2)}</td>
+                                  <td style={{ padding: '9px 14px', fontSize: 11, color: 'var(--faint)', fontStyle: h.notes ? 'normal' : 'italic' }}>{h.notes || '—'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                        {holdings.length === 0 && (
+                          <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No holdings in this portfolio</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               )
             })}
           </div>

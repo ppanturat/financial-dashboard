@@ -3,12 +3,13 @@ import { supabase } from '../lib/supabaseClient'
 
 export function useSocial(session) {
   const [profiles, setProfiles] = useState([])
-  const [requests, setRequests] = useState([])        // incoming pending
-  const [sentRequests, setSentRequests] = useState([]) // outgoing (any status)
-  const [feed, setFeed] = useState([])
+  const [requests, setRequests] = useState([])
+  const [sentRequests, setSentRequests] = useState([])
+  const [feed, setFeed] = useState([])           // public portfolio_folders
+  const [feedHoldings, setFeedHoldings] = useState([]) // holdings for those folders
   const [profile, setProfile] = useState(null)
-  const [followedUsers, setFollowedUsers] = useState([])  // people I follow (accepted)
-  const [followers, setFollowers] = useState([])           // people who follow me (accepted)
+  const [followedUsers, setFollowedUsers] = useState([])
+  const [followers, setFollowers] = useState([])
 
   const load = async () => {
     if (!session) return
@@ -16,8 +17,8 @@ export function useSocial(session) {
     const [
       { data: users },
       { data: reqs },
-      { data: acceptedOut },   // I follow them
-      { data: acceptedIn },    // they follow me
+      { data: acceptedOut },
+      { data: acceptedIn },
       { data: sent },
       { data: me }
     ] = await Promise.all([
@@ -34,21 +35,35 @@ export function useSocial(session) {
     setSentRequests(sent || [])
     setProfile(me)
 
-    // People I follow → load their public portfolios
     if (acceptedOut?.length) {
       const followingIds = acceptedOut.map(x => x.target_user_id)
-      const [{ data: portfolios }, { data: followingProfiles }] = await Promise.all([
+
+      const [{ data: folders }, { data: followingProfiles }] = await Promise.all([
         supabase.from('portfolio_folders').select('*').in('user_id', followingIds).eq('is_public', true),
         supabase.from('profiles').select('*').in('id', followingIds)
       ])
-      setFeed(portfolios || [])
+
+      const publicFolders = folders || []
+      setFeed(publicFolders)
       setFollowedUsers(followingProfiles || [])
+
+      // Fetch holdings for every public folder
+      if (publicFolders.length) {
+        const folderIds = publicFolders.map(f => f.id)
+        const { data: holdings } = await supabase
+          .from('portfolio_holdings')
+          .select('*')
+          .in('folder_id', folderIds)
+        setFeedHoldings(holdings || [])
+      } else {
+        setFeedHoldings([])
+      }
     } else {
       setFeed([])
+      setFeedHoldings([])
       setFollowedUsers([])
     }
 
-    // People who follow me
     if (acceptedIn?.length) {
       const followerIds = acceptedIn.map(x => x.requester_user_id)
       const { data: followerProfiles } = await supabase
@@ -76,14 +91,15 @@ export function useSocial(session) {
       .eq('requester_user_id', session.user.id)
       .eq('target_user_id', targetId)
     setFollowedUsers(prev => prev.filter(u => u.id !== targetId))
-    setFeed(prev => prev.filter(p => p.user_id !== targetId))
+    const removedFolderIds = feed.filter(f => f.user_id === targetId).map(f => f.id)
+    setFeed(prev => prev.filter(f => f.user_id !== targetId))
+    setFeedHoldings(prev => prev.filter(h => !removedFolderIds.includes(h.folder_id)))
     setSentRequests(prev => prev.filter(r => r.target_user_id !== targetId))
   }
 
   const respondToRequest = async (id, status) => {
     await supabase.from('follow_requests').update({ status }).eq('id', id)
     setRequests(prev => prev.filter(r => r.id !== id))
-
     if (status === 'accepted') {
       const req = requests.find(r => r.id === id)
       if (req) {
@@ -99,7 +115,6 @@ export function useSocial(session) {
     setProfile(prev => ({ ...prev, ...payload }))
   }
 
-  // 'accepted' | 'pending' | 'rejected' | null
   const getSentRequestStatus = (targetUserId) => {
     if (followedUsers.some(u => u.id === targetUserId)) return 'accepted'
     const req = sentRequests.find(r => r.target_user_id === targetUserId)
@@ -107,7 +122,7 @@ export function useSocial(session) {
   }
 
   const filteredProfiles = (searchTerm) => profiles.filter(p => {
-    const q = searchTerm.toLowerCase()
+    const q = (searchTerm || '').toLowerCase()
     return p.username?.toLowerCase().includes(q) || p.name?.toLowerCase().includes(q)
   })
 
@@ -117,6 +132,7 @@ export function useSocial(session) {
     requests,
     sentRequests,
     feed,
+    feedHoldings,
     followedUsers,
     followers,
     sendFollowRequest,
