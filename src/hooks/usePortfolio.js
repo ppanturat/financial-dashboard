@@ -159,9 +159,19 @@ export function usePortfolio(session) {
     loadHoldings()
   }
 
-  const togglePortfolioPrivacy = (folderId, isPublic) => {
+  const togglePortfolioPrivacy = async (folderId, isPublic) => {
+    // Optimistic update
     setPortfolioFolders(f => f.map(x => x.id === folderId ? { ...x, is_public: isPublic } : x))
-    supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
+    const { error } = await supabase
+      .from('portfolio_folders')
+      .update({ is_public: isPublic })
+      .eq('id', folderId)
+    if (error) {
+      // Revert on failure
+      console.error('togglePortfolioPrivacy failed:', error)
+      setPortfolioFolders(f => f.map(x => x.id === folderId ? { ...x, is_public: !isPublic } : x))
+      alert('Could not update portfolio visibility: ' + error.message)
+    }
   }
 
   return { 

@@ -33,7 +33,14 @@ export function useSocial(session) {
     setProfiles(users || [])
     setRequests(reqs || [])
     setSentRequests(sent || [])
-    setProfile(me)
+
+    // If profile row is missing, synthesise one from auth metadata so UI never shows fallbacks
+    if (!me && session.user) {
+      const meta = session.user.user_metadata || {}
+      setProfile({ id: session.user.id, name: meta.name || '', username: meta.username || '', avatar_url: null })
+    } else {
+      setProfile(me)
+    }
 
     if (acceptedOut?.length) {
       const followingIds = acceptedOut.map(x => x.target_user_id)
