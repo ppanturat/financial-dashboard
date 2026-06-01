@@ -118,14 +118,18 @@ export function Sidebar({
                 {followedUsers.map(u => (
                   <div key={u.id} className="vault-row">
                     <div className="vault-btn" style={{ cursor: 'default' }}>
-                      <div style={{
-                        width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                        background: `hsl(${(u.name||u.username||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360}, 55%, 62%)`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#fff', fontSize: 9, fontWeight: 700,
-                      }}>
-                        {(u.name||u.username||'?')[0].toUpperCase()}
-                      </div>
+                      {u.avatar_url ? (
+                        <img src={u.avatar_url} alt={u.name} style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{
+                          width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                          background: `hsl(${(u.name||u.username||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360}, 55%, 62%)`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: '#fff', fontSize: 9, fontWeight: 700,
+                        }}>
+                          {(u.name||u.username||'?')[0].toUpperCase()}
+                        </div>
+                      )}
                       <span className="vault-label">{u.name || u.username || 'Investor'}</span>
                       {u.username && (
                         <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
