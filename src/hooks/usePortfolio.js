@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
 const BASE_URL = window.location.hostname === "localhost" ? "http://localhost:8000/api" : "/api"
@@ -40,39 +40,48 @@ export function usePortfolio(session) {
   }, [session])
 
   // fetch holdings when active folder changes
-  const loadHoldings = useCallback(async () => {
-    if (!session || !activePortfolioId) {
-      setHoldings([])
-      return
-    }
+  useEffect(() => {
+    const loadHoldings = async () => {
+      if (!session || !activePortfolioId) {
+        setHoldings([])
+        setLoadingHoldings(false)
+        return
+      }
 
-    setLoadingHoldings(true)
-    const { data } = await supabase
-      .from('portfolio_holdings')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .eq('folder_id', activePortfolioId)
-      .order('created_at', { ascending: true })
-
-    setHoldings(data || [])
-
-    // fetch live prices via python backend
-    if (data && data.length > 0) {
-      const tickers = [...new Set(data.map(h => h.ticker))].join(',')
+      setLoadingHoldings(true)
       try {
-        const res = await fetch(`${BASE_URL}/bulk_prices?tickers=${tickers}`)
-        const prices = await res.json()
-        setLivePrices(prices)
-      } catch (e) {
-        console.error("failed to fetch prices", e)
+        const { data, error } = await supabase
+          .from('portfolio_holdings')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('folder_id', activePortfolioId)
+          .order('created_at', { ascending: true })
+
+        if (error) {
+          console.error('Error fetching holdings:', error)
+          setHoldings([])
+        } else {
+          setHoldings(data || [])
+
+          // fetch live prices via python backend
+          if (data && data.length > 0) {
+            const tickers = [...new Set(data.map(h => h.ticker))].join(',')
+            try {
+              const res = await fetch(`${BASE_URL}/bulk_prices?tickers=${tickers}`)
+              const prices = await res.json()
+              setLivePrices(prices)
+            } catch (e) {
+              console.error("failed to fetch prices", e)
+            }
+          }
+        }
+      } finally {
+        setLoadingHoldings(false)
       }
     }
-    setLoadingHoldings(false)
-  }, [session, activePortfolioId])
 
-  useEffect(() => {
     loadHoldings()
-  }, [loadHoldings])
+  }, [session, activePortfolioId])
 
   // folder actions
   const createPortfolioFolder = async (name) => {
@@ -135,28 +144,78 @@ export function usePortfolio(session) {
 
   // holding actions
   const saveHolding = async (id, ticker, amount, buyPrice) => {
-    if (!activePortfolioId) return
+    if (!activePortfolioId || !session) return
 
-    if (id) {
-      await supabase.from('portfolio_holdings')
-        .update({ amount, buy_price: buyPrice })
-        .eq('id', id)
-    } else {
-      await supabase.from('portfolio_holdings')
-        .insert([{ 
-          user_id: session.user.id, 
-          folder_id: activePortfolioId,
-          ticker: ticker.toUpperCase(), 
-          amount, 
-          buy_price: buyPrice 
-        }])
+    try {
+      if (id) {
+        await supabase.from('portfolio_holdings')
+          .update({ amount, buy_price: buyPrice })
+          .eq('id', id)
+      } else {
+        await supabase.from('portfolio_holdings')
+          .insert([{
+            user_id: session.user.id,
+            folder_id: activePortfolioId,
+            ticker: ticker.toUpperCase(),
+            amount,
+            buy_price: buyPrice
+          }])
+      }
+      // Reload holdings by querying again
+      const { data } = await supabase
+        .from('portfolio_holdings')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('folder_id', activePortfolioId)
+        .order('created_at', { ascending: true })
+
+      setHoldings(data || [])
+
+      // Fetch live prices
+      if (data && data.length > 0) {
+        const tickers = [...new Set(data.map(h => h.ticker))].join(',')
+        try {
+          const res = await fetch(`${BASE_URL}/bulk_prices?tickers=${tickers}`)
+          const prices = await res.json()
+          setLivePrices(prices)
+        } catch (e) {
+          console.error("failed to fetch prices", e)
+        }
+      }
+    } catch (error) {
+      console.error('Error saving holding:', error)
+      throw error
     }
-    loadHoldings()
   }
 
   const removeHolding = async (id) => {
-    await supabase.from('portfolio_holdings').delete().eq('id', id)
-    loadHoldings()
+    if (!session || !activePortfolioId) return
+    try {
+      await supabase.from('portfolio_holdings').delete().eq('id', id)
+      // Reload holdings
+      const { data } = await supabase
+        .from('portfolio_holdings')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('folder_id', activePortfolioId)
+        .order('created_at', { ascending: true })
+
+      setHoldings(data || [])
+
+      if (data && data.length > 0) {
+        const tickers = [...new Set(data.map(h => h.ticker))].join(',')
+        try {
+          const res = await fetch(`${BASE_URL}/bulk_prices?tickers=${tickers}`)
+          const prices = await res.json()
+          setLivePrices(prices)
+        } catch (e) {
+          console.error("failed to fetch prices", e)
+        }
+      }
+    } catch (error) {
+      console.error('Error removing holding:', error)
+      throw error
+    }
   }
 
   const togglePortfolioPrivacy = async (folderId, isPublic) => {

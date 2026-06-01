@@ -36,57 +36,108 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) await ensureProfile(session.user)
-      setSession(session)
-      setLoading(false)
-    })
+    let mounted = true
+
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (mounted) {
+          if (session?.user) {
+            try {
+              await ensureProfile(session.user)
+            } catch (err) {
+              console.error('Failed to ensure profile:', err)
+              // Continue anyway - don't block on profile creation
+            }
+          }
+          setSession(session)
+          setLoading(false)
+        }
+      } catch (err) {
+        console.error('Failed to get session:', err)
+        if (mounted) {
+          setSession(null)
+          setLoading(false)
+        }
+      }
+    }
+
+    initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
-      // On sign-in or token refresh, make sure profile row is up to date
-      if (s?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
-        await ensureProfile(s.user)
+      if (mounted) {
+        // On sign-in or token refresh, make sure profile row is up to date
+        if (s?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+          try {
+            await ensureProfile(s.user)
+          } catch (err) {
+            console.error('Failed to ensure profile on auth change:', err)
+          }
+        }
+        setSession(s)
+        setLoading(false)
       }
-      setSession(s)
-      setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signIn = async (email, password) => {
-    const result = await supabase.auth.signInWithPassword({ email, password })
-    if (result.data?.user) await ensureProfile(result.data.user)
-    return result
+    try {
+      const result = await supabase.auth.signInWithPassword({ email, password })
+      if (result.data?.user) {
+        try {
+          await ensureProfile(result.data.user)
+        } catch (err) {
+          console.error('Failed to ensure profile:', err)
+        }
+      }
+      return result
+    } catch (err) {
+      console.error('Sign in error:', err)
+      throw err
+    }
   }
 
   const signUp = async (email, password, name, username) => {
-    // Check username uniqueness before creating auth account
-    const { data: existing } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', username.toLowerCase().trim())
-      .maybeSingle()
+    try {
+      // Check username uniqueness before creating auth account
+      const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', username.toLowerCase().trim())
+        .maybeSingle()
 
-    if (existing) {
-      return { error: { message: 'Username @' + username + ' is already taken. Please choose another.' } }
+      if (existing) {
+        return { error: { message: 'Username @' + username + ' is already taken. Please choose another.' } }
+      }
+
+      const result = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin,
+          data: { name, username: username.toLowerCase().trim() },
+        },
+      })
+
+      // If email confirmation is disabled (instant sign-in), create the profile row immediately
+      if (result.data?.user && !result.data?.user?.identities?.[0]?.identity_data?.email_verified === false) {
+        try {
+          await ensureProfile(result.data.user)
+        } catch (err) {
+          console.error('Failed to ensure profile:', err)
+        }
+      }
+
+      return result
+    } catch (err) {
+      console.error('Sign up error:', err)
+      throw err
     }
-
-    const result = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: { name, username: username.toLowerCase().trim() },
-      },
-    })
-
-    // If email confirmation is disabled (instant sign-in), create the profile row immediately
-    if (result.data?.user && !result.data?.user?.identities?.[0]?.identity_data?.email_verified === false) {
-      await ensureProfile(result.data.user)
-    }
-
-    return result
   }
 
   const signOut = () => supabase.auth.signOut()
