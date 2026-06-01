@@ -226,12 +226,13 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
     await Promise.all(tickers.map(async (ticker) => {
       try {
         const data = await api.stockData(ticker, '1M')
-        if (data?.historical?.length) {
-          const prices = data.historical.slice(-30).map(d => ({ price: d.close, timestamp: d.date }))
-          chartResults[ticker] = prices
-          const latest = prices[prices.length - 1]?.price ?? 0
-          const prev = prices[prices.length - 2]?.price ?? latest
-          results[ticker] = { price: latest, change: prev ? ((latest - prev) / prev) * 100 : 0 }
+        const chartArr = data?.chart ?? []
+        if (chartArr.length) {
+          const mapped = chartArr.map(d => ({ price: d.price, timestamp: d.timestamp }))
+          chartResults[ticker] = mapped
+          const latest = mapped[mapped.length - 1]?.price ?? 0
+          const first = mapped[0]?.price ?? latest
+          results[ticker] = { price: latest, change: first ? ((latest - first) / first) * 100 : 0 }
         }
       } catch {
         results[ticker] = { price: null, change: null }

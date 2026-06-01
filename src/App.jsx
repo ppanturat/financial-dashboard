@@ -104,7 +104,12 @@ export default function App() {
       const f = await createFolder('My Folder')
       fid = f?.id
       if (fid) setActiveFolderId(fid)
+    } else if (!fid && folders.length > 0) {
+      // auto-select first folder when none is active
+      fid = folders[0].id
+      setActiveFolderId(fid)
     }
+    if (!fid) return
     const ticker = await addTicker(fid, symbol, session.user.id)
     setActiveTicker(ticker)
   }
