@@ -6,6 +6,7 @@ import { MetricsGrid } from '../components/MetricsGrid'
 import { MetricsSummaryCard } from '../components/MetricsSummaryCard'
 import { RuleBasedAssessmentCard } from '../components/RuleBasedAssessmentCard'
 import { EmptyState } from '../components/EmptyState'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 
 export function MarketView({ activeTicker, foldersLoading }) {
   const [timeframe, setTimeframe] = useState('1M')
@@ -29,7 +30,6 @@ export function MarketView({ activeTicker, foldersLoading }) {
 
       {stock.description && (
         <div className="desc-card">
-          {/* Collapsible header */}
           <button
             onClick={() => setProfileOpen(o => !o)}
             style={{
@@ -47,14 +47,12 @@ export function MarketView({ activeTicker, foldersLoading }) {
             }}>▼</span>
           </button>
 
-          {/* Collapsed preview — first sentence */}
           {!profileOpen && (
             <p className="desc-text" style={{ marginTop: 10, marginBottom: 0, color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
               {stock.description}
             </p>
           )}
 
-          {/* Full text when open */}
           {profileOpen && (
             <p className="desc-text" style={{ marginTop: 10, marginBottom: 0 }}>
               {stock.description}
@@ -63,9 +61,17 @@ export function MarketView({ activeTicker, foldersLoading }) {
         </div>
       )}
 
-      <MetricsGrid metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
-      <MetricsSummaryCard metrics={stock.metrics} ticker={activeTicker} isEtf={isEtf} loading={stock.loadingData} />
-      <RuleBasedAssessmentCard ticker={activeTicker} metrics={stock.metrics} isEtf={isEtf} etfHoldings={stock.etfHoldings} loading={stock.loadingData} />
+      <ErrorBoundary>
+        <MetricsGrid metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
+      </ErrorBoundary>
+      
+      <ErrorBoundary>
+        <MetricsSummaryCard metrics={stock.metrics} ticker={activeTicker} isEtf={isEtf} loading={stock.loadingData} />
+      </ErrorBoundary>
+      
+      <ErrorBoundary>
+        <RuleBasedAssessmentCard ticker={activeTicker} metrics={stock.metrics} isEtf={isEtf} etfHoldings={stock.etfHoldings} loading={stock.loadingData} />
+      </ErrorBoundary>
     </>
   )
 }

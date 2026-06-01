@@ -183,3 +183,43 @@ export function generateMetricsSummary(metrics) {
     ],
   }
 }
+
+// Append this to the bottom of lib/metricsSummary.js
+
+export function runAdvancedDiagnostics(metrics) {
+  if (!metrics) return { bearProbability: 50, bullProbability: 50, redFlags: [] }
+
+  const redFlags = []
+  let bearProbability = 50
+
+  // 1. Terminal Red Flag Sweep
+  if (metrics.war_chest_ratio != null && metrics.war_chest_ratio < 0.5) {
+    redFlags.push(`Severe Leverage: Cash covers less than 50% of outstanding debt (${(metrics.war_chest_ratio * 100).toFixed(0)}%).`)
+  }
+  if (metrics.fcf != null && metrics.fcf < -1e9) {
+    redFlags.push(`Critical Cash Burn: Operating at a free cash flow deficit of $${Math.abs(metrics.fcf / 1e9).toFixed(2)}B.`)
+  }
+  if (metrics.gross_margin != null && metrics.gross_margin < 0.15) {
+    redFlags.push(`Razor-Thin Margins: Gross margin under 15% leaves no buffer for operational friction.`)
+  }
+  if (metrics.revenue_yoy != null && metrics.revenue_yoy < 0) {
+    redFlags.push(`Demand Contraction: Top-line revenue is actively shrinking (${(metrics.revenue_yoy * 100).toFixed(1)}% YoY).`)
+  }
+
+  // 2. Bear vs. Bull Probability Check
+  if (metrics.forward_pe > 40) bearProbability += 15
+  if (metrics.forward_pe > 60) bearProbability += 10
+  if (metrics.revenue_yoy < 0.05) bearProbability += 15
+  if (metrics.gross_margin < 0.3) bearProbability += 10
+  if (metrics.war_chest_ratio < 1) bearProbability += 10
+
+  if (metrics.fcf > 2e9) bearProbability -= 15
+  if (metrics.gross_margin > 0.6) bearProbability -= 15
+  if (metrics.revenue_yoy > 0.2) bearProbability -= 15
+  if (metrics.forward_pe > 0 && metrics.forward_pe < 15) bearProbability -= 20
+
+  bearProbability = Math.max(10, Math.min(90, bearProbability))
+  const bullProbability = 100 - bearProbability
+
+  return { bearProbability, bullProbability, redFlags }
+}
