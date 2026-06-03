@@ -16,13 +16,13 @@ Once signed in, the app opens on the Market View. The sidebar on the left switch
 
 Research individual stocks and ETFs.
 
-**Adding a ticker.** Use the search bar at the top to find a stock by name or symbol. Selecting a result adds it to the active folder and opens it immediately.
+**Adding a ticker:** Use the search bar at the top to find a stock by name or symbol. Selecting a result adds it to the active folder and opens it immediately.
 
-**Folders.** Tickers are organised into folders — think of them as watchlists. Create as many as needed from the sidebar. Folders can be renamed or deleted at any time. The tickers in the active folder appear as tabs in the header; click any tab to switch to that stock.
+**Folders:** Tickers are organised into folders — think of them as watchlists. Create as many as needed from the sidebar. Folders can be renamed or deleted at any time. The tickers in the active folder appear as tabs in the header; click any tab to switch to that stock.
 
-**Price chart.** The chart shows price history for the selected ticker. The timeframe buttons (1W, 1M, 6M, 1Y) zoom in or out.
+**Price chart:** The chart shows price history for the selected ticker. The timeframe buttons (1W, 1M, 6M, 1Y) zoom in or out.
 
-**Key Metrics.** Below the chart, five tiles summarise the company's financial health. Each tile is colour-coded and has a "?" button that explains what the metric means and how to read it.
+**Key Metrics:** Below the chart, five tiles summarise the company's financial health. Each tile is colour-coded and has a "?" button that explains what the metric means and how to read it.
 
 | Metric | What it tells you |
 |---|---|
@@ -34,11 +34,11 @@ Research individual stocks and ETFs.
 
 Metrics are not shown for ETFs — the tile area will display "N/A" in that case.
 
-**Assessment cards.** Below the metrics, a rule-based written assessment summarises whether the numbers lean bullish or bearish. An AI scan below that offers a more detailed take. The AI result is cached, so the first load for any ticker may take a moment; subsequent loads are instant.
+**Assessment cards:** Below the metrics, a rule-based written assessment summarises whether the numbers lean bullish or bearish. An AI scan below that offers a more detailed take. The AI result is cached, so the first load for any ticker may take a moment; subsequent loads are instant.
 
-**ETFs.** Opening an ETF replaces the metrics section with a breakdown of the fund's top holdings.
+**ETFs:** Opening an ETF replaces the metrics section with a breakdown of the fund's top holdings.
 
-**Company Profile.** A collapsible section at the bottom shows a plain-language description of the business.
+**Company Profile:** A collapsible section at the bottom shows a plain-language description of the business.
 
 ---
 
@@ -46,20 +46,20 @@ Metrics are not shown for ETFs — the tile area will display "N/A" in that case
 
 Track holdings and see P&L.
 
-**Creating a portfolio.** Open the sidebar and create a new portfolio folder. Multiple portfolios are supported — for example, one for long-term holdings and one for shorter-term trades.
+**Creating a portfolio:** Open the sidebar and create a new portfolio folder. Multiple portfolios are supported — for example, one for long-term holdings and one for shorter-term trades.
 
-**Adding holdings.** Click "Add Holding" inside a portfolio. Enter the ticker, the number of shares or units held, and the price paid. The app fetches the current live price automatically and calculates the gain or loss.
+**Adding holdings:** Click "Add Holding" inside a portfolio. Enter the ticker, the number of shares or units held, and the price paid. The app fetches the current live price automatically and calculates the gain or loss.
 
-**Importing from Market View.** A watchlist built in Market View can be imported directly into a new portfolio folder. The tickers are pre-populated with zero amounts to be filled in with actual positions.
+**Importing from Market View:** A watchlist built in Market View can be imported directly into a new portfolio folder. The tickers are pre-populated with zero amounts to be filled in with actual positions.
 
-**Charts and breakdowns.** The portfolio view shows:
+**Charts and breakdowns:** The portfolio view shows:
 - An allocation pie chart showing how concentrated the portfolio is
 - A simulated growth chart showing how portfolio value has moved over a selected time range (1D, 1W, 1M, 3M, 1Y)
 - Per-holding P&L and the overall total at the top
 
-**Currency.** Values can be displayed in USD or THB. The conversion rate is fetched live.
+**Currency:** Values can be displayed in USD or THB. The conversion rate is fetched live.
 
-**Privacy.** Each portfolio folder can be set to public or private. Public portfolios are visible to approved followers on the Social tab.
+**Privacy:** Each portfolio folder can be set to public or private. Public portfolios are visible to approved followers on the Social tab.
 
 ---
 
@@ -67,15 +67,15 @@ Track holdings and see P&L.
 
 Connect with other users and see their shared portfolios.
 
-**Finding people.** The Social tab lists other users on the platform, searchable by name or username.
+**Finding people:** The Social tab lists other users on the platform, searchable by name or username.
 
-**Following.** Click "Follow" on a profile to send a follow request. The request must be accepted before their public portfolios become visible. Pending requests can be withdrawn, and followed users can be unfollowed, at any time.
+**Following:** Click "Follow" on a profile to send a follow request. The request must be accepted before their public portfolios become visible. Pending requests can be withdrawn, and followed users can be unfollowed, at any time.
 
-**Incoming requests.** Incoming follow requests appear in a "Pending Requests" section at the top of the Social tab. Accept or decline from there.
+**Incoming requests:** Incoming follow requests appear in a "Pending Requests" section at the top of the Social tab. Accept or decline from there.
 
-**Feed.** Once following someone who has at least one public portfolio, their holdings appear in the feed. Allocation and tickers are visible, but not cost basis or P&L.
+**Feed:** Once following someone who has at least one public portfolio, their holdings appear in the feed. Allocation and tickers are visible, but not cost basis or P&L.
 
-**Profile.** Display name, username, and profile photo can all be edited from the top of the Social tab.
+**Profile:** Display name, username, and profile photo can all be edited from the top of the Social tab.
 
 ---
 
