@@ -62,7 +62,7 @@ export default function App() {
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
-  if (authLoading) return null
+  if (authLoading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg, #f5f3ee)" }}><span style={{ opacity: 0.4, fontSize: 14 }}>Loading...</span></div>
   if (!session) return <AuthPage onSignIn={signIn} onSignUp={signUp} />
 
   const activeFolder = activeTab === 'market' 
