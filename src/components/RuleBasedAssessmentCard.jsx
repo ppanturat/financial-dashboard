@@ -358,7 +358,7 @@ function AssessmentBadge({ type }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      minWidth: 50, height: 22, borderRadius: 12,
+      width: 80, height: 22, borderRadius: 12, 
       background: style.bg, border: `1px solid ${style.border}`,
       color: style.color, fontSize: 10, fontWeight: 700, 
       textTransform: 'uppercase', letterSpacing: '.05em', flexShrink: 0
@@ -513,7 +513,8 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderLeft: `4px solid ${verdictColor}`, borderRadius: 'var(--r)',
+      borderLeft: '4px solid #000000', // 🧠 CHANGED: Set to solid black to match ETF styling
+      borderRadius: 'var(--r)',
       padding: '24px'
     }}>
       
