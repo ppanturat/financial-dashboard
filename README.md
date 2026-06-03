@@ -24,7 +24,7 @@ Research individual stocks and ETFs.
 
 **Key Metrics:** Below the chart, five tiles summarise the company's financial health. Each tile is colour-coded and has a "?" button that explains what the metric means and how to read it.
 
-| Metric | What it tells you |
+| Metric | Meaning |
 |---|---|
 | War Chest Ratio | Cash divided by total debt. Above 1.0 means the company holds more cash than it owes. |
 | Free Cash Flow | Cash left over after running the business and investing in it. Positive is good. |
