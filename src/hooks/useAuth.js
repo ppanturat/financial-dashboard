@@ -25,9 +25,6 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // onAuthStateChange fires INITIAL_SESSION reliably — use it as the
-    // source of truth. getSession() is only a fallback if the event
-    // never arrives (e.g. network error).
     let loadingDone = false
 
     const markLoaded = () => {
@@ -37,21 +34,23 @@ export function useAuth() {
       }
     }
 
-    // Fallback timeout in case auth events never fire
+    // Fallback: if no auth event fires within 5s, unblock the UI
     const timeout = setTimeout(() => {
       setSession(null)
       markLoaded()
     }, 5000)
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       clearTimeout(timeout)
 
-      if (s?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION')) {
-        try { await ensureProfile(s.user) } catch (_) {}
-      }
-
+      // Unblock UI immediately — don't await ensureProfile
       setSession(s ?? null)
       markLoaded()
+
+      // Run profile upsert in background, never blocking render
+      if (s?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION')) {
+        ensureProfile(s.user).catch(() => {})
+      }
     })
 
     return () => {
@@ -62,7 +61,7 @@ export function useAuth() {
 
   const signIn = async (email, password) => {
     const result = await supabase.auth.signInWithPassword({ email, password })
-    if (result.data?.user) await ensureProfile(result.data.user)
+    if (result.data?.user) ensureProfile(result.data.user).catch(() => {})
     return result
   }
 
@@ -87,7 +86,7 @@ export function useAuth() {
     })
 
     if (result.data?.user && !result.data?.user?.identities?.[0]?.identity_data?.email_verified === false) {
-      await ensureProfile(result.data.user)
+      ensureProfile(result.data.user).catch(() => {})
     }
 
     return result
