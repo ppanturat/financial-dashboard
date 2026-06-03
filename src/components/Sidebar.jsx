@@ -76,7 +76,7 @@ export function Sidebar({
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-brand">
         <span className="brand-mark">◈</span>
-        <span className="brand-name">FINANCIAL DASHBOARD</span>
+        <span className="brand-name">STOCK CHECKER</span>
       </div>
 
       <div className="sidebar-tabs">
