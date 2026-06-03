@@ -2,9 +2,10 @@ import { getSegmentStyle } from '../lib/stockSegments'
 
 // ─── Stock quantitative assessment engine ───────────────────────────────────
 
-function buildParagraph(metrics = {}) {
-  const parts = []
+function runFundamentalSweep(metrics = {}) {
+  const sweep = []
   let bullScore = 0, bearScore = 0
+  let flagCount = 0, bullCount = 0, bearCount = 0, neutralCount = 0
 
   const wcr = metrics?.war_chest_ratio
   const fcf = metrics?.fcf
@@ -17,20 +18,20 @@ function buildParagraph(metrics = {}) {
   // 1. Balance Sheet Liquidity (War Chest Ratio)
   if (wcr != null) {
     if (wcr >= 2) { 
-      bullScore += 2; 
-      parts.push(`The balance sheet passes the Terminal Red Flag sweep with distinction, showcasing an elite cash-to-debt ratio of ${wcr === 999 ? '∞' : wcr.toFixed(2)}x. Maintaining a massive net-cash position insulates the firm entirely from corporate credit market freezes and maximizes capital velocity, granting the executive team profound flexibility to execute opportunistic, counter-cyclical M&A or aggressive share buybacks during market dislocations.`) 
+      bullScore += 2; bullCount++;
+      sweep.push({ title: 'Liquidity & Solvency', type: 'Bull', text: `Passes the balance sheet sweep with distinction, showcasing an elite cash-to-debt ratio of ${wcr === 999 ? '∞' : wcr.toFixed(2)}x. Maintaining a massive net-cash position insulates the firm entirely from corporate credit market freezes and maximizes capital velocity.` }) 
     }
     else if (wcr >= 1) { 
-      bullScore += 1; 
-      parts.push(`The capital structure resides on solid footing, with liquid cash reserves fully offsetting aggregate debt obligations (${wcr.toFixed(2)}x ratio). This creates a highly stable, neutral foundation that buffers core corporate operations from interest rate volatility while ensuring unhindered access to institutional credit lines on highly favorable terms.`) 
+      bullScore += 1; neutralCount++;
+      sweep.push({ title: 'Liquidity & Solvency', type: 'Neutral', text: `The capital structure resides on solid footing, with liquid cash reserves fully offsetting aggregate debt obligations (${wcr.toFixed(2)}x ratio). This creates a highly stable, neutral foundation that buffers core corporate operations.` }) 
     }
     else if (wcr >= 0.5) { 
-      bearScore += 1; 
-      parts.push(`The capital stack reveals notable operational leverage, with cash covering only ${(wcr * 100).toFixed(0)}% of short and long-term debt liabilities. Applying a strict lens of neutrality, this narrow buffer poses no immediate distress but significantly restricts strategic optionality in a tight macroeconomic environment, placing an amplified burden on immediate operational cash generation to service debt.`) 
+      bearScore += 1; bearCount++;
+      sweep.push({ title: 'Liquidity & Solvency', type: 'Bear', text: `The capital stack reveals notable operational leverage, with cash covering only ${(wcr * 100).toFixed(0)}% of debt liabilities. This narrow buffer poses no immediate distress but significantly restricts strategic optionality in a tight macroeconomic environment.` }) 
     }
     else { 
-      bearScore += 2; 
-      parts.push(`A critical Terminal Red Flag triggers across the capital architecture: cash reserves offset a meager ${(wcr * 100).toFixed(0)}% of total debt obligations. This aggressive structural leverage shifts the Bear vs. Bull probability check heavily to the downside, exposing the equity to acute debt rollover risks, restrictive covenant violations, or highly dilutive emergency secondary offerings if operational cash flows face an unexpected macro slowdown.`) 
+      bearScore += 2; flagCount++;
+      sweep.push({ title: 'Liquidity & Solvency', type: 'Flag', text: `Cash reserves offset a meager ${(wcr * 100).toFixed(0)}% of total debt obligations. This aggressive structural leverage shifts the probability check heavily to the downside, exposing the equity to acute debt rollover risks or highly dilutive emergency offerings.` }) 
     }
   }
 
@@ -38,20 +39,20 @@ function buildParagraph(metrics = {}) {
   if (fcf != null) {
     const b = fcf / 1e9
     if (fcf > 5e9) { 
-      bullScore += 2; 
-      parts.push(`Free cash flow functions as an elite structural compounding engine, printing an exceptional $${b.toFixed(1)}B on an annualized basis. This tier of unencumbered cash generation establishes an impregnable economic moat, rendering the business entirely self-funding, detached from volatile capital markets, and capable of compounding intrinsic shareholder value across all phases of the economic cycle.`) 
+      bullScore += 2; bullCount++;
+      sweep.push({ title: 'Capital Generation', type: 'Bull', text: `Free cash flow functions as an elite structural compounding engine, printing an exceptional $${b.toFixed(1)}B on an annualized basis. This establishes an impregnable economic moat, rendering the business entirely self-funding.` }) 
     }
     else if (fcf > 0) { 
-      bullScore += 1; 
-      parts.push(`Core business operations are net-positive and self-sustaining, delivering a healthy $${b.toFixed(2)}B in free cash flow. This confirms that current customer acquisition models and pricing strategies successfully yield surplus capital after accounting for all necessary operational maintenance and capital expenditures.`) 
+      bullScore += 1; neutralCount++;
+      sweep.push({ title: 'Capital Generation', type: 'Neutral', text: `Core business operations are net-positive and self-sustaining, delivering a healthy $${b.toFixed(2)}B in free cash flow. This confirms that current customer acquisition models yield surplus capital after operational maintenance.` }) 
     }
     else if (fcf > -1e9) { 
-      bearScore += 1; 
-      parts.push(`Free cash flow registers an operational deficit of $${Math.abs(b).toFixed(2)}B. For early-stage infrastructure plays scaling multi-billion dollar launch backlogs or heavy R&D cycles, an aggressive cash burn is acceptable, provided their liquid cash cushion is thoroughly secured. However, this structure demands near-flawless execution, as any delay in scaling revenue could rapidly turn this necessary burn into a structural capital trap.`) 
+      bearScore += 1; bearCount++;
+      sweep.push({ title: 'Capital Generation', type: 'Bear', text: `Free cash flow registers an operational deficit of $${Math.abs(b).toFixed(2)}B. While aggressive cash burn can be acceptable for infrastructure plays scaling backlogs, this structure demands near-flawless execution to avoid becoming a capital trap.` }) 
     }
     else { 
-      bearScore += 2; 
-      parts.push(`The enterprise is enduring a severe, systemic capital drain, burning through a massive $${Math.abs(b).toFixed(1)}B in free cash flow annually. Without a definitive, rule-based path toward operating leverage, this magnitude of cash destruction serves as a major Terminal Red Flag, signaling that the company is permanently dependent on the mercy of dilutive external equity issuance or expensive debt to survive.`) 
+      bearScore += 2; flagCount++;
+      sweep.push({ title: 'Capital Generation', type: 'Flag', text: `The enterprise is enduring a severe, systemic capital drain, burning through a massive $${Math.abs(b).toFixed(1)}B in FCF annually. Without a definitive path to operating leverage, this magnitude of cash destruction forces perpetual dependence on external equity.` }) 
     }
   }
 
@@ -59,40 +60,40 @@ function buildParagraph(metrics = {}) {
   if (gm != null) {
     const pct = (gm * 100).toFixed(1)
     if (gm > 0.6) { 
-      bullScore += 2; 
-      parts.push(`A stellar gross margin of ${pct}% confirms dominant pricing power and exceptional underlying unit economics. This profile—highly characteristic of vertical software monopolies, patent-protected pharma, or luxury brands—creates a massive financial cushion capable of absorbing sudden upstream cost spikes, localized supply chain failures, or intense inflationary pressures without degrading bottom-line profitability.`) 
+      bullScore += 2; bullCount++;
+      sweep.push({ title: 'Unit Economics', type: 'Bull', text: `A stellar gross margin of ${pct}% confirms dominant pricing power. This profile creates a massive financial cushion capable of absorbing sudden upstream cost spikes or intense inflationary pressures without degrading bottom-line profitability.` }) 
     }
     else if (gm > 0.3) { 
-      bullScore += 1; 
-      parts.push(`The gross margin of ${pct}% demonstrates a stable and healthy spread between gross revenues and primary cost of goods sold, indicating robust baseline efficiency and typical competitive insulation within its sector.`) 
+      bullScore += 1; neutralCount++;
+      sweep.push({ title: 'Unit Economics', type: 'Neutral', text: `The gross margin of ${pct}% demonstrates a stable and healthy spread between gross revenues and primary cost of goods sold, indicating robust baseline efficiency.` }) 
     }
     else if (gm > 0.1) { 
-      bearScore += 1; 
-      parts.push(`Operating on compressed gross margins of ${pct}% leaves the company with zero margin for error. Maintaining zero bias means highlighting that a lack of structural pricing power makes the business acutely vulnerable; even minor escalations in raw input costs or payroll inflation will flow directly downward and wipe out net operating income.`) 
+      bearScore += 1; bearCount++;
+      sweep.push({ title: 'Unit Economics', type: 'Bear', text: `Operating on compressed gross margins of ${pct}% leaves the company with zero margin for error. A lack of structural pricing power makes the business acutely vulnerable to minor escalations in raw input costs.` }) 
     }
     else { 
-      bearScore += 2; 
-      parts.push(`The severely depressed gross margin of ${pct}% exposes structurally broken unit economics. The product or service behaves purely as a low-margin commodity, meaning the company cannot generate enough gross spread to support its fixed overhead, marketing expenses, and debt service over a sustainable horizon.`) 
+      bearScore += 2; flagCount++;
+      sweep.push({ title: 'Unit Economics', type: 'Flag', text: `The severely depressed gross margin of ${pct}% exposes structurally broken unit economics. The company cannot generate enough gross spread to support its fixed overhead and debt service over a sustainable horizon.` }) 
     }
   }
 
   // 4. Valuation Multiples (Forward P/E)
   if (pe != null && pe > 0) {
     if (pe < 15) { 
-      bullScore += 2; 
-      parts.push(`At a forward P/E of ${pe.toFixed(1)}x, the current market pricing factors in a deep structural margin of safety. While the analysis must remain disciplined against buying into structural value traps or dying secular trends, this compressed multiple offers highly asymmetric upside if earnings simply stabilize or stage a modest recovery.`) 
+      bullScore += 2; bullCount++;
+      sweep.push({ title: 'Valuation Profile', type: 'Bull', text: `At a forward P/E of ${pe.toFixed(1)}x, the current market pricing factors in a deep structural margin of safety, offering highly asymmetric upside if earnings stabilize or stage a modest recovery.` }) 
     }
     else if (pe < 30) { 
-      bullScore += 1; 
-      parts.push(`The forward P/E of ${pe.toFixed(1)}x reflects a thoroughly reasonable and grounded valuation. The market is assigning a standard equity growth premium without embedding the hyper-extended, unrealistic operational targets that typically lead to sudden institutional liquidations.`) 
+      bullScore += 1; neutralCount++;
+      sweep.push({ title: 'Valuation Profile', type: 'Neutral', text: `The forward P/E of ${pe.toFixed(1)}x reflects a thoroughly reasonable and grounded valuation. The market is assigning a standard equity growth premium without embedding hyper-extended operational targets.` }) 
     }
     else if (pe < 50) { 
-      bearScore += 1; 
-      parts.push(`Trading at an elevated forward P/E of ${pe.toFixed(1)}x, the equity embeds steep growth expectations. Objective analysis dictates recognizing that any minor earnings deceleration or downward guidance adjustment at these valuation heights will trigger rapid multiple compression and sharp institutional de-risking.`) 
+      bearScore += 1; bearCount++;
+      sweep.push({ title: 'Valuation Profile', type: 'Bear', text: `Trading at an elevated forward P/E of ${pe.toFixed(1)}x, the equity embeds steep growth expectations. Any minor earnings deceleration at these valuation heights will trigger rapid multiple compression.` }) 
     }
     else { 
-      bearScore += 2; 
-      parts.push(`A hyper-extended forward P/E of ${pe.toFixed(1)}x prices in absolute operational perfection for the next several years. The Bear case is glaringly prominent here: the stock completely lacks a fundamental valuation floor, rendering it profoundly vulnerable to broader macroeconomic shocks, liquidity shifts, or sudden momentum unwinds.`) 
+      bearScore += 2; flagCount++;
+      sweep.push({ title: 'Valuation Profile', type: 'Flag', text: `A hyper-extended forward P/E of ${pe.toFixed(1)}x prices in absolute operational perfection. The stock completely lacks a fundamental valuation floor, rendering it profoundly vulnerable to macro shocks or momentum unwinds.` }) 
     }
   }
 
@@ -100,19 +101,20 @@ function buildParagraph(metrics = {}) {
   if (rev != null) {
     const pct = (rev * 100).toFixed(1)
     if (rev > 0.25) { 
-      bullScore += 2; 
-      parts.push(`Top-line revenue expansion of ${pct}% YoY firmly anchors the macro Bull case, placing the firm in hypergrowth territory. Demand is accelerating linearly, proving that the business is scaling market share rapidly and capitalizing on compounding network effects.`) 
+      bullScore += 2; bullCount++;
+      sweep.push({ title: 'Growth Velocity', type: 'Bull', text: `Top-line revenue expansion of ${pct}% YoY places the firm in hypergrowth territory. Demand is accelerating linearly, proving that the business is scaling market share rapidly.` }) 
     }
     else if (rev > 0.08) { 
-      bullScore += 1; 
-      parts.push(`A reliable year-over-year revenue expansion of ${pct}% points to stable product-market fit and structured, programmatic execution across core regional segments.`) 
+      bullScore += 1; neutralCount++;
+      sweep.push({ title: 'Growth Velocity', type: 'Neutral', text: `A reliable year-over-year revenue expansion of ${pct}% points to stable product-market fit and structured, programmatic execution across core regional segments.` }) 
     }
     else if (rev >= 0) { 
-      parts.push(`Revenue growth has decelerated to a modest ${pct}% YoY. This top-line stagnation signals that the addressable market may be approaching near-term saturation or encountering fierce competitive headwinds, which mandates structural neutrality rather than assuming a growth rebound.`) 
+      bearScore += 1; bearCount++;
+      sweep.push({ title: 'Growth Velocity', type: 'Bear', text: `Revenue growth has decelerated to a modest ${pct}% YoY. This top-line stagnation signals that the addressable market may be approaching near-term saturation or encountering fierce competitive headwinds.` }) 
     }
     else { 
-      bearScore += 2; 
-      parts.push(`Revenue contracted by ${Math.abs(pct)}% YoY, signaling a definitive Bear case materializing. Active demand destruction or structural market share erosion represents a severe fundamental decay that must be decisively reversed before any long-term investment case can be validated.`) 
+      bearScore += 2; flagCount++;
+      sweep.push({ title: 'Growth Velocity', type: 'Flag', text: `Revenue contracted by ${Math.abs(pct)}% YoY. Active demand destruction or structural market share erosion represents a severe fundamental decay that must be decisively reversed.` }) 
     }
   }
 
@@ -134,15 +136,29 @@ function buildParagraph(metrics = {}) {
   else if (score >= 38) { verdict = 'Caution';       verdictColor = '#ea580c' }
   else                  { verdict = 'Risk Elevated'; verdictColor = '#dc2626' }
 
-  const closers = {
-    'Strong Buy':    ' Taken together, the quantitative rules confirm an elite fundamental asset exhibiting high capital velocity, robust structural protection, and zero systemic flags.',
-    'Bullish':       ' On balance, the core quantitative metrics support a constructive growth outlook, though position sizes should account for individual leverage or valuation premiums.',
-    'Neutral':       ' The overall fundamental data is evenly matched—genuine core strengths are offset by explicit valuation or cash burn constraints, justifying a highly patient accumulation approach.',
-    'Caution':       ' Risk indicators are multiplying across structural lines. Capital preservation dictates waiting for a deeper valuation discount or an explicit operational catalyst before committing capital.',
-    'Risk Elevated': ' Systemic financial stressors are compounding simultaneously. The risk of sudden capital impairment heavily outweighs technical upside under prevailing operational constraints.',
+  // Dynamic Bear vs. Bull Probability Synthesis
+  let probabilityText = ''
+  if (flagCount > 0) {
+    probabilityText = `Terminal Red Flag detected. The Bear case heavily outweighs Bull probabilities due to acute structural constraints. Strict capital protection is advised.`
+  } else if (bullCount > bearCount * 2) {
+    probabilityText = `The Bull case probability is highly dominant. The fundamental architecture presents robust, self-sustaining upside with heavily insulated downside risk.`
+  } else if (bullCount > bearCount) {
+    probabilityText = `The Bull case probability remains favorable. Operational strengths outnumber identified risks, supporting a constructive outlook.`
+  } else if (bearCount > bullCount) {
+    probabilityText = `The Bear case probability is currently elevated. Material downside risks and operational constraints demand strict neutrality and defensive sizing.`
+  } else {
+    probabilityText = `Bear and Bull probabilities are evenly matched. The asset presents a strictly neutral risk/reward profile requiring patient observation.`
   }
 
-  return { paragraph: parts.join(' ') + closers[verdict], verdict, score, verdictColor }
+  const closers = {
+    'Strong Buy':    'The quantitative rules confirm an elite fundamental asset exhibiting high capital velocity, robust structural protection, and zero systemic flags.',
+    'Bullish':       'The core quantitative metrics support a constructive growth outlook, though position sizes should account for standard baseline market risks.',
+    'Neutral':       'Genuine core strengths are actively offset by explicit valuation or cash burn constraints, justifying a highly patient, non-directional accumulation approach.',
+    'Caution':       'Risk indicators are multiplying across structural lines. Capital preservation dictates waiting for a deeper valuation discount or an explicit operational catalyst.',
+    'Risk Elevated': 'Systemic financial stressors are compounding simultaneously. The mathematical risk of sudden capital impairment heavily outweighs technical upside under current constraints.',
+  }
+
+  return { sweep, probabilityText, verdict, score, verdictColor, closer: closers[verdict] }
 }
 
 // ─── ETF analysis engine ──────────────────────────────────────────────────────
@@ -208,7 +224,6 @@ function analyseEtf(ticker, holdings) {
     else                        category = 'broad'
   }
 
-  // 1. Fee Architecture & Capital Velocity Analysis
   const expense = profile?.expense ?? null
   let expenseRating = null, expenseColor = null, expenseNote = null
   if (expense != null) {
@@ -235,7 +250,6 @@ function analyseEtf(ticker, holdings) {
     }
   }
 
-  // 2. Structural Index Concentration & Risk Insulation Analysis
   let concentrationRating, concentrationColor, concentrationNote
   if (top1Weight > 0.15) {
     concentrationRating = 'Very High'; concentrationColor = '#dc2626'
@@ -251,7 +265,6 @@ function analyseEtf(ticker, holdings) {
     concentrationNote = `Genuinely diversified architecture. The top 10 components constitute only ${(top10Weight * 100).toFixed(0)}% of total capital allocations. The individual blast radius of corporate operational failures or sector shocks is thoroughly dampened, offering true broad-market macro insulation.`
   }
 
-  // 3. Diversification Breadth
   let breadthNote
   if (trueHoldingCount === 0)       breadthNote = null
   else if (trueHoldingCount < 30)   breadthNote = `Narrow Diversification — Highly concentrated baseline of just ${trueHoldingCount} structural positions.`
@@ -331,6 +344,31 @@ function RiskSignal({ label, detail, severity }) {
   )
 }
 
+function AssessmentBadge({ type }) {
+  const badgeMap = {
+    'Bull': { bg: '#16a34a14', border: '#16a34a33', color: '#16a34a', icon: '↗' },
+    'Neutral': { bg: '#ca8a0414', border: '#ca8a0433', color: '#ca8a04', icon: '—' },
+    'Bear': { bg: '#ea580c14', border: '#ea580c33', color: '#ea580c', icon: '↘' },
+    'Flag': { bg: '#dc262614', border: '#dc262633', color: '#dc2626', icon: '⚠' },
+  }
+  
+  const style = badgeMap[type]
+  if (!style) return null
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      minWidth: 50, height: 22, borderRadius: 12,
+      background: style.bg, border: `1px solid ${style.border}`,
+      color: style.color, fontSize: 10, fontWeight: 700, 
+      textTransform: 'uppercase', letterSpacing: '.05em', flexShrink: 0
+    }}>
+      <span style={{ marginRight: 4, fontSize: 11 }}>{style.icon}</span>
+      {type}
+    </div>
+  )
+}
+
 function EtfHoldingsBreakdown({ holdings }) {
   if (!holdings?.length) return null
   const topHoldings = holdings.slice(0, 10)
@@ -370,7 +408,7 @@ function EtfAnalysisCard({ ticker, etfHoldings }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderLeft: '4px solid #000000', // Static solid black left border per custom styling instructions
+      borderLeft: '4px solid #000000', 
       borderRadius: 'var(--r)', padding: '24px'
     }}>
       {/* ── Header ── */}
@@ -467,10 +505,10 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
     return <EtfAnalysisCard ticker={ticker} etfHoldings={etfHoldings} />
   }
 
-  const result = buildParagraph(metrics)
+  const result = runFundamentalSweep(metrics)
   if (!result) return null
 
-  const { paragraph, verdict, score, verdictColor } = result
+  const { sweep, probabilityText, verdict, score, verdictColor, closer } = result
 
   return (
     <div style={{
@@ -478,7 +516,9 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
       borderLeft: `4px solid ${verdictColor}`, borderRadius: 'var(--r)',
       padding: '24px'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 18 }}>
+      
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--accent)', padding: '4px 10px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
             Quantitative Assessment
@@ -495,9 +535,43 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--faint)' }}>{score}/100</span>
         </div>
       </div>
-      <p style={{ fontSize: 14.5, lineHeight: 1.75, color: 'var(--text)', margin: 0, opacity: 0.95 }}>
-        {paragraph}
-      </p>
+
+      {/* ── Fundamental Sweep Section ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 28 }}>
+        {sweep.map((item, idx) => (
+          <div key={idx} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <AssessmentBadge type={item.type} />
+            <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text)', opacity: 0.95 }}>
+              <strong style={{ color: 'var(--text)' }}>{item.title}:</strong> {item.text}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Bear vs. Bull Probability Check ── */}
+      <div style={{ 
+        background: 'var(--surface-2, rgba(255,255,255,0.02))', 
+        border: '1px solid var(--border)', 
+        borderLeft: '3px solid var(--muted)',
+        borderRadius: 8, padding: '16px', marginBottom: 20
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+          Bear vs. Bull Probability Check
+        </div>
+        <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text)', opacity: 0.9 }}>
+          {probabilityText}
+        </div>
+      </div>
+
+      {/* ── Final Verdict ── */}
+      <div style={{ 
+        paddingTop: 20, 
+        borderTop: '1px solid var(--border)',
+        fontSize: 14.5, lineHeight: 1.65, color: 'var(--text)'
+      }}>
+        <strong style={{ color: verdictColor }}>Final Verdict:</strong> {closer}
+      </div>
+
     </div>
   )
 }
