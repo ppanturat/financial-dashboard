@@ -1,5 +1,7 @@
 import { getSegmentStyle } from '../lib/stockSegments'
 
+// ─── Stock assessment (unchanged) ────────────────────────────────────────────
+
 function buildParagraph(metrics = {}) {
   const parts = []
   let bullScore = 0, bearScore = 0
@@ -321,7 +323,20 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
         )}
         {hasHoldings && <EtfHoldingsBreakdown holdings={etfHoldings} />}
       </div>
-    )
+
+      {/* ── Holdings breakdown ── */}
+      {hasHoldings && <EtfHoldingsBreakdown holdings={etfHoldings} />}
+    </div>
+  )
+}
+
+// ─── Stock assessment card (unchanged export) ─────────────────────────────────
+
+export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, loading }) {
+  if (loading) return null
+
+  if (isEtf) {
+    return <EtfAnalysisCard ticker={ticker} etfHoldings={etfHoldings} />
   }
 
   const result = buildParagraph(metrics)

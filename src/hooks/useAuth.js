@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-// Ensure a row exists in public.profiles for this user.
-// Called after every successful sign-in or sign-up confirmation.
 async function ensureProfile(user) {
   if (!user) return
-
-  // Read whatever name/username was stored in auth metadata
   const meta = user.user_metadata || {}
   const name = meta.name || meta.full_name || ''
   const username = meta.username || ''
 
-  // Check if a profile row already exists
   const { data: existing } = await supabase
     .from('profiles')
     .select('id, name, username')
@@ -19,20 +14,14 @@ async function ensureProfile(user) {
     .maybeSingle()
 
   if (!existing) {
-    // Row doesn't exist yet — create it
-    await supabase.from('profiles').insert({
-      id: user.id,
-      name,
-      username,
-    })
+    await supabase.from('profiles').insert({ id: user.id, name, username })
   } else if (!existing.name && name) {
-    // Row exists but name/username are empty (e.g. created by a trigger without metadata)
     await supabase.from('profiles').update({ name, username }).eq('id', user.id)
   }
 }
 
 export function useAuth() {
-  const [session, setSession] = useState(null)
+  const [session, setSession] = useState(undefined) // undefined = unknown, null = no session
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
