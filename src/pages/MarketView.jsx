@@ -38,7 +38,7 @@ export function MarketView({ activeTicker, foldersLoading }) {
               padding: 0, textAlign: 'left',
             }}
           >
-            <h3 className="desc-title" style={{ margin: 0 }}>Company Profile</h3>
+            <h3 className="desc-title" style={{ margin: 0, fontFamily: "Syne, Arial" }}>Company Profile</h3>
             <span style={{
               fontSize: 12, color: 'var(--faint)',
               transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)',
