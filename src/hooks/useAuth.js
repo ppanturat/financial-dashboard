@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-// Ensure a row exists in public.profiles for this user.
-// Called after every successful sign-in or sign-up confirmation.
 async function ensureProfile(user) {
   if (!user) return
-
-  // Read whatever name/username was stored in auth metadata
   const meta = user.user_metadata || {}
   const name = meta.name || meta.full_name || ''
   const username = meta.username || ''
 
-  // Check if a profile row already exists
   const { data: existing } = await supabase
     .from('profiles')
     .select('id, name, username')
@@ -19,39 +14,53 @@ async function ensureProfile(user) {
     .maybeSingle()
 
   if (!existing) {
-    // Row doesn't exist yet — create it
-    await supabase.from('profiles').insert({
-      id: user.id,
-      name,
-      username,
-    })
+    await supabase.from('profiles').insert({ id: user.id, name, username })
   } else if (!existing.name && name) {
-    // Row exists but name/username are empty (e.g. created by a trigger without metadata)
     await supabase.from('profiles').update({ name, username }).eq('id', user.id)
   }
 }
 
 export function useAuth() {
-  const [session, setSession] = useState(null)
+  const [session, setSession] = useState(undefined) // undefined = unknown, null = no session
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) await ensureProfile(session.user)
-      setSession(session)
+    let settled = false
+
+    const settle = (s) => {
+      if (settled) return
+      settled = true
+      setSession(s ?? null)
       setLoading(false)
+    }
+
+    // Timeout: if Supabase doesn't respond in 5s, treat as logged out
+    const timeout = setTimeout(() => settle(null), 5000)
+
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(timeout)
+      if (session?.user) {
+        try { await ensureProfile(session.user) } catch (_) {}
+      }
+      settle(session)
+    }).catch(() => {
+      clearTimeout(timeout)
+      settle(null)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
-      // On sign-in or token refresh, make sure profile row is up to date
       if (s?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
-        await ensureProfile(s.user)
+        try { await ensureProfile(s.user) } catch (_) {}
       }
-      setSession(s)
-      setLoading(false)
+      settle(s)
+      // allow future updates after first settle
+      settled = false
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signIn = async (email, password) => {
@@ -61,7 +70,6 @@ export function useAuth() {
   }
 
   const signUp = async (email, password, name, username) => {
-    // Check username uniqueness before creating auth account
     const { data: existing } = await supabase
       .from('profiles')
       .select('id')
@@ -81,7 +89,6 @@ export function useAuth() {
       },
     })
 
-    // If email confirmation is disabled (instant sign-in), create the profile row immediately
     if (result.data?.user && !result.data?.user?.identities?.[0]?.identity_data?.email_verified === false) {
       await ensureProfile(result.data.user)
     }
