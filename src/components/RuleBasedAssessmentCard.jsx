@@ -285,7 +285,7 @@ function EtfAnalysisCard({ ticker, etfHoldings }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderLeft: `3px solid ${meta.color}`,
+      borderLeft: `3px solid var(--text)`,
       borderRadius: 'var(--r)', padding: '18px 20px',
     }}>
       {/* ── Header ── */}
