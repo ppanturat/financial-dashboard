@@ -25,36 +25,33 @@ export function useAuth() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let settled = false
+    // onAuthStateChange fires INITIAL_SESSION reliably — use it as the
+    // source of truth. getSession() is only a fallback if the event
+    // never arrives (e.g. network error).
+    let loadingDone = false
 
-    const settle = (s) => {
-      if (settled) return
-      settled = true
-      setSession(s ?? null)
-      setLoading(false)
+    const markLoaded = () => {
+      if (!loadingDone) {
+        loadingDone = true
+        setLoading(false)
+      }
     }
 
-    // Timeout: if Supabase doesn't respond in 5s, treat as logged out
-    const timeout = setTimeout(() => settle(null), 5000)
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      clearTimeout(timeout)
-      if (session?.user) {
-        try { await ensureProfile(session.user) } catch (_) {}
-      }
-      settle(session)
-    }).catch(() => {
-      clearTimeout(timeout)
-      settle(null)
-    })
+    // Fallback timeout in case auth events never fire
+    const timeout = setTimeout(() => {
+      setSession(null)
+      markLoaded()
+    }, 5000)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, s) => {
-      if (s?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+      clearTimeout(timeout)
+
+      if (s?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED' || event === 'INITIAL_SESSION')) {
         try { await ensureProfile(s.user) } catch (_) {}
       }
-      settle(s)
-      // allow future updates after first settle
-      settled = false
+
+      setSession(s ?? null)
+      markLoaded()
     })
 
     return () => {
