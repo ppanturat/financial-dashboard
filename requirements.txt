@@ -3,3 +3,6 @@ uvicorn
 yfinance
 requests
 python-dotenv
+lxml
+html5lib
+beautifulsoup4

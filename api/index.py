@@ -1,5 +1,4 @@
 import os
-import json
 import requests
 import yfinance as yf
 from fastapi import FastAPI
@@ -18,7 +17,6 @@ app.add_middleware(
 )
 
 # ── Sector normalisation ──────────────────────────────────────────────────────
-# Yahoo Finance sector strings → short canonical keys used by the frontend
 SECTOR_MAP = {
     "Technology": "tech",
     "Communication Services": "comms",
@@ -52,75 +50,80 @@ def search_ticker(query: str):
 
 @app.get("/api/data/{ticker}")
 def get_market_data(ticker: str, timeframe: str = "1M"):
-    stock = yf.Ticker(ticker)
-    period_map = {"1W": "5d", "1M": "1mo", "6M": "6mo", "1Y": "1y"}
-    interval_map = {"1W": "15m", "1M": "1d", "6M": "1d", "1Y": "1d"}
+    try:
+        stock = yf.Ticker(ticker)
+        period_map = {"1W": "5d", "1M": "1mo", "6M": "6mo", "1Y": "1y"}
+        interval_map = {"1W": "15m", "1M": "1d", "6M": "1d", "1Y": "1d"}
 
-    hist = stock.history(period=period_map.get(timeframe, "1mo"), interval=interval_map.get(timeframe, "1d"))
-    chart_data = [{"timestamp": d.isoformat(), "price": round(r['Close'], 2)} for d, r in hist.iterrows()] if not hist.empty else []
+        hist = stock.history(period=period_map.get(timeframe, "1mo"), interval=interval_map.get(timeframe, "1d"))
+        chart_data = [{"timestamp": d.isoformat(), "price": round(r['Close'], 2)} for d, r in hist.iterrows()] if not hist.empty else []
 
-    info = stock.info
-    quote_type = info.get('quoteType', 'EQUITY')
+        info = stock.info
+        quote_type = info.get('quoteType', 'EQUITY')
 
-    metrics = None
-    if quote_type != 'ETF':
-        cash = info.get('totalCash', 0)
-        debt = info.get('totalDebt', 0)
-        wcr = round(cash / debt, 4) if debt and debt > 0 else (999 if cash else None)
+        metrics = None
+        if quote_type != 'ETF':
+            cash = info.get('totalCash', 0)
+            debt = info.get('totalDebt', 0)
+            wcr = round(cash / debt, 4) if debt and debt > 0 else (999 if cash else None)
 
-        forward_pe = info.get('forwardPE')
-        if forward_pe is not None and forward_pe < 0:
-            forward_pe = None
+            forward_pe = info.get('forwardPE')
+            if forward_pe is not None and forward_pe < 0:
+                forward_pe = None
 
-        # Additional metrics for richer rule-based assessment
-        trailing_pe = info.get('trailingPE')
-        if trailing_pe is not None and trailing_pe < 0:
-            trailing_pe = None
+            trailing_pe = info.get('trailingPE')
+            if trailing_pe is not None and trailing_pe < 0:
+                trailing_pe = None
 
-        metrics = {
-            "war_chest_ratio": wcr,
-            "fcf": info.get('freeCashflow'),
-            "gross_margin": info.get('grossMargins'),
-            "operating_margin": info.get('operatingMargins'),
-            "net_margin": info.get('profitMargins'),
-            "forward_pe": forward_pe,
-            "trailing_pe": trailing_pe,
-            "ps_ratio": info.get('priceToSalesTrailing12Months'),
-            "pb_ratio": info.get('priceToBook'),
-            "revenue_yoy": info.get('revenueGrowth'),
-            "earnings_yoy": info.get('earningsGrowth'),
-            "debt_to_equity": info.get('debtToEquity'),
-            "current_ratio": info.get('currentRatio'),
-            "roe": info.get('returnOnEquity'),
-            "roa": info.get('returnOnAssets'),
-            "short_ratio": info.get('shortRatio'),
-            "insider_pct": info.get('heldPercentInsiders'),
-            "institution_pct": info.get('heldPercentInstitutions'),
+            metrics = {
+                "war_chest_ratio": wcr,
+                "fcf": info.get('freeCashflow'),
+                "gross_margin": info.get('grossMargins'),
+                "operating_margin": info.get('operatingMargins'),
+                "net_margin": info.get('profitMargins'),
+                "forward_pe": forward_pe,
+                "trailing_pe": trailing_pe,
+                "ps_ratio": info.get('priceToSalesTrailing12Months'),
+                "pb_ratio": info.get('priceToBook'),
+                "revenue_yoy": info.get('revenueGrowth'),
+                "earnings_yoy": info.get('earningsGrowth'),
+                "debt_to_equity": info.get('debtToEquity'),
+                "current_ratio": info.get('currentRatio'),
+                "roe": info.get('returnOnEquity'),
+                "roa": info.get('returnOnAssets'),
+                "short_ratio": info.get('shortRatio'),
+                "insider_pct": info.get('heldPercentInsiders'),
+                "institution_pct": info.get('heldPercentInstitutions'),
+            }
+
+        sector = normalise_sector(info.get('sector'))
+
+        return {
+            "quoteType": quote_type,
+            "sector": sector,
+            "chart": chart_data,
+            "metrics": metrics,
+            "description": info.get('longBusinessSummary', ''),
         }
-
-    sector = normalise_sector(info.get('sector'))
-
-    return {
-        "quoteType": quote_type,
-        "sector": sector,
-        "chart": chart_data,
-        "metrics": metrics,
-        "description": info.get('longBusinessSummary', ''),
-    }
+    except Exception as e:
+        print(f"Error fetching data for {ticker}: {e}")
+        # Safe fallback prevents 500 error, thus preventing fake CORS blocks
+        return {
+            "quoteType": "EQUITY",
+            "sector": None,
+            "chart": [],
+            "metrics": None,
+            "description": "Data temporarily unavailable.",
+        }
 
 @app.get("/api/dividends")
 def get_dividends(tickers: str):
-    """
-    Returns real annual dividend per share for each ticker using yfinance.
-    Response: { "AAPL": { "dps": 0.96, "yield": 0.005 }, ... }
-    """
     ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
     result = {}
     for t in ticker_list:
         try:
             stock = yf.Ticker(t)
             info = stock.info
-            # dividendRate = declared annual cash dividend per share
             dps = info.get("dividendRate") or info.get("trailingAnnualDividendRate") or 0.0
             dy  = info.get("dividendYield") or 0.0
             result[t] = {"dps": round(float(dps), 4), "yield": round(float(dy), 6)}
@@ -135,18 +138,15 @@ def get_bulk_prices(tickers: str):
     for t in ticker_list:
         try:
             stock = yf.Ticker(t)
-            # Try fast_info first (cheapest)
             price = None
             try:
                 price = stock.fast_info.get('last_price') or stock.fast_info.get('previousClose')
             except Exception:
                 pass
-            # Fallback: pull last 2 days of history and grab the Close
             if not price:
                 hist = stock.history(period="2d", interval="1d")
                 if not hist.empty:
                     price = float(hist['Close'].iloc[-1])
-            # Fallback: info dict
             if not price:
                 info = stock.info
                 price = info.get('regularMarketPrice') or info.get('previousClose') or info.get('currentPrice')
@@ -156,10 +156,8 @@ def get_bulk_prices(tickers: str):
             pass
     return result
 
-
 @app.get("/api/bulk_sectors")
 def get_bulk_sectors(tickers: str):
-    """Returns sector + quoteType for each ticker. Used by portfolio view."""
     ticker_list = [t.strip().upper() for t in tickers.split(",") if t.strip()]
     result = {}
     for t in ticker_list:
@@ -172,18 +170,11 @@ def get_bulk_sectors(tickers: str):
             result[t] = {"quoteType": "EQUITY", "sector": None}
     return result
 
-
 @app.get("/api/etf-holdings/{ticker}")
 def get_etf_holdings(ticker: str):
-    """Returns top holdings for an ETF.
-    
-    DataFrame from yfinance.funds_data.top_holdings has:
-      - index: "Symbol" (the ticker, e.g. "AAPL")
-      - columns: "Name", "Holding Percent" (0–1 float, e.g. 0.072 = 7.2%)
-    """
     try:
         stock = yf.Ticker(ticker)
-        df = stock.funds_data.top_holdings  # raises if Yahoo returns 403/empty
+        df = stock.funds_data.top_holdings 
 
         if df is None or df.empty:
             return []
@@ -191,7 +182,6 @@ def get_etf_holdings(ticker: str):
         result = []
         for symbol, row in df.iterrows():
             weight = row.get("Holding Percent", 0)
-            # yfinance already gives it as 0–1 (e.g. 0.072), no /100 needed
             result.append({
                 "ticker": str(symbol),
                 "weight": round(float(weight), 6),
