@@ -1,4 +1,5 @@
 import os
+import math
 import requests
 import yfinance as yf
 from fastapi import FastAPI
@@ -16,7 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Sector normalisation ──────────────────────────────────────────────────────
+# ── Utilities ─────────────────────────────────────────────────────────────────
+
 SECTOR_MAP = {
     "Technology": "tech",
     "Communication Services": "comms",
@@ -36,6 +38,20 @@ def normalise_sector(raw: str | None) -> str | None:
         return None
     return SECTOR_MAP.get(raw, raw.lower().replace(" ", "_"))
 
+def safe_value(val):
+    """Ensures no NaN or Infinity values slip into the JSON response."""
+    if val is None:
+        return None
+    try:
+        f_val = float(val)
+        if math.isnan(f_val) or math.isinf(f_val):
+            return None
+        return val
+    except (ValueError, TypeError):
+        return None
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.get("/api/search/{query}")
 def search_ticker(query: str):
@@ -56,7 +72,15 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         interval_map = {"1W": "15m", "1M": "1d", "6M": "1d", "1Y": "1d"}
 
         hist = stock.history(period=period_map.get(timeframe, "1mo"), interval=interval_map.get(timeframe, "1d"))
-        chart_data = [{"timestamp": d.isoformat(), "price": round(r['Close'], 2)} for d, r in hist.iterrows()] if not hist.empty else []
+        
+        chart_data = []
+        if not hist.empty:
+            # Strip out any rows where the closing price is missing (NaN)
+            hist = hist.dropna(subset=['Close'])
+            chart_data = [
+                {"timestamp": d.isoformat(), "price": round(float(r['Close']), 2)} 
+                for d, r in hist.iterrows()
+            ]
 
         info = stock.info
         quote_type = info.get('quoteType', 'EQUITY')
@@ -76,24 +100,24 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
                 trailing_pe = None
 
             metrics = {
-                "war_chest_ratio": wcr,
-                "fcf": info.get('freeCashflow'),
-                "gross_margin": info.get('grossMargins'),
-                "operating_margin": info.get('operatingMargins'),
-                "net_margin": info.get('profitMargins'),
-                "forward_pe": forward_pe,
-                "trailing_pe": trailing_pe,
-                "ps_ratio": info.get('priceToSalesTrailing12Months'),
-                "pb_ratio": info.get('priceToBook'),
-                "revenue_yoy": info.get('revenueGrowth'),
-                "earnings_yoy": info.get('earningsGrowth'),
-                "debt_to_equity": info.get('debtToEquity'),
-                "current_ratio": info.get('currentRatio'),
-                "roe": info.get('returnOnEquity'),
-                "roa": info.get('returnOnAssets'),
-                "short_ratio": info.get('shortRatio'),
-                "insider_pct": info.get('heldPercentInsiders'),
-                "institution_pct": info.get('heldPercentInstitutions'),
+                "war_chest_ratio": safe_value(wcr),
+                "fcf": safe_value(info.get('freeCashflow')),
+                "gross_margin": safe_value(info.get('grossMargins')),
+                "operating_margin": safe_value(info.get('operatingMargins')),
+                "net_margin": safe_value(info.get('profitMargins')),
+                "forward_pe": safe_value(forward_pe),
+                "trailing_pe": safe_value(trailing_pe),
+                "ps_ratio": safe_value(info.get('priceToSalesTrailing12Months')),
+                "pb_ratio": safe_value(info.get('priceToBook')),
+                "revenue_yoy": safe_value(info.get('revenueGrowth')),
+                "earnings_yoy": safe_value(info.get('earningsGrowth')),
+                "debt_to_equity": safe_value(info.get('debtToEquity')),
+                "current_ratio": safe_value(info.get('currentRatio')),
+                "roe": safe_value(info.get('returnOnEquity')),
+                "roa": safe_value(info.get('returnOnAssets')),
+                "short_ratio": safe_value(info.get('shortRatio')),
+                "insider_pct": safe_value(info.get('heldPercentInsiders')),
+                "institution_pct": safe_value(info.get('heldPercentInstitutions')),
             }
 
         sector = normalise_sector(info.get('sector'))
@@ -107,7 +131,6 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         }
     except Exception as e:
         print(f"Error fetching data for {ticker}: {e}")
-        # Safe fallback prevents 500 error, thus preventing fake CORS blocks
         return {
             "quoteType": "EQUITY",
             "sector": None,
@@ -126,7 +149,10 @@ def get_dividends(tickers: str):
             info = stock.info
             dps = info.get("dividendRate") or info.get("trailingAnnualDividendRate") or 0.0
             dy  = info.get("dividendYield") or 0.0
-            result[t] = {"dps": round(float(dps), 4), "yield": round(float(dy), 6)}
+            result[t] = {
+                "dps": round(float(safe_value(dps) or 0.0), 4), 
+                "yield": round(float(safe_value(dy) or 0.0), 6)
+            }
         except Exception:
             result[t] = {"dps": 0.0, "yield": 0.0}
     return result
@@ -146,12 +172,16 @@ def get_bulk_prices(tickers: str):
             if not price:
                 hist = stock.history(period="2d", interval="1d")
                 if not hist.empty:
-                    price = float(hist['Close'].iloc[-1])
+                    hist = hist.dropna(subset=['Close'])
+                    if not hist.empty:
+                        price = float(hist['Close'].iloc[-1])
             if not price:
                 info = stock.info
                 price = info.get('regularMarketPrice') or info.get('previousClose') or info.get('currentPrice')
-            if price:
-                result[t] = round(float(price), 2)
+            
+            clean_p = safe_value(price)
+            if clean_p is not None:
+                result[t] = round(float(clean_p), 2)
         except Exception:
             pass
     return result
@@ -181,7 +211,7 @@ def get_etf_holdings(ticker: str):
 
         result = []
         for symbol, row in df.iterrows():
-            weight = row.get("Holding Percent", 0)
+            weight = safe_value(row.get("Holding Percent", 0)) or 0
             result.append({
                 "ticker": str(symbol),
                 "weight": round(float(weight), 6),
