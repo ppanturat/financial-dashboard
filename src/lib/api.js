@@ -1,8 +1,10 @@
 import { supabase } from './supabaseClient'
 
-const BASE = window.location.hostname === 'localhost'
-  ? 'http://localhost:8000/api'
-  : '/api'
+const BASE = import.meta.env.VITE_API_URL || (
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:8000/api'
+    : '/api'
+);
 
 export const api = {
   search: async (query, signal) => {
