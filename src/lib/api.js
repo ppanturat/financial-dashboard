@@ -1,8 +1,10 @@
 /**
  * api.js — centralised API client
  * Adds: macro, stockNews, marketNews, financials, valuation
+ *
+ * Supabase is imported lazily inside aiScan() so a missing/unconfigured
+ * VITE_SUPABASE_URL never crashes the module on load.
  */
-import { supabase } from './supabaseClient'
 
 const BASE = window.location.hostname === 'localhost'
   ? 'http://localhost:8000/api'
@@ -33,7 +35,11 @@ export const api = {
     get(`/bulk_sectors?tickers=${encodeURIComponent(tickers)}`, signal),
 
   // Cached AI scan (Supabase-backed)
+  // Supabase is imported lazily here — a missing VITE_SUPABASE_URL won't
+  // crash the module on load; it only throws if aiScan() is actually called
+  // without Supabase being configured.
   aiScan: async (ticker, signal) => {
+    const { supabase } = await import('./supabaseClient')
     const { data } = await supabase
       .from('global_metrics')
       .select('ai_scan')
