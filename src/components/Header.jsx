@@ -9,16 +9,17 @@ export function Header({ activeTab, folderName, tickers, activeTicker, onSelectT
     setDropOpen(false)
   }
 
+  const hideFolderInfo = activeTab === 'social' || activeTab === 'intelligence';
+
   return (
     <header className="header">
       <button className="hamburger" onClick={onHamburger}>☰</button>
 
       <div className="header-left">
-        {activeTab === 'market' ? (
+        {!hideFolderInfo && activeTab === 'market' ? (
           <>
             <span className="header-vault-name">{folderName ?? 'No Folder Selected'}</span>
 
-            {/* Desktop: scrollable chips */}
             <div className="ticker-tabs desktop-ticker-tabs">
               {tickers?.map(t => (
                 <div key={t} className={`ticker-chip ${activeTicker === t ? 'active' : ''}`}>
@@ -28,13 +29,9 @@ export function Header({ activeTab, folderName, tickers, activeTicker, onSelectT
               ))}
             </div>
 
-            {/* Mobile: dropdown */}
             {tickers?.length > 0 && (
               <div className="ticker-dropdown-wrap mobile-ticker-dropdown">
-                <button
-                  className="ticker-dropdown-btn"
-                  onClick={() => setDropOpen(o => !o)}
-                >
+                <button className="ticker-dropdown-btn" onClick={() => setDropOpen(o => !o)}>
                   <span className="ticker-dropdown-active">{activeTicker || 'Select'}</span>
                   <span className="ticker-dropdown-arrow">{dropOpen ? '▲' : '▼'}</span>
                 </button>
@@ -51,12 +48,13 @@ export function Header({ activeTab, folderName, tickers, activeTicker, onSelectT
               </div>
             )}
           </>
-        ) : activeTab === 'social' ? null : (
+        ) : !hideFolderInfo && activeTab === 'portfolio' ? (
           <span className="header-vault-name">{folderName ?? 'No Portfolio Selected'}</span>
-        )}
+        ) : null}
       </div>
 
-      {activeTab !== "social" && <SearchBar {...search} />}
+      {/* Only show Search on tabs that need it */}
+      {!hideFolderInfo && <SearchBar {...search} />}
     </header>
   )
 }

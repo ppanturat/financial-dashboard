@@ -250,7 +250,7 @@ export function GlobalIntelligence() {
           {[
             { label: 'Stories',          value: news.length },
             { label: 'Credible Sources', value: credibleCount },
-            { label: 'Data Source',      value: 'yfinance · Free' },
+            { label: 'Data Source',      value: 'yfinance' },
           ].map(s => (
             <div key={s.label} style={{
               background: 'var(--surface)',

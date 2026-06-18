@@ -35,22 +35,22 @@ export default function App() {
     saveHolding, removeHolding 
   } = usePortfolio(session)
 
-  // safe wrapper — works whether usePortfolio exports it or not
   const togglePortfolioPrivacy = _togglePrivacy ?? ((folderId, isPublic) => {
     supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
   })
 
-  const [activeTab, setActiveTab]             = useState('market')
+  const [activeTab, setActiveTab]             = useState('intelligence') // Defaulting to News Feed makes sense now
   const [activeFolderId, setActiveFolderId]   = useState(null)
   const [activeTicker, setActiveTicker]       = useState('')
-  const [sidebarOpen, setSidebarOpen]         = useState(false)
+  
+  const [sidebarOpen, setSidebarOpen]         = useState(false) // For mobile drawer
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false) // For desktop collapse
 
   const { modal, confirm, close: closeModal, execute: executeModal } = useModal()
   const search = useSearch()
   const social = useSocial(session)
   const searchRef = useRef(null)
 
-  // auto-select first market folder + ticker
   useEffect(() => {
     if (!foldersLoading && folders.length > 0 && !activeFolderId) {
       setActiveFolderId(folders[0].id)
@@ -71,7 +71,6 @@ export default function App() {
     ? folders.find(f => f.id === activeFolderId)
     : portfolioFolders.find(f => f.id === activePortfolioId)
 
-  // dynamic folder actions passed to sidebar
   const currentFolders = activeTab === 'market' ? folders : portfolioFolders
   const currentActiveId = activeTab === 'market' ? activeFolderId : activePortfolioId
   const currentLoading = activeTab === 'market' ? foldersLoading : portfolioLoading
@@ -98,16 +97,14 @@ export default function App() {
     }
   })
 
-  // market view ticker addition
   const handleAddTicker = async (symbol) => {
-    if (activeTab === 'portfolio') setActiveTab('market')
+    if (activeTab === 'portfolio' || activeTab === 'intelligence' || activeTab === 'social') setActiveTab('market')
     let fid = activeFolderId
     if (!fid && folders.length === 0) {
       const f = await createFolder('My Folder')
       fid = f?.id
       if (fid) setActiveFolderId(fid)
     } else if (!fid && folders.length > 0) {
-      // auto-select first folder when none is active
       fid = folders[0].id
       setActiveFolderId(fid)
     }
@@ -124,6 +121,8 @@ export default function App() {
 
       <Sidebar
         isOpen={sidebarOpen}
+        collapsed={sidebarCollapsed}
+        setCollapsed={setSidebarCollapsed}
         session={session}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -187,6 +186,12 @@ export default function App() {
             <GlobalIntelligence />
           )}
         </div>
+
+        <footer className="app-footer">
+          <a href="https://github.com/ppanturat/financial-dashboard/issues/new" target="_blank" rel="noreferrer">Report Bug</a>
+          <span>•</span>
+          <a href="https://github.com/ppanturat/financial-dashboard" target="_blank" rel="noreferrer">GitHub</a>
+        </footer>
       </main>
     </div>
   )
