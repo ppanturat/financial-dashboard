@@ -43,6 +43,8 @@ def normalise_sector(raw: str | None) -> str | None:
 def sf(val, decimals=4):
     """Return a rounded float or None, filtering out inf/nan."""
     try:
+        if val is None:
+            return None
         v = float(val)
         if v != v or abs(v) == float('inf'):
             return None
@@ -57,20 +59,16 @@ def _parse_news(raw_news: list) -> list:
     yfinance news items are dicts. Structure varies by version but typically:
       { "title": str, "publisher": str, "link": str, "providerPublishTime": int,
         "type": str, "thumbnail": {...}, "relatedTickers": [...] }
-    Newer versions may also include a "summary" or "snippet" key.
-    We expose what we have and let the frontend handle missing fields gracefully.
     """
     items = []
     for n in (raw_news or []):
         if not isinstance(n, dict):
             continue
-        # content may be nested under a "content" key in newer yfinance builds
         content = n.get("content", n)
         title = content.get("title") or n.get("title", "")
         if not title:
             continue
 
-        # Publisher / source
         provider = (
             content.get("provider", {}).get("displayName")
             or content.get("publisher")
@@ -78,13 +76,11 @@ def _parse_news(raw_news: list) -> list:
             or ""
         )
 
-        # Timestamp (unix epoch seconds → keep as int for frontend to format)
         pub_time = (
-            content.get("pubDate")           # ISO string in some versions
-            or n.get("providerPublishTime")   # int epoch in older versions
+            content.get("pubDate")           
+            or n.get("providerPublishTime")   
         )
 
-        # URL
         url = (
             content.get("canonicalUrl", {}).get("url")
             or content.get("clickThroughUrl", {}).get("url")
@@ -92,7 +88,6 @@ def _parse_news(raw_news: list) -> list:
             or ""
         )
 
-        # Summary / snippet — yfinance may include this in newer data
         summary = (
             content.get("summary")
             or content.get("description")
@@ -109,10 +104,10 @@ def _parse_news(raw_news: list) -> list:
             "summary": summary,
         })
 
-    return items[:15]  # cap at 15 items
+    return items[:15]
 
 
-# ── Existing endpoints (unchanged) ───────────────────────────────────────────
+# ── Existing endpoints ───────────────────────────────────────────
 
 @app.get("/api/search/{query}")
 def search_ticker(query: str):
@@ -127,69 +122,81 @@ def search_ticker(query: str):
 
 @app.get("/api/data/{ticker}")
 def get_market_data(ticker: str, timeframe: str = "1M"):
-    stock = yf.Ticker(ticker)
-    period_map    = {"1W": "5d",  "1M": "1mo", "6M": "6mo", "1Y": "1y"}
-    interval_map  = {"1W": "15m", "1M": "1d",  "6M": "1d",  "1Y": "1d"}
+    try:
+        stock = yf.Ticker(ticker)
+        period_map    = {"1W": "5d",  "1M": "1mo", "6M": "6mo", "1Y": "1y"}
+        interval_map  = {"1W": "15m", "1M": "1d",  "6M": "1d",  "1Y": "1d"}
 
-    hist = stock.history(period=period_map.get(timeframe, "1mo"), interval=interval_map.get(timeframe, "1d"))
-    chart_data = [{"timestamp": d.isoformat(), "price": round(r['Close'], 2)} for d, r in hist.iterrows()] if not hist.empty else []
+        hist = stock.history(period=period_map.get(timeframe, "1mo"), interval=interval_map.get(timeframe, "1d"))
+        chart_data = []
+        if not hist.empty:
+            # FIX: Drop NaN prices to prevent 500 JSON serialization errors
+            hist = hist.dropna(subset=['Close'])
+            chart_data = [{"timestamp": d.isoformat(), "price": round(float(r['Close']), 2)} for d, r in hist.iterrows()]
 
-    info = stock.info
-    quote_type = info.get('quoteType', 'EQUITY')
+        info = stock.info
+        quote_type = info.get('quoteType', 'EQUITY')
 
-    metrics = None
-    if quote_type != 'ETF':
-        cash = info.get('totalCash', 0)
-        debt = info.get('totalDebt', 0)
-        wcr = round(cash / debt, 4) if debt and debt > 0 else (999 if cash else None)
+        metrics = None
+        if quote_type != 'ETF':
+            cash = info.get('totalCash', 0)
+            debt = info.get('totalDebt', 0)
+            wcr = round(cash / debt, 4) if debt and debt > 0 else (999 if cash else None)
 
-        forward_pe = info.get('forwardPE')
-        if forward_pe is not None and forward_pe < 0:
-            forward_pe = None
+            forward_pe = info.get('forwardPE')
+            if forward_pe is not None and forward_pe < 0:
+                forward_pe = None
 
-        trailing_pe = info.get('trailingPE')
-        if trailing_pe is not None and trailing_pe < 0:
-            trailing_pe = None
+            trailing_pe = info.get('trailingPE')
+            if trailing_pe is not None and trailing_pe < 0:
+                trailing_pe = None
 
-        metrics = {
-            "war_chest_ratio":  wcr,
-            "fcf":              sf(info.get('freeCashflow'), 0),
-            "gross_margin":     sf(info.get('grossMargins')),
-            "operating_margin": sf(info.get('operatingMargins')),
-            "net_margin":       sf(info.get('profitMargins')),
-            "forward_pe":       sf(forward_pe, 2),
-            "trailing_pe":      sf(trailing_pe, 2),
-            "ps_ratio":         sf(info.get('priceToSalesTrailing12Months'), 2),
-            "pb_ratio":         sf(info.get('priceToBook'), 2),
-            "revenue_yoy":      sf(info.get('revenueGrowth')),
-            "earnings_yoy":     sf(info.get('earningsGrowth')),
-            "debt_to_equity":   sf(info.get('debtToEquity'), 2),
-            "current_ratio":    sf(info.get('currentRatio'), 2),
-            "roe":              sf(info.get('returnOnEquity')),
-            "roa":              sf(info.get('returnOnAssets')),
-            "short_ratio":      sf(info.get('shortRatio'), 2),
-            "insider_pct":      sf(info.get('heldPercentInsiders')),
-            "institution_pct":  sf(info.get('heldPercentInstitutions')),
-            # ── NEW: additional fields for assessment engine ──
-            "total_cash":       sf(info.get('totalCash'), 0),
-            "total_debt":       sf(info.get('totalDebt'), 0),
-            "revenue":          sf(info.get('totalRevenue'), 0),
-            "research_development": sf(info.get('researchDevelopment'), 0),
-            "gross_profit":     sf(info.get('grossProfits'), 0),
-            # Historical median P/E proxy (3-year trailing avg — yfinance doesn't
-            # directly expose 3yr median, so we expose the 5yr avg PE if available)
-            "five_yr_avg_pe":   sf(info.get('fiveYearAverageReturn')),   # ETF metric; stocks use trailingPE
+            metrics = {
+                "war_chest_ratio":  sf(wcr),
+                "fcf":              sf(info.get('freeCashflow'), 0),
+                "gross_margin":     sf(info.get('grossMargins')),
+                "operating_margin": sf(info.get('operatingMargins')),
+                "net_margin":       sf(info.get('profitMargins')),
+                "forward_pe":       sf(forward_pe, 2),
+                "trailing_pe":      sf(trailing_pe, 2),
+                "ps_ratio":         sf(info.get('priceToSalesTrailing12Months'), 2),
+                "pb_ratio":         sf(info.get('priceToBook'), 2),
+                "revenue_yoy":      sf(info.get('revenueGrowth')),
+                "earnings_yoy":     sf(info.get('earningsGrowth')),
+                "debt_to_equity":   sf(info.get('debtToEquity'), 2),
+                "current_ratio":    sf(info.get('currentRatio'), 2),
+                "roe":              sf(info.get('returnOnEquity')),
+                "roa":              sf(info.get('returnOnAssets')),
+                "short_ratio":      sf(info.get('shortRatio'), 2),
+                "insider_pct":      sf(info.get('heldPercentInsiders')),
+                "institution_pct":  sf(info.get('heldPercentInstitutions')),
+                "total_cash":       sf(info.get('totalCash'), 0),
+                "total_debt":       sf(info.get('totalDebt'), 0),
+                "revenue":          sf(info.get('totalRevenue'), 0),
+                "research_development": sf(info.get('researchDevelopment'), 0),
+                "gross_profit":     sf(info.get('grossProfits'), 0),
+                "five_yr_avg_pe":   sf(info.get('fiveYearAverageReturn')),
+            }
+
+        sector = normalise_sector(info.get('sector'))
+
+        return {
+            "quoteType":   quote_type,
+            "sector":      sector,
+            "chart":       chart_data,
+            "metrics":     metrics,
+            "description": info.get('longBusinessSummary', ''),
         }
-
-    sector = normalise_sector(info.get('sector'))
-
-    return {
-        "quoteType":   quote_type,
-        "sector":      sector,
-        "chart":       chart_data,
-        "metrics":     metrics,
-        "description": info.get('longBusinessSummary', ''),
-    }
+    except Exception as e:
+        print(f"Error fetching data for {ticker}: {e}")
+        # Safe fallback prevents CORS errors on crash
+        return {
+            "quoteType": "EQUITY",
+            "sector": None,
+            "chart": [],
+            "metrics": None,
+            "description": "Data temporarily unavailable.",
+        }
 
 
 @app.get("/api/dividends")
@@ -202,7 +209,7 @@ def get_dividends(tickers: str):
             info  = stock.info
             dps   = info.get("dividendRate") or info.get("trailingAnnualDividendRate") or 0.0
             dy    = info.get("dividendYield") or 0.0
-            result[t] = {"dps": round(float(dps), 4), "yield": round(float(dy), 6)}
+            result[t] = {"dps": round(float(sf(dps) or 0.0), 4), "yield": round(float(sf(dy) or 0.0), 6)}
         except Exception:
             result[t] = {"dps": 0.0, "yield": 0.0}
     return result
@@ -223,12 +230,17 @@ def get_bulk_prices(tickers: str):
             if not price:
                 hist = stock.history(period="2d", interval="1d")
                 if not hist.empty:
-                    price = float(hist['Close'].iloc[-1])
+                    # FIX: drop NaN here as well
+                    hist = hist.dropna(subset=['Close'])
+                    if not hist.empty:
+                        price = float(hist['Close'].iloc[-1])
             if not price:
                 info  = stock.info
                 price = info.get('regularMarketPrice') or info.get('previousClose') or info.get('currentPrice')
-            if price:
-                result[t] = round(float(price), 2)
+            
+            clean_p = sf(price)
+            if clean_p is not None:
+                result[t] = round(float(clean_p), 2)
         except Exception:
             pass
     return result
@@ -258,7 +270,7 @@ def get_etf_holdings(ticker: str):
             return []
         result = []
         for symbol, row in df.iterrows():
-            weight = row.get("Holding Percent", 0)
+            weight = sf(row.get("Holding Percent", 0)) or 0
             result.append({
                 "ticker": str(symbol),
                 "weight": round(float(weight), 6),
@@ -274,23 +286,13 @@ def get_etf_holdings(ticker: str):
 
 @app.get("/api/financials/{ticker}")
 def get_financials(ticker: str):
-    """
-    Returns income statement, balance sheet, cash flow statement, and
-    forward P/E for the given ticker.
-
-    All monetary values are in raw dollars (not billions); the frontend
-    can format as needed.
-    """
     try:
         stock = yf.Ticker(ticker)
         info  = stock.info
 
         def df_to_records(df: pd.DataFrame | None) -> list[dict]:
-            """Convert a yfinance financial DataFrame to a list of row dicts."""
             if df is None or df.empty:
                 return []
-            # yfinance returns columns as DatetimeIndex (periods)
-            # and index as metric names
             result = {}
             for col in df.columns:
                 period_str = col.strftime("%Y-%m-%d") if hasattr(col, "strftime") else str(col)
@@ -323,7 +325,6 @@ def get_financials(ticker: str):
 # ── NEW: Macro data (VOO 200-DMA + RSI) ──────────────────────────────────────
 
 def _calc_rsi(closes: pd.Series, period: int = 14) -> float | None:
-    """Classic Wilder RSI using EMA of gains/losses."""
     if len(closes) < period + 1:
         return None
     delta  = closes.diff().dropna()
@@ -338,14 +339,6 @@ def _calc_rsi(closes: pd.Series, period: int = 14) -> float | None:
 
 @app.get("/api/macro")
 def get_macro_data():
-    """
-    Returns VOO macro sentiment data:
-      - current price
-      - 200-day moving average
-      - % deviation from 200-DMA
-      - 14-day RSI
-      - derived fear_greed_score (0–100) and label
-    """
     try:
         voo  = yf.Ticker("VOO")
         hist = voo.history(period="1y", interval="1d")
@@ -356,27 +349,23 @@ def get_macro_data():
         closes      = hist['Close']
         current     = float(closes.iloc[-1])
         dma200      = float(closes.tail(200).mean()) if len(closes) >= 200 else float(closes.mean())
-        deviation   = (current - dma200) / dma200  # signed fraction
+        deviation   = (current - dma200) / dma200  
         rsi         = _calc_rsi(closes)
 
-        # ── Fear & Greed Score (0=Extreme Fear, 100=Extreme Greed) ──────────
-        # DMA component: ±15% maps to 0–100 (clipped)
         dma_component = 50 + (deviation / 0.15) * 50
         dma_component = max(0, min(100, dma_component))
 
-        # RSI component: 30–70 maps to 0–100 (clipped)
         rsi_component = ((rsi - 30) / 40) * 100 if rsi is not None else 50
         rsi_component = max(0, min(100, rsi_component))
 
         score = round((dma_component * 0.6) + (rsi_component * 0.4))
 
-        # ── Label logic matching spec ────────────────────────────────────────
         if deviation > 0.15 or (rsi is not None and rsi > 75):
             label    = "Extreme Greed"
-            severity = "danger"   # red/warning UI
+            severity = "danger"   
         elif deviation < -0.15 or (rsi is not None and rsi < 30):
             label    = "Extreme Fear"
-            severity = "opportunity"  # green UI
+            severity = "opportunity"  
         elif score >= 65:
             label    = "Greed"
             severity = "warning"
@@ -394,9 +383,9 @@ def get_macro_data():
             "ticker":       "VOO",
             "current_price": sf(current, 2),
             "dma200":        sf(dma200, 2),
-            "dma_deviation": sf(deviation, 4),   # e.g. 0.08 = 8% above
+            "dma_deviation": sf(deviation, 4),   
             "rsi14":         rsi,
-            "fear_greed_score": score,            # 0–100
+            "fear_greed_score": score,            
             "label":         label,
             "severity":      severity,
         }
@@ -408,10 +397,6 @@ def get_macro_data():
 
 @app.get("/api/news/{ticker}")
 def get_stock_news(ticker: str):
-    """
-    Returns the latest news articles for the given ticker.
-    Each item has: title, source, publishedAt, url, summary.
-    """
     try:
         stock = yf.Ticker(ticker)
         raw   = stock.news or []
@@ -424,11 +409,6 @@ def get_stock_news(ticker: str):
 
 @app.get("/api/market-news")
 def get_market_news():
-    """
-    Returns macro / general market news by aggregating news from a basket of
-    broad market proxies (indices, major ETFs, macro tickers).
-    Deduplicated by title, sorted by publish time descending.
-    """
     MACRO_TICKERS = ["^GSPC", "^DJI", "^IXIC", "VOO", "SPY", "TLT", "GLD", "BTC-USD"]
 
     seen_titles: set[str] = set()
@@ -445,7 +425,6 @@ def get_market_news():
         except Exception:
             continue
 
-    # Sort by publish time (newest first); handle ISO strings and unix ints
     def sort_key(item):
         pt = item.get("publishedAt")
         if isinstance(pt, (int, float)):
@@ -463,24 +442,10 @@ def get_market_news():
     return {"news": all_news[:30]}
 
 
-# ── NEW: Valuation comparison (current vs historical median P/E) ─────────────
+# ── NEW: Valuation comparison ────────────────────────────────────────────────
 
 @app.get("/api/valuation/{ticker}")
 def get_valuation_context(ticker: str):
-    """
-    Compares the current forward P/E against a proxy for the 3-year historical
-    median P/E.
-
-    yfinance does not expose a direct 3-year median P/E, so we construct a
-    proxy by sampling the trailing P/E from quarterly income statements over
-    ~3 years and the current share price history to derive implied P/Es.
-
-    Returns:
-      - current_forward_pe
-      - historical_median_pe  (proxy)
-      - discount_pct          (negative = discount, positive = premium)
-      - valuation_flag        "Deep Discount" | "Heavy Premium" | "Fair Value" | null
-    """
     try:
         stock  = yf.Ticker(ticker)
         info   = stock.info
@@ -489,8 +454,6 @@ def get_valuation_context(ticker: str):
         if current_fpe is not None and current_fpe < 0:
             current_fpe = None
 
-        # Build historical P/E proxy from quarterly EPS + price history
-        # Step 1: quarterly earnings per share (diluted)
         quarterly_income = stock.quarterly_income_stmt
         quarterly_price  = stock.history(period="3y", interval="3mo")
 
@@ -504,12 +467,10 @@ def get_valuation_context(ticker: str):
                     break
 
             if eps_row is not None:
-                # Annualise EPS: trailing 4 quarters
                 for i in range(3, len(eps_row)):
                     ttm_eps = eps_row.iloc[i-3:i+1].sum()
                     if ttm_eps and ttm_eps > 0:
                         period_date = eps_row.index[i]
-                        # find closest price
                         price_idx = quarterly_price.index.searchsorted(period_date)
                         if 0 <= price_idx < len(quarterly_price):
                             price = float(quarterly_price['Close'].iloc[price_idx])
@@ -517,7 +478,6 @@ def get_valuation_context(ticker: str):
                             if 3 < implied_pe < 500:
                                 historical_pes.append(implied_pe)
 
-        # Fallback: use trailing P/E from info as the single data point
         if not historical_pes:
             tpe = info.get('trailingPE')
             if tpe and tpe > 0:
@@ -525,7 +485,6 @@ def get_valuation_context(ticker: str):
 
         historical_median_pe = float(pd.Series(historical_pes).median()) if historical_pes else None
 
-        # Compute discount/premium vs historical median
         discount_pct    = None
         valuation_flag  = None
 
@@ -542,7 +501,7 @@ def get_valuation_context(ticker: str):
             "ticker":               ticker.upper(),
             "current_forward_pe":   sf(current_fpe, 2),
             "historical_median_pe": sf(historical_median_pe, 2),
-            "discount_pct":         sf(discount_pct, 4),  # e.g. -0.22 = 22% discount
+            "discount_pct":         sf(discount_pct, 4),  
             "valuation_flag":       valuation_flag,
         }
     except Exception as e:
