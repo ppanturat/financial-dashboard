@@ -17,6 +17,8 @@ import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
 import { ConfirmModal } from './components/ConfirmModal'
 
+import { GlobalIntelligence } from './pages/GlobalIntelligence'
+
 import './App.css'
 
 export default function App() {
@@ -174,8 +176,15 @@ export default function App() {
               removeHolding={removeHolding}
               openConfirmModal={confirm} 
             />
+          ) : activeTab === 'social' ? (
+            <SocialView 
+              social={social} 
+              portfolioFolders={portfolioFolders} 
+              session={session} 
+              togglePortfolioPrivacy={togglePortfolioPrivacy} 
+            />
           ) : (
-            <SocialView social={social} portfolioFolders={portfolioFolders} session={session} togglePortfolioPrivacy={togglePortfolioPrivacy} />
+            <GlobalIntelligence />
           )}
         </div>
       </main>

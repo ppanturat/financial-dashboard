@@ -6,12 +6,18 @@ import { MetricsGrid } from '../components/MetricsGrid'
 import { MetricsSummaryCard } from '../components/MetricsSummaryCard'
 import { RuleBasedAssessmentCard } from '../components/RuleBasedAssessmentCard'
 import { EmptyState } from '../components/EmptyState'
+import { FearGreedBanner } from '../components/FearGreedBanner'
+import { StockNewsFeed } from '../components/StockNewsFeed'
+import { AdoptionCheckCard, TerminalRedFlagCard } from '../components/AdoptionRedFlagCards'
+import { runAdoptionCheck, runTerminalRedFlagSweep } from '../lib/assessmentEngine'
 
 export function MarketView({ activeTicker, foldersLoading }) {
   const [timeframe, setTimeframe] = useState('1M')
   const [profileOpen, setProfileOpen] = useState(false)
   const stock = useStockData(activeTicker, timeframe)
   const isEtf = stock.quoteType === 'ETF'
+  const adoptionResult = stock.metrics ? runAdoptionCheck(stock.metrics) : null
+  const redFlagResult = stock.metrics ? runTerminalRedFlagSweep(stock.metrics) : null
 
   if (!activeTicker) return <EmptyState loading={foldersLoading} />
 
@@ -65,7 +71,11 @@ export function MarketView({ activeTicker, foldersLoading }) {
 
       <MetricsGrid metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
       <MetricsSummaryCard metrics={stock.metrics} ticker={activeTicker} isEtf={isEtf} loading={stock.loadingData} />
+      <FearGreedBanner metrics={stock.metrics} />
+      <AdoptionCheckCard result={adoptionResult} />
+      <TerminalRedFlagCard result={redFlagResult} />
       <RuleBasedAssessmentCard ticker={activeTicker} metrics={stock.metrics} isEtf={isEtf} etfHoldings={stock.etfHoldings} loading={stock.loadingData} />
+      <StockNewsFeed ticker={activeTicker} />
     </>
   )
 }
