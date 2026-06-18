@@ -1,6 +1,6 @@
 import { FearGreedBanner } from '../components/FearGreedBanner'
 // Assuming you have a StockNewsFeed component built from the previous architecture
-// import { StockNewsFeed } from '../components/StockNewsFeed' 
+import { StockNewsFeed } from '../components/StockNewsFeed' 
 
 export function GlobalIntelligence() {
   return (
@@ -25,7 +25,7 @@ export function GlobalIntelligence() {
         {/* Right/Bottom Column: The News Feed */}
         <div className="intelligence-col news-feed-section">
           {/* If you have the StockNewsFeed component ready, drop it here: */}
-          {/* <StockNewsFeed isMacro={true} /> */}
+          {<StockNewsFeed isMacro={true} />}
           
           <div className="placeholder-card" style={{ height: '100%', minHeight: '400px' }}>
             <h3 style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Macro News Feed</h3>
