@@ -6,10 +6,13 @@ import { MetricsGrid } from '../components/MetricsGrid'
 import { MetricsSummaryCard } from '../components/MetricsSummaryCard'
 import { RuleBasedAssessmentCard } from '../components/RuleBasedAssessmentCard'
 import { EmptyState } from '../components/EmptyState'
-import { FearGreedBanner } from '../components/FearGreedBanner'
 import { StockNewsFeed } from '../components/StockNewsFeed'
+import { ValuationBadge } from '../components/ValuationBadge'
 import { AdoptionCheckCard, TerminalRedFlagCard } from '../components/AdoptionRedFlagCards'
 import { runAdoptionCheck, runTerminalRedFlagSweep } from '../lib/assessmentEngine'
+
+// FearGreedBanner removed from here — it's a market-level indicator
+// and now lives exclusively in the GlobalIntelligence (News Feed) tab.
 
 export function MarketView({ activeTicker, foldersLoading }) {
   const [timeframe, setTimeframe] = useState('1M')
@@ -17,7 +20,7 @@ export function MarketView({ activeTicker, foldersLoading }) {
   const stock = useStockData(activeTicker, timeframe)
   const isEtf = stock.quoteType === 'ETF'
   const adoptionResult = stock.metrics ? runAdoptionCheck(stock.metrics) : null
-  const redFlagResult = stock.metrics ? runTerminalRedFlagSweep(stock.metrics) : null
+  const redFlagResult  = stock.metrics ? runTerminalRedFlagSweep(stock.metrics) : null
 
   if (!activeTicker) return <EmptyState loading={foldersLoading} />
 
@@ -31,11 +34,16 @@ export function MarketView({ activeTicker, foldersLoading }) {
         timeframe={timeframe}
         onTimeframeChange={setTimeframe}
       />
-      <StockChart chartData={stock.chartData} graphColor={stock.graphColor} timeframe={timeframe} loading={stock.loadingData} />
+      <StockChart
+        chartData={stock.chartData}
+        graphColor={stock.graphColor}
+        timeframe={timeframe}
+        loading={stock.loadingData}
+      />
 
+      {/* Company Profile — collapsible */}
       {stock.description && (
         <div className="desc-card">
-          {/* Collapsible header */}
           <button
             onClick={() => setProfileOpen(o => !o)}
             style={{
@@ -44,7 +52,9 @@ export function MarketView({ activeTicker, foldersLoading }) {
               padding: 0, textAlign: 'left',
             }}
           >
-            <h3 className="desc-title" style={{ margin: 0, fontFamily: "Syne, Arial" }}>Company Profile</h3>
+            <h3 className="desc-title" style={{ margin: 0, fontFamily: 'Syne, Arial' }}>
+              Company Profile
+            </h3>
             <span style={{
               fontSize: 12, color: 'var(--faint)',
               transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -52,29 +62,34 @@ export function MarketView({ activeTicker, foldersLoading }) {
               lineHeight: 1, paddingLeft: 8,
             }}>▼</span>
           </button>
-
-          {/* Collapsed preview — first sentence */}
-          {!profileOpen && (
-            <p className="desc-text" style={{ marginTop: 10, marginBottom: 0, color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-              {stock.description}
-            </p>
-          )}
-
-          {/* Full text when open */}
-          {profileOpen && (
-            <p className="desc-text" style={{ marginTop: 10, marginBottom: 0 }}>
-              {stock.description}
-            </p>
-          )}
+          <p className="desc-text" style={{
+            marginTop: 10, marginBottom: 0,
+            color: profileOpen ? 'inherit' : 'var(--muted)',
+            display: profileOpen ? 'block' : '-webkit-box',
+            WebkitLineClamp: profileOpen ? undefined : 2,
+            WebkitBoxOrient: profileOpen ? undefined : 'vertical',
+            overflow: profileOpen ? 'visible' : 'hidden',
+          }}>
+            {stock.description}
+          </p>
         </div>
       )}
 
       <MetricsGrid metrics={stock.metrics} isEtf={isEtf} loading={stock.loadingData} />
       <MetricsSummaryCard metrics={stock.metrics} ticker={activeTicker} isEtf={isEtf} loading={stock.loadingData} />
-      <FearGreedBanner metrics={stock.metrics} />
+
+      {/* Relative Valuation replaces Fear & Greed here */}
+      {!isEtf && <ValuationBadge metrics={stock.metrics} />}
+
       <AdoptionCheckCard result={adoptionResult} />
       <TerminalRedFlagCard result={redFlagResult} />
-      <RuleBasedAssessmentCard ticker={activeTicker} metrics={stock.metrics} isEtf={isEtf} etfHoldings={stock.etfHoldings} loading={stock.loadingData} />
+      <RuleBasedAssessmentCard
+        ticker={activeTicker}
+        metrics={stock.metrics}
+        isEtf={isEtf}
+        etfHoldings={stock.etfHoldings}
+        loading={stock.loadingData}
+      />
       <StockNewsFeed ticker={activeTicker} />
     </>
   )
