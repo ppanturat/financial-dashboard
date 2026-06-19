@@ -1,27 +1,30 @@
 import { useState, useRef, useEffect } from 'react'
 
-const NAV_TABS = [
+const NAV = [
   { id: 'intelligence', label: 'News Feed',    icon: '📰' },
   { id: 'market',       label: 'Market View',  icon: '📈' },
   { id: 'portfolio',    label: 'Portfolio',    icon: '💼' },
   { id: 'social',       label: 'Network',      icon: '👥' },
+  { id: 'profile',      label: 'Profile',      icon: '👤' },
 ]
 
 export function Sidebar({
-  session, activeTab, setActiveTab, folders, activeFolderId, fetchingFolders, marketFolders,
-  isOpen, onSelectFolder, onCreateFolder, onImportFolder, onRenameFolder, onDeleteFolder, onSignOut,
+  session, activeTab, setActiveTab,
+  folders, activeFolderId, fetchingFolders, marketFolders,
+  isOpen, onSelectFolder, onCreateFolder, onImportFolder,
+  onRenameFolder, onDeleteFolder, onSignOut,
   followedUsers, pendingRequests,
   collapsed, onToggleCollapse,
 }) {
-  const [editingId, setEditingId]   = useState(null)
-  const [editName, setEditName]     = useState('')
-  const [newMode, setNewMode]       = useState(false)
-  const [newName, setNewName]       = useState('')
-  const [importMode, setImportMode] = useState(false)
-  const [importStep, setImportStep] = useState(1)
+  const [editingId, setEditingId]               = useState(null)
+  const [editName, setEditName]                 = useState('')
+  const [newMode, setNewMode]                   = useState(false)
+  const [newName, setNewName]                   = useState('')
+  const [importMode, setImportMode]             = useState(false)
+  const [importStep, setImportStep]             = useState(1)
   const [importTargetFolder, setImportTargetFolder] = useState(null)
-  const [importTickers, setImportTickers]           = useState([])
-  const [isImporting, setIsImporting]               = useState(false)
+  const [importTickers, setImportTickers]       = useState([])
+  const [isImporting, setIsImporting]           = useState(false)
   const newRef = useRef(null)
 
   useEffect(() => {
@@ -30,11 +33,12 @@ export function Sidebar({
     setNewMode(false); setNewName('')
   }, [activeTab])
 
-  const startEdit   = (f) => { setEditingId(f.id); setEditName(f.name) }
-  const commitEdit  = (id) => { if (editName.trim()) onRenameFolder(id, editName.trim()); setEditingId(null) }
-  const commitNew   = () => { if (newName.trim()) onCreateFolder(newName.trim()); setNewMode(false); setNewName('') }
-  const handleStartImport = (mf) => { setImportTargetFolder(mf); setImportTickers(mf.tickers || []); setImportStep(2) }
-  const toggleImportTicker = (t) => setImportTickers(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
+  const startEdit  = f  => { setEditingId(f.id); setEditName(f.name) }
+  const commitEdit = id => { if (editName.trim()) onRenameFolder(id, editName.trim()); setEditingId(null) }
+  const commitNew  = () => { if (newName.trim()) onCreateFolder(newName.trim()); setNewMode(false); setNewName('') }
+
+  const handleStartImport = mf => { setImportTargetFolder(mf); setImportTickers(mf.tickers || []); setImportStep(2) }
+  const toggleImportTicker = t => setImportTickers(p => p.includes(t) ? p.filter(x => x !== t) : [...p, t])
   const handleConfirmImport = async () => {
     if (!importTargetFolder) return
     setIsImporting(true)
@@ -45,118 +49,97 @@ export function Sidebar({
     finally { setIsImporting(false) }
   }
 
-  // Tabs that show folder lists in the sidebar
+  // Tabs where we show folder lists
   const showFolders = activeTab === 'market' || activeTab === 'portfolio'
 
   return (
     <aside
       className={`sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}
-      style={{ width: collapsed ? 'var(--sidebar-w-collapsed, 64px)' : 'var(--sidebar-w, 240px)', transition: 'width 0.25s ease' }}
+      style={{ width: collapsed ? 64 : 'var(--sidebar-w)', transition: 'width 0.22s ease', flexShrink: 0 }}
     >
-      {/* ── Brand + collapse toggle ── */}
-      <div className="sidebar-brand" style={{ justifyContent: 'space-between' }}>
+      {/* ── Brand ── */}
+      <div
+        className="sidebar-brand"
+        style={{
+          justifyContent: collapsed ? 'center' : 'space-between',
+          padding: collapsed ? '18px 0' : '18px 18px 16px',
+          gap: 8,
+        }}
+      >
+        {/* Logo mark — always centered when collapsed */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-          <span className="brand-mark">◈</span>
+          <span className="brand-mark" style={{ flexShrink: 0, lineHeight: 1 }}>◈</span>
           {!collapsed && <span className="brand-name">STOCK CHECKER</span>}
         </div>
+        {/* Collapse toggle */}
         <button
           onClick={onToggleCollapse}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            color: 'rgba(255,255,255,0.4)', fontSize: 13, padding: '2px 4px',
-            borderRadius: 4, flexShrink: 0, lineHeight: 1,
-            transition: 'color 0.15s',
+            color: 'rgba(255,255,255,0.35)', fontSize: 12, padding: '2px 4px',
+            borderRadius: 4, flexShrink: 0, lineHeight: 1, display: collapsed ? 'none' : 'block',
           }}
-          onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.85)'}
-          onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.4)'}
-        >
-          {collapsed ? '▶' : '◀'}
-        </button>
+          onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.8)'}
+          onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.35)'}
+        >◀</button>
+        {/* Expand button — visible only when collapsed */}
+        {collapsed && (
+          <button
+            onClick={onToggleCollapse}
+            title="Expand sidebar"
+            style={{
+              position: 'absolute', top: 16, right: -12, zIndex: 10,
+              background: 'var(--sidebar-bg,#141312)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '50%', width: 22, height: 22,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'rgba(255,255,255,0.55)', fontSize: 10, cursor: 'pointer',
+            }}
+          >▶</button>
+        )}
       </div>
 
       {/* ── Nav tabs ── */}
-      <div className="sidebar-tabs" style={{ padding: collapsed ? '8px 6px' : undefined }}>
-        {NAV_TABS.map(tab => (
+      <div style={{ padding: collapsed ? '6px 8px' : '6px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {NAV.map(tab => (
           <button
             key={tab.id}
-            className={activeTab === tab.id ? 'active' : ''}
             onClick={() => setActiveTab(tab.id)}
             title={collapsed ? tab.label : undefined}
-            style={collapsed ? {
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '8px 0', fontSize: 16, width: '100%',
-            } : undefined}
+            style={{
+              display: 'flex', alignItems: 'center',
+              gap: collapsed ? 0 : 9,
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'none',
+              border: 'none', borderRadius: 7, cursor: 'pointer',
+              color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.5)',
+              fontFamily: "'Syne',sans-serif", fontSize: 13, fontWeight: 600,
+              padding: collapsed ? '9px 0' : '8px 10px',
+              width: '100%', textAlign: 'left',
+              transition: 'background 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+            onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.background = 'none' }}
           >
-            {collapsed ? tab.icon : tab.label}
+            <span style={{ fontSize: collapsed ? 18 : 14, flexShrink: 0 }}>{tab.icon}</span>
+            {!collapsed && <span>{tab.label}</span>}
           </button>
         ))}
       </div>
 
-      {/* ── Folder label — only for market/portfolio, never intelligence/social ── */}
+      {/* ── Folder label — only for market/portfolio ── */}
       {!collapsed && showFolders && (
         <p className="sidebar-label">
           {activeTab === 'market' ? 'Market Folders' : 'Portfolio Folders'}
         </p>
       )}
 
-      {/* ── Nav content ── */}
+      {/* ── Nav content (hidden when collapsed) ── */}
       {!collapsed && (
         <nav className="sidebar-nav">
-          {activeTab === 'social' ? (
-            <>
-              {pendingRequests?.length > 0 && (
-                <div style={{
-                  margin: '0 0 8px', padding: '8px 10px', borderRadius: 7,
-                  background: 'rgba(234,179,8,0.12)', border: '1px solid rgba(234,179,8,0.25)',
-                  display: 'flex', alignItems: 'center', gap: 7,
-                }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', flex: 1 }}>
-                    {pendingRequests.length} follow request{pendingRequests.length > 1 ? 's' : ''}
-                  </span>
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, background: 'rgba(234,179,8,0.7)',
-                    color: '#111', padding: '2px 6px', borderRadius: 99,
-                  }}>{pendingRequests.length}</span>
-                </div>
-              )}
-              {followedUsers?.length === 0 ? (
-                <p className="sidebar-loading">No one followed yet.</p>
-              ) : (
-                <>
-                  <p style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: '.1em', textTransform: 'uppercase', margin: '0 0 6px 4px' }}>
-                    Following · {followedUsers.length}
-                  </p>
-                  {followedUsers.map(u => (
-                    <div key={u.id} className="vault-row">
-                      <div className="vault-btn" style={{ cursor: 'default' }}>
-                        {u.avatar_url ? (
-                          <img src={u.avatar_url} alt={u.name} style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }} />
-                        ) : (
-                          <div style={{
-                            width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
-                            background: `hsl(${(u.name||u.username||'').split('').reduce((a,c)=>a+c.charCodeAt(0),0)%360}, 55%, 62%)`,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#fff', fontSize: 9, fontWeight: 700,
-                          }}>
-                            {(u.name||u.username||'?')[0].toUpperCase()}
-                          </div>
-                        )}
-                        <span className="vault-label">{u.name || u.username || 'Investor'}</span>
-                        {u.username && (
-                          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>
-                            @{u.username}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-            </>
-          ) : activeTab === 'intelligence' ? (
-            // News Feed — no folder list, just a clean empty nav
-            <p className="sidebar-loading" style={{ opacity: 0 }} />
+          {activeTab === 'social' || activeTab === 'intelligence' || activeTab === 'profile' ? (
+            /* No folder list for these tabs */
+            <div />
           ) : fetchingFolders ? (
             <p className="sidebar-loading">Loading...</p>
           ) : (
@@ -244,47 +227,42 @@ export function Sidebar({
         </nav>
       )}
 
-      {/* ── Footer: user + sign out + bug report / github ── */}
-      <div className="sidebar-footer" style={collapsed ? { padding: '10px 6px', alignItems: 'center' } : undefined}>
-        {!collapsed && (
+      {/* ── Footer ── */}
+      <div
+        className="sidebar-footer"
+        style={collapsed ? { padding: '12px 8px', alignItems: 'center' } : {}}
+      >
+        {!collapsed ? (
           <>
             <span className="user-email">{session?.user?.email}</span>
             <button className="signout-btn" onClick={onSignOut}>Sign Out</button>
-
-            {/* Bug report + GitHub */}
+            {/* Bug report / GitHub links */}
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: 8, paddingTop: 6,
-              borderTop: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex', gap: 8, justifyContent: 'center',
+              paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)',
             }}>
-              <a
-                href="https://github.com/ppanturat/financial-dashboard/issues/new"
-                target="_blank" rel="noreferrer"
-                style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.15s' }}
+              <a href="https://github.com/ppanturat/financial-dashboard/issues/new" target="_blank" rel="noreferrer"
+                style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.15s' }}
                 onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.7)'}
-                onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.3)'}
-              >
-                Report Bug
-              </a>
+                onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.28)'}
+              >Report Bug</a>
               <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 11 }}>•</span>
-              <a
-                href="https://github.com/ppanturat/financial-dashboard"
-                target="_blank" rel="noreferrer"
-                style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', textDecoration: 'none', transition: 'color 0.15s' }}
+              <a href="https://github.com/ppanturat/financial-dashboard" target="_blank" rel="noreferrer"
+                style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.15s' }}
                 onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.7)'}
-                onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.3)'}
-              >
-                GitHub
-              </a>
+                onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.28)'}
+              >GitHub</a>
             </div>
           </>
-        )}
-
-        {collapsed && (
-          <button className="signout-btn" onClick={onSignOut} title="Sign Out"
-            style={{ fontSize: 14, padding: '6px', width: '100%' }}>
-            ⏏
-          </button>
+        ) : (
+          <button
+            onClick={onSignOut} title="Sign Out"
+            style={{
+              background: 'none', border: '1px solid rgba(220,38,38,0.3)',
+              borderRadius: 7, color: '#b91c1c', cursor: 'pointer',
+              fontSize: 16, padding: '6px', width: '100%', textAlign: 'center',
+            }}
+          >⏏</button>
         )}
       </div>
     </aside>

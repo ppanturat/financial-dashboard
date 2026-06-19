@@ -1,69 +1,58 @@
 import { useState } from 'react'
 import { SearchBar } from './SearchBar'
 
-// Tabs where the header shows NO folder context (no name, no tickers, no search)
-const CLEAN_HEADER_TABS = new Set(['social', 'intelligence'])
+const CLEAN_TABS = new Set(['social', 'intelligence', 'profile'])
 
-export function Header({ activeTab, folderName, tickers, activeTicker, onSelectTicker, onRemoveTicker, onHamburger, search }) {
+export function Header({ activeTab, folderName, tickers, activeTicker, onSelectTicker, onRemoveTicker, onHamburger, search, hideSearch }) {
   const [dropOpen, setDropOpen] = useState(false)
+  const isClean = CLEAN_TABS.has(activeTab) || hideSearch
 
-  const handleDropSelect = (t) => { onSelectTicker(t); setDropOpen(false) }
-
-  const isClean = CLEAN_HEADER_TABS.has(activeTab)
+  const handleDropSelect = t => { onSelectTicker(t); setDropOpen(false) }
 
   return (
     <header className="header">
       <button className="hamburger" onClick={onHamburger}>☰</button>
 
       <div className="header-left">
-        {!isClean && (
-          activeTab === 'market' ? (
-            <>
-              <span className="header-vault-name">{folderName ?? 'No Folder Selected'}</span>
+        {!isClean && activeTab === 'market' ? (
+          <>
+            <span className="header-vault-name">{folderName ?? 'No Folder Selected'}</span>
 
-              {/* Desktop: scrollable chips */}
-              <div className="ticker-tabs desktop-ticker-tabs">
-                {tickers?.map(t => (
-                  <div key={t} className={`ticker-chip ${activeTicker === t ? 'active' : ''}`}>
-                    <button className="chip-ticker" onClick={() => onSelectTicker(t)}>{t}</button>
-                    <button className="chip-remove" onClick={() => onRemoveTicker(t)} title="Remove">✕</button>
-                  </div>
-                ))}
-              </div>
-
-              {/* Mobile: dropdown */}
-              {tickers?.length > 0 && (
-                <div className="ticker-dropdown-wrap mobile-ticker-dropdown">
-                  <button className="ticker-dropdown-btn" onClick={() => setDropOpen(o => !o)}>
-                    <span className="ticker-dropdown-active">{activeTicker || 'Select'}</span>
-                    <span className="ticker-dropdown-arrow">{dropOpen ? '▲' : '▼'}</span>
-                  </button>
-                  {dropOpen && (
-                    <div className="ticker-dropdown-menu">
-                      {tickers.map(t => (
-                        <div key={t} className={`ticker-dropdown-item ${activeTicker === t ? 'active' : ''}`}>
-                          <button className="ticker-drop-select" onClick={() => handleDropSelect(t)}>{t}</button>
-                          <button className="ticker-drop-remove" onClick={() => { onRemoveTicker(t); setDropOpen(false) }} title="Remove">✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            {/* Desktop chips */}
+            <div className="ticker-tabs desktop-ticker-tabs">
+              {tickers?.map(t => (
+                <div key={t} className={`ticker-chip ${activeTicker === t ? 'active' : ''}`}>
+                  <button className="chip-ticker" onClick={() => onSelectTicker(t)}>{t}</button>
+                  <button className="chip-remove" onClick={() => onRemoveTicker(t)} title="Remove">✕</button>
                 </div>
-              )}
-            </>
-          ) : (
-            /* portfolio tab */
-            <span className="header-vault-name">{folderName ?? 'No Portfolio Selected'}</span>
-          )
-        )}
+              ))}
+            </div>
 
-        {/* Page title for clean tabs */}
-        {isClean && activeTab === 'intelligence' && (
-          <span className="header-vault-name" style={{ opacity: 0.55 }}>News Feed</span>
-        )}
+            {/* Mobile dropdown */}
+            {tickers?.length > 0 && (
+              <div className="ticker-dropdown-wrap mobile-ticker-dropdown">
+                <button className="ticker-dropdown-btn" onClick={() => setDropOpen(o => !o)}>
+                  <span className="ticker-dropdown-active">{activeTicker || 'Select'}</span>
+                  <span className="ticker-dropdown-arrow">{dropOpen ? '▲' : '▼'}</span>
+                </button>
+                {dropOpen && (
+                  <div className="ticker-dropdown-menu">
+                    {tickers.map(t => (
+                      <div key={t} className={`ticker-dropdown-item ${activeTicker === t ? 'active' : ''}`}>
+                        <button className="ticker-drop-select" onClick={() => handleDropSelect(t)}>{t}</button>
+                        <button className="ticker-drop-remove" onClick={() => { onRemoveTicker(t); setDropOpen(false) }} title="Remove">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : !isClean ? (
+          <span className="header-vault-name">{folderName ?? 'No Portfolio Selected'}</span>
+        ) : null}
       </div>
 
-      {/* Search only on tabs that need it */}
       {!isClean && <SearchBar {...search} />}
     </header>
   )

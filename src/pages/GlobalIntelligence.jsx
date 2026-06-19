@@ -1,37 +1,29 @@
 /**
  * GlobalIntelligence.jsx — "News Feed" tab
  * ─────────────────────────────────────────────────────────────────────────────
- * Hierarchy:
- *   ┌ Market Fear & Greed (collapsible gauge) ──────────────────────┐
- *   └────────────────────────────────────────────────────────────────┘
- *   ┌ Macro News Feed ───────────────────────────────────────────────┐
- *   │  article cards with source badge, timestamp, summary           │
- *   └────────────────────────────────────────────────────────────────┘
+ * Ranked news sections:
+ *   Section 1 — Market Headlines (Reuters, AP, Bloomberg, WSJ, FT)
+ *   Section 2 — Analyst & Opinion (CNBC, MarketWatch, Barron's, Motley Fool, Seeking Alpha…)
+ *   Section 3 — Community & Other
  */
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../lib/api'
 import { FearGreedBanner } from '../components/FearGreedBanner'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Source classification ─────────────────────────────────────────────────────
+const TIER1 = new Set(['Reuters', 'AP News', 'AP', 'Bloomberg', 'WSJ', 'Financial Times', 'FT'])
+const TIER2 = new Set(['CNBC', 'MarketWatch', "Barron's", 'Motley Fool', 'Seeking Alpha', 'InvestorPlace', 'The Economist', 'Forbes'])
 
-function formatPublishedAt(raw) {
-  if (!raw) return '—'
-  let date
-  if (typeof raw === 'number')      date = new Date(raw * 1000)
-  else if (typeof raw === 'string') date = new Date(raw)
-  else return '—'
-  if (isNaN(date.getTime())) return '—'
+function getSourceTier(source) {
+  if (TIER1.has(source)) return 1
+  if (TIER2.has(source)) return 2
+  return 3
+}
 
-  const diff = Date.now() - date.getTime()
-  const mins = Math.floor(diff / 60000)
-  const hrs  = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
-
-  if (mins < 2)  return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  if (hrs  < 24) return `${hrs}h ago`
-  if (days < 7)  return `${days}d ago`
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+function getSourceBadge(source) {
+  if (TIER1.has(source)) return { label: 'Trusted',  color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' }
+  if (TIER2.has(source)) return { label: 'Opinion',  color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' }
+  return                        { label: 'Other',    color: '#6b7280', bg: '#f9fafb', border: '#e5e7eb' }
 }
 
 function resolveSource(source, url) {
@@ -40,68 +32,81 @@ function resolveSource(source, url) {
   try {
     const host = new URL(url).hostname.replace('www.', '')
     const map = {
-      'bloomberg.com':       'Bloomberg',
-      'reuters.com':         'Reuters',
-      'wsj.com':             'WSJ',
-      'ft.com':              'Financial Times',
-      'cnbc.com':            'CNBC',
-      'marketwatch.com':     'MarketWatch',
-      'barrons.com':         "Barron's",
-      'ap.org':              'AP News',
-      'apnews.com':          'AP News',
-      'economist.com':       'The Economist',
+      'bloomberg.com': 'Bloomberg', 'reuters.com': 'Reuters', 'wsj.com': 'WSJ',
+      'ft.com': 'Financial Times', 'cnbc.com': 'CNBC', 'marketwatch.com': 'MarketWatch',
+      'barrons.com': "Barron's", 'ap.org': 'AP News', 'apnews.com': 'AP News',
+      'economist.com': 'The Economist', 'fool.com': 'Motley Fool',
+      'seekingalpha.com': 'Seeking Alpha', 'forbes.com': 'Forbes',
     }
     return map[host] ?? host
   } catch { return 'Yahoo Finance' }
 }
 
-const CREDIBLE_SET = new Set([
-  'Bloomberg', 'Reuters', 'WSJ', 'Financial Times', 'CNBC',
-  'MarketWatch', "Barron's", 'AP News', 'The Economist', 'AP',
-])
+function formatTime(raw) {
+  if (!raw) return '—'
+  const date = typeof raw === 'number' ? new Date(raw * 1000) : new Date(raw)
+  if (isNaN(date.getTime())) return '—'
+  const diff = Date.now() - date.getTime()
+  const m = Math.floor(diff / 60000)
+  const h = Math.floor(diff / 3600000)
+  const d = Math.floor(diff / 86400000)
+  if (m < 2)  return 'Just now'
+  if (m < 60) return `${m}m ago`
+  if (h < 24) return `${h}h ago`
+  if (d < 7)  return `${d}d ago`
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
 
 // ── Source badge ──────────────────────────────────────────────────────────────
 function SourceBadge({ source }) {
-  const credible = CREDIBLE_SET.has(source)
+  const badge = getSourceBadge(source)
   return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 3,
-      fontSize: 10, fontWeight: 700,
-      textTransform: 'uppercase', letterSpacing: '0.06em',
-      color:      credible ? '#1d4ed8' : '#6b6a65',
-      background: credible ? '#eff6ff' : 'rgba(0,0,0,0.04)',
-      border:     `1px solid ${credible ? '#bfdbfe' : 'rgba(0,0,0,0.08)'}`,
-      borderRadius: 4, padding: '2px 6px', flexShrink: 0,
-    }}>
-      {credible && <span style={{ fontSize: 8 }}>★</span>}
-      {source}
-    </span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      <span style={{
+        fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em',
+        color: badge.color === '#1d4ed8' ? badge.color : '#6b7280',
+        background: badge.bg, border: `1px solid ${badge.border}`,
+        borderRadius: 4, padding: '2px 6px', flexShrink: 0,
+      }}>
+        {TIER1.has(source) && '★ '}{source}
+      </span>
+      {TIER1.has(source) && (
+        <span style={{ fontSize: 9, fontWeight: 700, color: badge.color, background: badge.bg, border: `1px solid ${badge.border}`, borderRadius: 3, padding: '1px 5px' }}>
+          TRUSTED
+        </span>
+      )}
+      {TIER2.has(source) && (
+        <span style={{ fontSize: 9, fontWeight: 700, color: badge.color, background: badge.bg, border: `1px solid ${badge.border}`, borderRadius: 3, padding: '1px 5px' }}>
+          OPINION
+        </span>
+      )}
+    </div>
   )
 }
 
 // ── News card ─────────────────────────────────────────────────────────────────
-function MacroNewsCard({ item }) {
+function NewsCard({ item }) {
   const source = resolveSource(item.source, item.url)
-  const time   = formatPublishedAt(item.publishedAt)
+  const time   = formatTime(item.publishedAt)
+  const tier   = getSourceTier(source)
 
   return (
     <article style={{
       background: 'var(--surface)',
-      border: '1px solid var(--border)',
-      borderRadius: 8,
-      padding: '14px 16px',
+      border: `1px solid ${tier === 1 ? '#bfdbfe' : 'var(--border)'}`,
+      borderLeft: tier === 1 ? '3px solid #1d4ed8' : undefined,
+      borderRadius: 8, padding: '13px 15px',
       display: 'flex', flexDirection: 'column', gap: 7,
       transition: 'border-color 0.15s',
     }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--accent)'}
-      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+      onMouseEnter={e => { if (tier !== 1) e.currentTarget.style.borderColor = 'var(--accent)' }}
+      onMouseLeave={e => { if (tier !== 1) e.currentTarget.style.borderColor = 'var(--border)' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <SourceBadge source={source} />
-        <span style={{ fontSize: 11, color: 'var(--faint)' }}>{time}</span>
+        <span style={{ fontSize: 11, color: 'var(--faint)', marginLeft: 'auto' }}>{time}</span>
       </div>
-      <a
-        href={item.url || '#'} target="_blank" rel="noopener noreferrer"
+      <a href={item.url || '#'} target="_blank" rel="noopener noreferrer"
         style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', textDecoration: 'none', lineHeight: 1.45, display: 'block' }}
         onMouseEnter={e => e.target.style.color = 'var(--accent)'}
         onMouseLeave={e => e.target.style.color = 'var(--text)'}
@@ -109,7 +114,7 @@ function MacroNewsCard({ item }) {
         {item.title}
       </a>
       {item.summary && (
-        <p style={{ margin: 0, fontSize: 13, color: '#6b6a65', lineHeight: 1.65, borderLeft: '2px solid var(--border-md)', paddingLeft: 10 }}>
+        <p style={{ margin: 0, fontSize: 12, color: '#6b7280', lineHeight: 1.6, borderLeft: '2px solid var(--border-md)', paddingLeft: 9 }}>
           {item.summary}
         </p>
       )}
@@ -117,19 +122,35 @@ function MacroNewsCard({ item }) {
   )
 }
 
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-function Skeleton({ count = 6 }) {
+// ── Section group ─────────────────────────────────────────────────────────────
+function NewsSection({ title, subtitle, items, accent = 'var(--text)' }) {
+  if (!items.length) return null
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: accent }}>{title}</h3>
+        {subtitle && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--faint)' }}>{subtitle}</p>}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {items.map((item, i) => <NewsCard key={`${item.title}-${i}`} item={item} />)}
+      </div>
+    </div>
+  )
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+function Skeleton() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '13px 15px', display: 'flex', flexDirection: 'column', gap: 9 }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <div className="skeleton" style={{ width: 80, height: 17, borderRadius: 4 }} />
-            <div className="skeleton" style={{ width: 48, height: 17, borderRadius: 4 }} />
+            <div className="skeleton" style={{ width: 45, height: 17, borderRadius: 4 }} />
           </div>
-          <div className="skeleton" style={{ width: '85%', height: 15, borderRadius: 4 }} />
-          <div className="skeleton" style={{ width: '100%', height: 12, borderRadius: 4 }} />
-          <div className="skeleton" style={{ width: '62%',  height: 12, borderRadius: 4 }} />
+          <div className="skeleton" style={{ width: '82%', height: 14, borderRadius: 4 }} />
+          <div className="skeleton" style={{ width: '100%', height: 11, borderRadius: 4 }} />
+          <div className="skeleton" style={{ width: '58%',  height: 11, borderRadius: 4 }} />
         </div>
       ))}
     </div>
@@ -138,9 +159,9 @@ function Skeleton({ count = 6 }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export function GlobalIntelligence() {
-  const [news, setNews]             = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [error, setError]           = useState(null)
+  const [news, setNews]               = useState([])
+  const [loading, setLoading]         = useState(true)
+  const [error, setError]             = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
 
   const load = useCallback(() => {
@@ -148,91 +169,77 @@ export function GlobalIntelligence() {
     setLoading(true); setError(null)
     api.marketNews(ctrl.signal)
       .then(d => { setNews(d.news ?? []); setLastUpdated(new Date()); setLoading(false) })
-      .catch(e => { if (e.name !== 'AbortError') { setError('Unable to load market news.'); setLoading(false) } })
+      .catch(e => { if (e.name !== 'AbortError') { setError('Unable to load news.'); setLoading(false) } })
     return () => ctrl.abort()
   }, [])
 
   useEffect(() => { const cleanup = load(); return cleanup }, [load])
 
-  const credibleCount = news.filter(n => CREDIBLE_SET.has(resolveSource(n.source, n.url))).length
+  // Split into tiers — tier 1 (trusted) always first
+  const withSource = news.map(n => ({ ...n, _src: resolveSource(n.source, n.url), _tier: getSourceTier(resolveSource(n.source, n.url)) }))
+  const tier1 = withSource.filter(n => n._tier === 1)
+  const tier2 = withSource.filter(n => n._tier === 2)
+  const tier3 = withSource.filter(n => n._tier === 3)
 
   return (
-    <div style={{ padding: '0 0 48px' }}>
-
-      {/* ── 1. Fear & Greed Gauge ── */}
+    <div style={{ paddingBottom: 48 }}>
+      {/* Fear & Greed gauge */}
       <FearGreedBanner />
 
-      {/* ── 2. News feed header ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', flexWrap: 'wrap',
-        gap: 10, marginBottom: 12,
-      }}>
+      {/* Header row */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 18 }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--text)' }}>
-            Macro Intelligence
-          </h3>
+          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>Market Intelligence</h2>
           <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--faint)' }}>
-            Interest rates · CPI · Tech sector · Market structure
+            Interest rates · CPI · Earnings · Tech sector · Macro trends
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {lastUpdated && (
-            <span style={{ fontSize: 11, color: 'var(--faint)' }}>
-              {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-          {!loading && news.length > 0 && (
-            <span style={{
-              fontSize: 11, fontWeight: 600,
-              color: 'var(--faint)',
-              background: 'var(--surface-2)', border: '1px solid var(--border)',
-              borderRadius: 20, padding: '2px 10px',
-            }}>
-              {news.length} stories · {credibleCount} credible
-            </span>
-          )}
-          <button
-            onClick={load} disabled={loading}
-            style={{
-              background: 'var(--surface)', border: '1px solid var(--border-md)',
-              borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer',
-              fontSize: 12, fontWeight: 600,
-              color: loading ? 'var(--faint)' : 'var(--text)',
-              padding: '5px 11px',
-            }}
-          >
-            ↻ Refresh
-          </button>
+          {lastUpdated && <span style={{ fontSize: 11, color: 'var(--faint)' }}>{lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
+          <button onClick={load} disabled={loading} style={{
+            background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 6,
+            cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 600,
+            color: loading ? 'var(--faint)' : 'var(--text)', padding: '5px 11px',
+          }}>↻ Refresh</button>
         </div>
       </div>
 
-      {/* ── 3. Feed ── */}
-      {loading && <Skeleton count={6} />}
-
+      {loading && <Skeleton />}
       {error && !loading && (
         <div style={{ padding: 20, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, fontSize: 13, color: '#dc2626', textAlign: 'center' }}>
           {error}
         </div>
       )}
 
-      {!loading && !error && news.length === 0 && (
-        <div style={{ padding: 40, textAlign: 'center', fontSize: 14, color: 'var(--faint)' }}>
-          No news found. Try refreshing.
-        </div>
-      )}
-
-      {!loading && !error && news.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {news.map((item, i) => <MacroNewsCard key={`${item.title}-${i}`} item={item} />)}
-        </div>
-      )}
-
-      {/* ── 4. Disclaimer ── */}
-      {!loading && (
-        <p style={{ marginTop: 20, fontSize: 11, color: 'var(--faint)', textAlign: 'center' }}>
-          Summaries written by source publishers via yfinance · No AI generation · Not financial advice
-        </p>
+      {!loading && !error && (
+        <>
+          <NewsSection
+            title="Market Headlines"
+            subtitle="Reuters · AP · Bloomberg · WSJ · Financial Times"
+            items={tier1}
+            accent="#1d4ed8"
+          />
+          <NewsSection
+            title="Analyst & Opinion"
+            subtitle="CNBC · MarketWatch · Barron's · Motley Fool · Seeking Alpha"
+            items={tier2}
+            accent="#7c3aed"
+          />
+          <NewsSection
+            title="Other Sources"
+            subtitle="Community & aggregated coverage"
+            items={tier3}
+            accent="var(--muted)"
+          />
+          {news.length === 0 && (
+            <div style={{ padding: 40, textAlign: 'center', fontSize: 14, color: 'var(--faint)' }}>
+              No news found. Try refreshing.
+            </div>
+          )}
+          <p style={{ fontSize: 11, color: 'var(--faint)', textAlign: 'center', marginTop: 8 }}>
+            Summaries written by source publishers via yfinance · No AI generation · Not financial advice
+          </p>
+        </>
       )}
     </div>
   )
