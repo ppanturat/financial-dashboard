@@ -121,3 +121,36 @@
   padding: 8px; cursor: pointer; text-align: center; transition: all .15s;
 }
 .signout-btn:hover { border-color: var(--red); color: #fff; background: var(--red); }
+
+/* ── Collapsed Sidebar Modifiers ───────────────── */
+.sidebar.collapsed {
+  width: 72px;
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: auto; /* Push to right */
+}
+
+.collapse-btn:hover {
+  color: #fff;
+}
+
+.sidebar.collapsed .sidebar-brand {
+  justify-content: center;
+  padding: 20px 0 18px;
+}
+
+.sidebar.collapsed .collapse-btn {
+  margin-left: 0;
+}
+
+.sidebar.collapsed .sidebar-tabs button {
+  font-size: 18px; /* Bigger emojis */
+  padding: 12px 0;
+  text-align: center;
+}

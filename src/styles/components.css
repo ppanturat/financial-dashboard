@@ -280,3 +280,112 @@
   opacity: .78;
   line-height: 1.5;
 }
+
+/* ── Global Intelligence Page ──────────────────── */
+.global-intelligence-page {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+.page-header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.page-header p {
+  font-size: 13px;
+  color: var(--text-muted, #888);
+}
+
+.intelligence-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Fear & Greed Gauge Component ──────────────── */
+.fear-greed-container {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #eaeaea);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.fg-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 2px 0;
+}
+.fg-subtitle {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fg-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fg-gauge-wrapper {
+  width: 100%;
+  max-width: 240px; /* Restricts it from getting too massive on big screens */
+  margin: 0 auto;
+}
+
+.fg-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.fg-metrics {
+  text-align: center;
+  margin-top: -10px; /* Pulls text up closer to the flat bottom of the semicircle */
+}
+
+.fg-score {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 4px;
+}
+
+.fg-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main, #111);
+}
+
+.mt-4 { margin-top: 16px; }
+
+/* ── Mobile Responsiveness ─────────────────────── */
+@media (max-width: 800px) {
+  .global-intelligence-page {
+    padding: 16px;
+  }
+  
+  /* Stack the columns vertically on phones and tablets */
+  .intelligence-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .fg-gauge-wrapper {
+    max-width: 200px; /* slightly smaller on mobile */
+  }
+}

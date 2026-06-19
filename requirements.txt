@@ -6,3 +6,5 @@ python-dotenv
 lxml
 html5lib
 beautifulsoup4
+pandas
+python-dateutil

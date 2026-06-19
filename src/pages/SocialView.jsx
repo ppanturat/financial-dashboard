@@ -3,23 +3,22 @@ import { supabase } from '../lib/supabaseClient'
 import { api } from '../lib/api'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
 
+// ── Shared primitives ─────────────────────────────────────────────────────────
+
 function Avatar({ name, avatarUrl, size = 40, style = {} }) {
   const initials = (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
   const hue = (name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
   const fontSize = size > 50 ? 20 : size > 36 ? 15 : 12
   if (avatarUrl) return (
-    <img src={avatarUrl} alt={name} style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      objectFit: 'cover', border: '2px solid var(--border-md)', ...style,
-    }} />
+    <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, objectFit: 'cover', border: '2px solid var(--border-md)', ...style }} />
   )
   return (
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       background: `hsl(${hue}, 55%, 62%)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: '#fff', fontWeight: 700, fontSize,
-      fontFamily: "'Syne', sans-serif", userSelect: 'none', ...style,
+      color: '#fff', fontWeight: 700, fontSize, fontFamily: "'Syne', sans-serif",
+      userSelect: 'none', ...style,
     }}>{initials}</div>
   )
 }
@@ -36,20 +35,23 @@ function Card({ children, style = {} }) {
 function SectionLabel({ children, count }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.1em', textTransform: 'uppercase' }}>
-        {children}
-      </span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.1em', textTransform: 'uppercase' }}>{children}</span>
       {count != null && (
-        <span style={{
-          fontSize: 10, background: 'var(--surface-2)', color: 'var(--faint)',
-          border: '1px solid var(--border-md)', padding: '1px 7px', borderRadius: 99,
-          fontVariantNumeric: 'tabular-nums',
-        }}>{count}</span>
+        <span style={{ fontSize: 10, background: 'var(--surface-2)', color: 'var(--faint)', border: '1px solid var(--border-md)', padding: '1px 7px', borderRadius: 99, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
       )}
     </div>
   )
 }
 
+function Badge({ color = '#16a34a', bg = '#f0fdf4', border = '#bbf7d0', children }) {
+  return (
+    <span style={{ fontSize: 10, fontWeight: 600, color, background: bg, border: `1px solid ${border}`, padding: '1px 7px', borderRadius: 99, flexShrink: 0 }}>
+      {children}
+    </span>
+  )
+}
+
+// ── Avatar uploader ───────────────────────────────────────────────────────────
 function AvatarUploader({ name, currentUrl, userId, onUploaded }) {
   const fileRef = useRef()
   const [uploading, setUploading] = useState(false)
@@ -59,17 +61,15 @@ function AvatarUploader({ name, currentUrl, userId, onUploaded }) {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 3 * 1024 * 1024) { alert('Max 3 MB'); return }
-    const objectUrl = URL.createObjectURL(file)
-    setPreview(objectUrl)
+    setPreview(URL.createObjectURL(file))
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()
+      const ext  = file.name.split('.').pop()
       const path = `avatars/${userId}.${ext}`
       const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true, contentType: file.type })
       if (upErr) throw upErr
       const { data } = supabase.storage.from('avatars').getPublicUrl(path)
-      const publicUrl = data.publicUrl + '?t=' + Date.now()
-      onUploaded(publicUrl)
+      onUploaded(data.publicUrl + '?t=' + Date.now())
     } catch (err) {
       setPreview(currentUrl || null)
       alert('Upload failed: ' + (err.message || 'unknown error'))
@@ -84,7 +84,7 @@ function AvatarUploader({ name, currentUrl, userId, onUploaded }) {
           position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: '50%',
           background: uploading ? 'var(--muted)' : 'var(--accent)', border: '2px solid var(--surface)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 12, color: '#fff', lineHeight: 1,
+          cursor: uploading ? 'not-allowed' : 'pointer', fontSize: 12, color: '#fff',
         }} title="Change photo">{uploading ? '…' : '✎'}</button>
       </div>
       <span style={{ fontSize: 11, color: 'var(--faint)' }}>{uploading ? 'Uploading…' : 'Click ✎ to change photo'}</span>
@@ -93,17 +93,10 @@ function AvatarUploader({ name, currentUrl, userId, onUploaded }) {
   )
 }
 
+// ── Edit profile modal ────────────────────────────────────────────────────────
 function EditProfileModal({ profile, userId, onSave, onClose }) {
   const [form, setForm] = useState({ name: profile?.name || '', username: profile?.username || '', avatar_url: profile?.avatar_url || '' })
   const [saving, setSaving] = useState(false)
-
-  const handleSave = async () => {
-    if (!form.name.trim() || !form.username.trim()) return
-    setSaving(true)
-    await onSave(form)
-    setSaving(false)
-    onClose()
-  }
 
   const inputStyle = {
     width: '100%', padding: '10px 13px', background: 'var(--surface-2)',
@@ -112,24 +105,17 @@ function EditProfileModal({ profile, userId, onSave, onClose }) {
     boxSizing: 'border-box', transition: 'border-color .15s',
   }
 
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.username.trim()) return
+    setSaving(true); await onSave(form); setSaving(false); onClose()
+  }
+
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 200,
-      background: 'rgba(245,244,241,0.88)', backdropFilter: 'blur(8px)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-    }}>
-      <div style={{
-        background: 'var(--surface)', border: '1px solid var(--border-md)',
-        borderRadius: 20, padding: '24px 24px 20px', width: '100%', maxWidth: 400,
-        boxShadow: '0 8px 40px rgba(0,0,0,0.10)',
-      }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(245,244,241,0.88)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 20, padding: '24px 24px 20px', width: '100%', maxWidth: 400, boxShadow: '0 8px 40px rgba(0,0,0,0.10)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Edit Profile</span>
-          <button onClick={onClose} style={{
-            background: 'var(--surface-2)', border: '1px solid var(--border-md)',
-            borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', color: 'var(--muted)', fontSize: 14, cursor: 'pointer', fontWeight: 600,
-          }}>✕</button>
+          <span style={{ fontSize: 16, fontWeight: 700 }}>Edit Profile</span>
+          <button onClick={onClose} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 14, cursor: 'pointer' }}>✕</button>
         </div>
         <AvatarUploader name={form.name} currentUrl={form.avatar_url} userId={userId} onUploaded={url => setForm(f => ({ ...f, avatar_url: url }))} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -160,8 +146,8 @@ function PrivacyToggle({ isPublic, onClick }) {
   return (
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20,
-      cursor: 'pointer', border: 'none', fontFamily: "'Syne', sans-serif",
-      fontSize: 12, fontWeight: 600, transition: 'all .15s', flexShrink: 0,
+      cursor: 'pointer', border: 'none', fontFamily: "'Syne', sans-serif", fontSize: 12, fontWeight: 600,
+      transition: 'all .15s', flexShrink: 0,
       background: isPublic ? '#f0fdf4' : 'var(--surface-2)',
       color: isPublic ? '#16a34a' : 'var(--muted)',
       outline: isPublic ? '1px solid #bbf7d0' : '1px solid var(--border-md)',
@@ -172,6 +158,7 @@ function PrivacyToggle({ isPublic, onClick }) {
   )
 }
 
+// ── User row ──────────────────────────────────────────────────────────────────
 function UserRow({ user, right, sub }) {
   return (
     <div style={{
@@ -179,9 +166,9 @@ function UserRow({ user, right, sub }) {
       padding: '10px 13px', borderRadius: 12,
       background: 'var(--surface-2)', border: '1px solid var(--border)',
     }}>
-      <Avatar name={user.name || user.username || '?'} avatarUrl={user.avatar_url} size={36} />
+      <Avatar name={user.name || user.username || '?'} avatarUrl={user.avatar_url} size={38} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {user.name || 'Investor'}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
@@ -194,105 +181,79 @@ function UserRow({ user, right, sub }) {
   )
 }
 
-// ── UserDetailPanel ──────────────────────────────────────────────────────────
-function MiniSparkline({ data, color = '#16a34a' }) {
-  if (!data?.length) return null
-  return (
-    <ResponsiveContainer width="100%" height={56}>
-      <LineChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 4 }}>
-        <Line type="monotone" dataKey="price" stroke={color} strokeWidth={1.5} dot={false} />
-      </LineChart>
-    </ResponsiveContainer>
-  )
-}
-
+// ── User detail panel ─────────────────────────────────────────────────────────
 const PIE_COLORS = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d']
 
 async function fetchThbRate() {
-  try {
-    const res = await fetch('https://open.er-api.com/v6/latest/USD')
-    const data = await res.json()
-    return data.rates?.THB ?? 34.5
-  } catch { return 34.5 }
+  try { const res = await fetch('https://open.er-api.com/v6/latest/USD'); const d = await res.json(); return d.rates?.THB ?? 34.5 }
+  catch { return 34.5 }
 }
 
 function fmtCurr(val, currency, thbRate) {
   const num = parseFloat(val) || 0
-  if (currency === 'THB') {
-    return '฿' + (num * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  }
+  if (currency === 'THB') return '฿' + (num * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function UserDetailPanel({ user, feed, feedHoldings }) {
-  const [prices, setPrices] = useState({})  // ticker → { price, change }
-  const [charts, setCharts] = useState({})  // ticker → sparkline data
-  const [loading, setLoading] = useState(true)
+  const [prices, setPrices]       = useState({})
+  const [charts, setCharts]       = useState({})
+  const [loading, setLoading]     = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
-  const [currency, setCurrency] = useState('USD')
-  const [thbRate, setThbRate] = useState(34.5)
+  const [currency, setCurrency]   = useState('USD')
+  const [thbRate, setThbRate]     = useState(34.5)
 
-  const folders = feed.filter(f => f.user_id === user.id)
+  const folders     = feed.filter(f => f.user_id === user.id)
   const allHoldings = feedHoldings.filter(h => folders.some(f => f.id === h.folder_id))
-  const tickers = [...new Set(allHoldings.map(h => h.ticker))]
+  const tickers     = [...new Set(allHoldings.map(h => h.ticker))]
 
   const fetchPrices = useCallback(async () => {
     if (!tickers.length) { setLoading(false); return }
     setLoading(true)
-    const results = {}
-    const chartResults = {}
-    await Promise.all(tickers.map(async (ticker) => {
+    const results = {}, chartResults = {}
+    await Promise.all(tickers.map(async ticker => {
       try {
         const data = await api.stockData(ticker, '1M')
-        const chartArr = data?.chart ?? []
-        if (chartArr.length) {
-          const mapped = chartArr.map(d => ({ price: d.price, timestamp: d.timestamp }))
-          chartResults[ticker] = mapped
-          const latest = mapped[mapped.length - 1]?.price ?? 0
-          const first = mapped[0]?.price ?? latest
+        const arr  = data?.chart ?? []
+        if (arr.length) {
+          chartResults[ticker] = arr.map(d => ({ price: d.price, timestamp: d.timestamp }))
+          const latest = arr[arr.length - 1]?.price ?? 0
+          const first  = arr[0]?.price ?? latest
           results[ticker] = { price: latest, change: first ? ((latest - first) / first) * 100 : 0 }
         }
-      } catch {
-        results[ticker] = { price: null, change: null }
-      }
+      } catch { results[ticker] = { price: null, change: null } }
     }))
-    setPrices(results)
-    setCharts(chartResults)
-    setLoading(false)
+    setPrices(results); setCharts(chartResults); setLoading(false)
   }, [tickers.join(',')])
 
   useEffect(() => { fetchPrices() }, [fetchPrices])
   useEffect(() => { fetchThbRate().then(setThbRate) }, [])
 
-  const totalCost = allHoldings.reduce((sum, h) => sum + (parseFloat(h.buy_price || 0) * parseFloat(h.amount || 0)), 0)
-  const totalValue = allHoldings.reduce((sum, h) => {
+  const totalCost  = allHoldings.reduce((s, h) => s + (parseFloat(h.buy_price||0) * parseFloat(h.amount||0)), 0)
+  const totalValue = allHoldings.reduce((s, h) => {
     const p = prices[h.ticker]?.price
-    return sum + (p != null ? p * parseFloat(h.amount || 0) : parseFloat(h.buy_price || 0) * parseFloat(h.amount || 0))
+    return s + (p != null ? p * parseFloat(h.amount||0) : parseFloat(h.buy_price||0) * parseFloat(h.amount||0))
   }, 0)
-  const totalPnL = totalValue - totalCost
+  const totalPnL    = totalValue - totalCost
   const totalPnLPct = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
-  const pnlPositive = totalPnL >= 0
+  const pnlPos      = totalPnL >= 0
 
-  // per-ticker P&L for overview cards
   const tickerStats = tickers.map(ticker => {
-    const holdings = allHoldings.filter(h => h.ticker === ticker)
-    const shares = holdings.reduce((s, h) => s + parseFloat(h.amount || 0), 0)
-    const avgCost = holdings.reduce((s, h) => s + parseFloat(h.buy_price || 0) * parseFloat(h.amount || 0), 0) / (shares || 1)
-    const currentPrice = prices[ticker]?.price
-    const value = currentPrice != null ? currentPrice * shares : avgCost * shares
-    const cost = avgCost * shares
-    const pnl = value - cost
-    const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0
-    // weight for pie
-    const weight = totalValue > 0 ? (value / totalValue) * 100 : 0
-    return { ticker, shares, avgCost, currentPrice, value, cost, pnl, pnlPct, weight, sparkline: charts[ticker] }
+    const hs       = allHoldings.filter(h => h.ticker === ticker)
+    const shares   = hs.reduce((s, h) => s + parseFloat(h.amount||0), 0)
+    const avgCost  = hs.reduce((s, h) => s + parseFloat(h.buy_price||0)*parseFloat(h.amount||0), 0) / (shares||1)
+    const price    = prices[ticker]?.price
+    const value    = price != null ? price * shares : avgCost * shares
+    const cost     = avgCost * shares
+    const pnl      = value - cost
+    const pnlPct   = cost > 0 ? (pnl / cost) * 100 : 0
+    const weight   = totalValue > 0 ? (value / totalValue) * 100 : 0
+    return { ticker, shares, avgCost, currentPrice: price, value, cost, pnl, pnlPct, weight, sparkline: charts[ticker] }
   }).sort((a, b) => b.value - a.value)
 
-  const pieData = tickerStats.map(t => ({ name: t.ticker, value: t.value }))
-
-  const tabs = ['overview', 'holdings', 'charts']
-
-  const tabStyle = (t) => ({
+  const pieData  = tickerStats.map(t => ({ name: t.ticker, value: t.value }))
+  const tabs     = ['overview', 'holdings', 'charts']
+  const tabStyle = t => ({
     padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600,
     fontFamily: "'Syne', sans-serif", border: 'none', transition: 'all .15s',
     background: activeTab === t ? 'var(--accent)' : 'var(--surface-2)',
@@ -301,67 +262,42 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
   })
 
   return (
-    <div style={{
-      marginTop: 8, marginLeft: 16,
-      background: 'var(--surface)', border: '1px solid var(--border-md)',
-      borderRadius: 14, overflow: 'hidden',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-    }}>
-      {/* Header bar */}
-      <div style={{
-        padding: '12px 16px', borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-      }}>
+    <div style={{ marginTop: 8, marginLeft: 16, background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+      {/* Header */}
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', gap: 6 }}>
-          {tabs.map(t => (
-            <button key={t} style={tabStyle(t)} onClick={() => setActiveTab(t)}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
+          {tabs.map(t => <button key={t} style={tabStyle(t)} onClick={() => setActiveTab(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>)}
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
-          {/* Currency toggle */}
-          <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 8, padding: 2, border: '1px solid var(--border-md)', gap: 2, flexShrink: 0 }}>
-            {['USD', 'THB'].map(c => (
-              <button key={c} onClick={() => setCurrency(c)} style={{
-                padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono', monospace",
-                transition: 'all .15s',
-                background: currency === c ? 'var(--accent)' : 'transparent',
-                color: currency === c ? '#fff' : 'var(--muted)',
-              }}>{c}</button>
+          <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 8, padding: 2, border: '1px solid var(--border-md)', gap: 2 }}>
+            {['USD','THB'].map(c => (
+              <button key={c} onClick={() => setCurrency(c)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono', monospace", transition: 'all .15s', background: currency === c ? 'var(--accent)' : 'transparent', color: currency === c ? '#fff' : 'var(--muted)' }}>{c}</button>
             ))}
           </div>
           {!loading && (
             <>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Portfolio Value</div>
-                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: 'var(--text)' }}>
-                  {fmtCurr(totalValue, currency, thbRate)}
-                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmtCurr(totalValue, currency, thbRate)}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Total P&amp;L</div>
-                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: pnlPositive ? '#16a34a' : '#dc2626' }}>
-                  {pnlPositive ? '+' : ''}{fmtCurr(totalPnL, currency, thbRate)} ({pnlPositive ? '+' : ''}{totalPnLPct.toFixed(2)}%)
+                <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Total P&L</div>
+                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: pnlPos ? '#16a34a' : '#dc2626' }}>
+                  {pnlPos ? '+' : ''}{fmtCurr(totalPnL, currency, thbRate)} ({pnlPos ? '+' : ''}{totalPnLPct.toFixed(2)}%)
                 </div>
               </div>
             </>
           )}
-          {loading && <span style={{ fontSize: 12, color: 'var(--faint)' }}>Loading market data…</span>}
+          {loading && <span style={{ fontSize: 12, color: 'var(--faint)' }}>Loading…</span>}
         </div>
       </div>
 
-      {/* Tab content */}
       <div style={{ padding: '14px 16px' }}>
-
-        {/* OVERVIEW TAB */}
+        {/* OVERVIEW */}
         {activeTab === 'overview' && (
           <div style={{ display: 'grid', gap: 12 }}>
-            {/* Allocation pie + top stats row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {/* Pie chart */}
-              <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '12px', border: '1px solid var(--border)' }}>
+              <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Allocation</div>
                 {pieData.length > 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -380,18 +316,14 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <div style={{ fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No data</div>
-                )}
+                ) : <div style={{ fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No data</div>}
               </div>
-
-              {/* Summary stats */}
               <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
                 {[
                   { label: 'Holdings', value: allHoldings.length },
                   { label: 'Portfolios', value: folders.length },
-                  { label: 'Total Cost Basis', value: fmtCurr(totalCost, currency, thbRate) },
-                  { label: 'Unrealised P&L', value: `${pnlPositive ? '+' : ''}${totalPnLPct.toFixed(2)}%`, color: pnlPositive ? '#16a34a' : '#dc2626' },
+                  { label: 'Cost Basis', value: fmtCurr(totalCost, currency, thbRate) },
+                  { label: 'Unrealised P&L', value: `${pnlPos?'+':''}${totalPnLPct.toFixed(2)}%`, color: pnlPos ? '#16a34a' : '#dc2626' },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '8px 12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 11, color: 'var(--faint)', fontWeight: 600 }}>{label}</span>
@@ -400,10 +332,8 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                 ))}
               </div>
             </div>
-
-            {/* Top movers */}
             {!loading && tickerStats.length > 0 && (
-              <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '12px', border: '1px solid var(--border)' }}>
+              <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Position Summary</div>
                 <div style={{ display: 'grid', gap: 6 }}>
                   {tickerStats.map((t, i) => (
@@ -425,7 +355,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
           </div>
         )}
 
-        {/* HOLDINGS TAB */}
+        {/* HOLDINGS */}
         {activeTab === 'holdings' && (
           <div style={{ display: 'grid', gap: 10 }}>
             {folders.map(folder => {
@@ -434,52 +364,44 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                 <div key={folder.id} style={{ background: 'var(--surface-2)', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)' }}>
                   <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{folder.name}</span>
-                    <span style={{ fontSize: 10, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 99, fontWeight: 600 }}>Public</span>
+                    <Badge>Public</Badge>
                     <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--faint)', fontFamily: "'DM Mono', monospace" }}>{fHoldings.length} holding{fHoldings.length !== 1 ? 's' : ''}</span>
                   </div>
-                  {fHoldings.length > 0 && (
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr>
-                          {['Ticker', 'Shares', 'Avg Cost', 'Current', 'Value', 'P&L', 'P&L %'].map(h => (
-                            <th key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.06em', padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {fHoldings.map((h, i) => {
-                          const stat = tickerStats.find(t => t.ticker === h.ticker)
-                          const currentPrice = prices[h.ticker]?.price
-                          const shares = parseFloat(h.amount || 0)
-                          const cost = parseFloat(h.buy_price || 0)
-                          const value = currentPrice != null ? currentPrice * shares : cost * shares
-                          const pnl = currentPrice != null ? (currentPrice - cost) * shares : null
-                          const pnlPct = currentPrice != null && cost > 0 ? ((currentPrice - cost) / cost) * 100 : null
-                          const isPos = pnl >= 0
-                          return (
-                            <tr key={h.id} style={{ borderBottom: i < fHoldings.length - 1 ? '1px solid var(--border)' : 'none' }}>
-                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{h.ticker}</td>
-                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{shares.toFixed(4)}</td>
-                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{fmtCurr(cost, currency, thbRate)}</td>
-                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text)' }}>
-                                {loading ? '…' : currentPrice != null ? fmtCurr(currentPrice, currency, thbRate) : '—'}
-                              </td>
-                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--text)' }}>
-                                {fmtCurr(value, currency, thbRate)}
-                              </td>
-                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnl == null ? 'var(--faint)' : isPos ? '#16a34a' : '#dc2626' }}>
-                                {pnl == null ? '—' : `${isPos ? '+' : ''}${fmtCurr(Math.abs(pnl), currency, thbRate)}`}
-                              </td>
-                              <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnlPct == null ? 'var(--faint)' : isPos ? '#16a34a' : '#dc2626' }}>
-                                {pnlPct == null ? '—' : `${isPos ? '+' : ''}${pnlPct.toFixed(2)}%`}
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  )}
-                  {fHoldings.length === 0 && (
+                  {fHoldings.length > 0 ? (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
+                        <thead>
+                          <tr>
+                            {['Ticker','Shares','Avg Cost','Current','Value','P&L','%'].map(h => (
+                              <th key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.06em', padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {fHoldings.map((h, i) => {
+                            const price  = prices[h.ticker]?.price
+                            const shares = parseFloat(h.amount||0)
+                            const cost   = parseFloat(h.buy_price||0)
+                            const value  = price != null ? price * shares : cost * shares
+                            const pnl    = price != null ? (price - cost) * shares : null
+                            const pnlPct = price != null && cost > 0 ? ((price - cost) / cost) * 100 : null
+                            const isPos  = pnl >= 0
+                            return (
+                              <tr key={h.id} style={{ borderBottom: i < fHoldings.length-1 ? '1px solid var(--border)' : 'none' }}>
+                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700 }}>{h.ticker}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{shares.toFixed(4)}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{fmtCurr(cost, currency, thbRate)}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>{loading ? '…' : price != null ? fmtCurr(price, currency, thbRate) : '—'}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700 }}>{fmtCurr(value, currency, thbRate)}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnl==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>{pnl==null?'—':`${isPos?'+':''}${fmtCurr(Math.abs(pnl),currency,thbRate)}`}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnlPct==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>{pnlPct==null?'—':`${isPos?'+':''}${pnlPct.toFixed(2)}%`}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
                     <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No holdings</div>
                   )}
                 </div>
@@ -488,9 +410,9 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
           </div>
         )}
 
-        {/* CHARTS TAB */}
+        {/* CHARTS */}
         {activeTab === 'charts' && (
-          <div style={{ display: 'grid', gap: 10 }}>
+          <div>
             {loading ? (
               <div style={{ fontSize: 13, color: 'var(--faint)', textAlign: 'center', padding: '16px 0' }}>Loading charts…</div>
             ) : tickerStats.length === 0 ? (
@@ -498,44 +420,33 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
                 {tickerStats.map((t, i) => {
-                  const isPos = t.pnl >= 0
-                  const color = PIE_COLORS[i % PIE_COLORS.length]
+                  const isPos  = t.pnl >= 0
+                  const color  = PIE_COLORS[i % PIE_COLORS.length]
                   return (
-                    <div key={t.ticker} style={{ background: 'var(--surface-2)', borderRadius: 12, padding: '12px', border: '1px solid var(--border)' }}>
+                    <div key={t.ticker} style={{ background: 'var(--surface-2)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
                         <div>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{t.ticker}</div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700 }}>{t.ticker}</div>
                           <div style={{ fontSize: 10, color: 'var(--faint)', marginTop: 1 }}>{t.shares.toFixed(4)} shares</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                            {t.currentPrice != null ? fmtCurr(t.currentPrice, currency, thbRate) : '—'}
-                          </div>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 700, color: isPos ? '#16a34a' : '#dc2626' }}>
-                            {t.pnlPct != null ? `${isPos ? '+' : ''}${t.pnlPct.toFixed(2)}%` : '—'}
-                          </div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700 }}>{t.currentPrice != null ? fmtCurr(t.currentPrice, currency, thbRate) : '—'}</div>
+                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 700, color: isPos ? '#16a34a' : '#dc2626' }}>{t.pnlPct != null ? `${isPos?'+':''}${t.pnlPct.toFixed(2)}%` : '—'}</div>
                         </div>
                       </div>
                       {t.sparkline?.length > 1 ? (
                         <ResponsiveContainer width="100%" height={60}>
                           <LineChart data={t.sparkline} margin={{ top: 2, right: 2, left: 0, bottom: 2 }}>
                             <Line type="monotone" dataKey="price" stroke={color} strokeWidth={1.5} dot={false} />
-                            <Tooltip
-                              contentStyle={{ background: '#111', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 11 }}
-                              itemStyle={{ color, fontFamily: "'DM Mono', monospace" }}
-                              formatter={v => [fmtCurr(v, currency, thbRate), '']}
-                              labelFormatter={() => ''}
-                            />
+                            <Tooltip contentStyle={{ background: '#111', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 11 }} itemStyle={{ color, fontFamily: "'DM Mono', monospace" }} formatter={v => [fmtCurr(v, currency, thbRate), '']} labelFormatter={() => ''} />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
                         <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--faint)', fontStyle: 'italic' }}>No chart data</div>
                       )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                        <span style={{ fontSize: 10, color: 'var(--faint)' }}>Avg cost: <span style={{ fontFamily: "'DM Mono', monospace", color: 'var(--muted)' }}>{fmtCurr(t.avgCost, currency, thbRate)}</span></span>
-                        <span style={{ fontSize: 10, color: isPos ? '#16a34a' : '#dc2626', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
-                          {t.pnl != null ? `${isPos ? '+' : ''}${fmtCurr(Math.abs(t.pnl), currency, thbRate)}` : '—'}
-                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--faint)' }}>Value: <span style={{ fontFamily: "'DM Mono', monospace", color: 'var(--text)', fontWeight: 700 }}>{fmtCurr(t.value, currency, thbRate)}</span></span>
+                        <span style={{ fontSize: 10, color: isPos ? '#16a34a' : '#dc2626', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{t.pnl != null ? `${isPos?'+':''}${fmtCurr(Math.abs(t.pnl),currency,thbRate)}` : '—'}</span>
                       </div>
                     </div>
                   )
@@ -549,52 +460,64 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
   )
 }
 
+// ── Main SocialView ───────────────────────────────────────────────────────────
+
 export function SocialView({ social, portfolioFolders, session, togglePortfolioPrivacy }) {
-  const [editing, setEditing] = useState(false)
-  const [searchVal, setSearchVal] = useState('')
+  const [editing, setEditing]           = useState(false)
+  const [searchVal, setSearchVal]       = useState('')
   const [expandedUser, setExpandedUser] = useState(null)
 
-  const profile = social.profile
+  const profile     = social.profile
   const displayName = profile?.name || 'Investor'
-  const username = profile?.username || 'user'
-  const avatarUrl = profile?.avatar_url || null
+  const username    = profile?.username || 'user'
+  const avatarUrl   = profile?.avatar_url || null
+  const getStatus   = id => social.getSentRequestStatus(id)
+  const filtered    = social.filteredProfiles(searchVal)
 
-  const filteredProfiles = social.filteredProfiles(searchVal)
-
-  const getStatus = (profileId) => social.getSentRequestStatus(profileId)
+  // Stats for my own profile header
+  const myFollowing  = social.followedUsers?.length || 0
+  const myFollowers  = social.followers?.length || 0
+  const myPortfolios = portfolioFolders?.length || 0
+  const myPublic     = portfolioFolders?.filter(f => f.is_public)?.length || 0
 
   return (
     <div style={{ display: 'grid', gap: 14, width: '100%', alignContent: 'start' }}>
 
-      {/* ── Profile ── */}
+      {/* ── My Profile ── */}
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <Avatar name={displayName} avatarUrl={avatarUrl} size={52} />
+          <Avatar name={displayName} avatarUrl={avatarUrl} size={56} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--faint)', marginTop: 3 }}>@{username}</div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 6 }}>
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                <span style={{ fontWeight: 700, color: 'var(--text)' }}>{social.followedUsers?.length || 0}</span> following
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--muted)' }}>
-                <span style={{ fontWeight: 700, color: 'var(--text)' }}>{social.followers?.length || 0}</span> followers
-              </span>
+            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--faint)', marginTop: 2 }}>@{username}</div>
+            {/* Stats row */}
+            <div style={{ display: 'flex', gap: 18, marginTop: 8, flexWrap: 'wrap' }}>
+              {[
+                { label: 'Following', value: myFollowing },
+                { label: 'Followers', value: myFollowers },
+                { label: 'Portfolios', value: myPortfolios },
+                { label: 'Public', value: myPublic },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: "'DM Mono', monospace" }}>{value}</span>
+                  <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</span>
+                </div>
+              ))}
             </div>
           </div>
           <button onClick={() => setEditing(true)} style={{
             padding: '8px 16px', borderRadius: 10, flexShrink: 0,
             background: 'var(--surface-2)', border: '1px solid var(--border-md)',
             color: 'var(--text)', fontSize: 13, fontWeight: 600,
-            fontFamily: "'Syne', sans-serif", cursor: 'pointer',
+            fontFamily: "'Syne', sans-serif", cursor: 'pointer', transition: 'all .15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'var(--accent)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'transparent' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-md)' }}
           >Edit Profile</button>
         </div>
       </Card>
 
-      {/* ── Incoming Follow Requests ── */}
+      {/* ── Incoming requests ── */}
       {social.requests?.length > 0 && (
         <Card>
           <SectionLabel count={social.requests.length}>Follow Requests</SectionLabel>
@@ -602,11 +525,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
             {social.requests.map(req => {
               const reqProfile = social.profiles?.find(p => p.id === req.requester_user_id) || {}
               return (
-                <div key={req.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-                  padding: '11px 13px', borderRadius: 12,
-                  background: 'var(--surface-2)', border: '1px solid var(--border)',
-                }}>
+                <div key={req.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '11px 13px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
                   <Avatar name={reqProfile.name || reqProfile.username || '?'} avatarUrl={reqProfile.avatar_url} size={36} />
                   <div style={{ flex: 1, minWidth: 80 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{reqProfile.name || 'Investor'}</div>
@@ -623,22 +542,25 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
         </Card>
       )}
 
-      {/* ── Following (people I follow) ── */}
+      {/* ── Following ── */}
       {social.followedUsers?.length > 0 && (
         <Card>
           <SectionLabel count={social.followedUsers.length}>Following</SectionLabel>
-          <div style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gap: 10 }}>
             {social.followedUsers.map(u => {
               const pubFolders = social.feed?.filter(f => f.user_id === u.id) || []
               const isExpanded = expandedUser === u.id
+              // Check if they follow me back
+              const followsBack = social.followers?.some(f => f.id === u.id)
               return (
                 <div key={u.id}>
                   <UserRow user={u}
-                    sub={pubFolders.length > 0 && (
-                      <span style={{ fontSize: 10, fontWeight: 600, color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1px 6px', borderRadius: 99 }}>
-                        {pubFolders.length} public portfolio{pubFolders.length > 1 ? 's' : ''}
-                      </span>
-                    )}
+                    sub={
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                        {pubFolders.length > 0 && <Badge>{pubFolders.length} public portfolio{pubFolders.length > 1 ? 's' : ''}</Badge>}
+                        {followsBack && <Badge color="#7c3aed" bg="#f5f3ff" border="#ddd6fe">Mutual</Badge>}
+                      </div>
+                    }
                     right={
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                         {pubFolders.length > 0 && (
@@ -656,24 +578,14 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                             {isExpanded ? '▲' : '▼'} {isExpanded ? 'Collapse' : 'View Details'}
                           </button>
                         )}
-                        <button onClick={() => social.unfollow(u.id)} style={{
-                          padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
-                          background: 'var(--surface)', border: '1px solid var(--border-md)',
-                          color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
-                        }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
+                        <button onClick={() => social.unfollow(u.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif", transition: 'all .15s' }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
                         >Unfollow</button>
                       </div>
                     }
                   />
-                  {isExpanded && (
-                    <UserDetailPanel
-                      user={u}
-                      feed={social.feed || []}
-                      feedHoldings={social.feedHoldings || []}
-                    />
-                  )}
+                  {isExpanded && <UserDetailPanel user={u} feed={social.feed || []} feedHoldings={social.feedHoldings || []} />}
                 </div>
               )
             })}
@@ -681,24 +593,23 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
         </Card>
       )}
 
-      {/* ── Followers (people who follow me) ── */}
+      {/* ── Followers ── */}
       {social.followers?.length > 0 && (
         <Card>
           <SectionLabel count={social.followers.length}>Followers</SectionLabel>
           <div style={{ display: 'grid', gap: 8 }}>
             {social.followers.map(u => {
-              const status = getStatus(u.id)
+              const status         = getStatus(u.id)
               const isFollowingBack = social.followedUsers?.some(f => f.id === u.id)
               return (
-                <UserRow key={u.id} user={u}
-                  sub={null}
+                <UserRow key={u.id} user={u} sub={null}
                   right={
                     isFollowingBack ? (
                       <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif", background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>Following back</span>
                     ) : status === 'pending' ? (
                       <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif", background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border-md)' }}>Pending</span>
                     ) : (
-                      <button onClick={() => social.sendFollowRequest(u.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}>Follow back</button>
+                      <button onClick={() => social.sendFollowRequest(u.id)} style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}>Follow back</button>
                     )
                   }
                 />
@@ -716,11 +627,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
         ) : (
           <div style={{ display: 'grid', gap: 8 }}>
             {portfolioFolders.map(folder => (
-              <div key={folder.id} style={{
-                display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-                padding: '11px 13px', borderRadius: 12,
-                background: 'var(--surface-2)', border: '1px solid var(--border)',
-              }}>
+              <div key={folder.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '11px 13px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: folder.is_public ? '#16a34a' : 'var(--faint)', transition: 'background .2s' }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</div>
@@ -739,39 +646,31 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
         <div style={{ position: 'relative', marginBottom: searchVal ? 12 : 0 }}>
           <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
           <input
-            value={searchVal}
-            onChange={e => setSearchVal(e.target.value)}
+            value={searchVal} onChange={e => setSearchVal(e.target.value)}
             placeholder="Search by name or username…"
-            style={{
-              width: '100%', padding: '10px 13px 10px 36px',
-              background: 'var(--surface-2)', border: '1px solid var(--border-md)',
-              borderRadius: 10, fontSize: 14, color: 'var(--text)',
-              fontFamily: "'Syne', sans-serif", outline: 'none', boxSizing: 'border-box',
-            }}
+            style={{ width: '100%', padding: '10px 13px 10px 36px', background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 10, fontSize: 14, color: 'var(--text)', fontFamily: "'Syne', sans-serif", outline: 'none', boxSizing: 'border-box' }}
             onFocus={e => e.target.style.borderColor = 'var(--accent)'}
             onBlur={e => e.target.style.borderColor = 'var(--border-md)'}
           />
         </div>
         {searchVal ? (
-          filteredProfiles.length === 0 ? (
+          filtered.length === 0 ? (
             <p style={{ fontSize: 13, color: 'var(--faint)', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>No investors found for "{searchVal}"</p>
           ) : (
             <div style={{ display: 'grid', gap: 8 }}>
-              {filteredProfiles.map(p => {
+              {filtered.map(p => {
                 const status = getStatus(p.id)
                 return (
                   <UserRow key={p.id} user={p} sub={null}
                     right={
                       status === 'accepted' ? (
                         <button onClick={() => social.unfollow(p.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}
-                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}>Unfollow</button>
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}>Unfollow</button>
                       ) : status === 'pending' ? (
-                        <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif", background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border-md)' }}>Pending</span>
-                      ) : status === 'rejected' ? (
-                        <button onClick={() => social.sendFollowRequest(p.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--surface-2)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}>Request Again</button>
+                        <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border-md)' }}>Pending</span>
                       ) : (
-                        <button onClick={() => social.sendFollowRequest(p.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}>+ Follow</button>
+                        <button onClick={() => social.sendFollowRequest(p.id)} style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}>+ Follow</button>
                       )
                     }
                   />
@@ -784,9 +683,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
         )}
       </Card>
 
-      {editing && (
-        <EditProfileModal profile={profile} userId={session?.user?.id} onSave={social.updateProfile} onClose={() => setEditing(false)} />
-      )}
+      {editing && <EditProfileModal profile={profile} userId={session?.user?.id} onSave={social.updateProfile} onClose={() => setEditing(false)} />}
     </div>
   )
 }

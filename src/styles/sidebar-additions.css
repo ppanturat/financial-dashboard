@@ -1,0 +1,113 @@
+/* ==========================================================================
+   SIDEBAR COLLAPSE — append these rules to your existing sidebar.css
+   ========================================================================== */
+
+/* ── Collapsed width token ── */
+:root {
+  --sidebar-w-collapsed: 64px;
+}
+
+/* ── Collapsed state ── */
+.sidebar.collapsed {
+  width: var(--sidebar-w-collapsed) !important;
+}
+
+/* Hide text labels in collapsed tabs */
+.sidebar.collapsed .sidebar-tabs button {
+  font-size: 18px;
+  padding: 9px 0;
+  justify-content: center;
+  letter-spacing: 0;
+}
+
+/* Hide the active indicator bar so it doesn't look odd */
+.sidebar.collapsed .sidebar-tabs button.active::before {
+  display: none;
+}
+
+/* Tabs container spacing in collapsed mode */
+.sidebar.collapsed .sidebar-tabs {
+  padding: 8px 6px;
+  gap: 2px;
+}
+
+/* Brand area in collapsed mode */
+.sidebar.collapsed .sidebar-brand {
+  padding: 16px 10px;
+  justify-content: center;
+}
+
+/* Footer in collapsed mode */
+.sidebar.collapsed .sidebar-footer {
+  padding: 10px 8px;
+  align-items: center;
+}
+
+/* Signout btn in collapsed mode — icon only */
+.sidebar.collapsed .signout-btn {
+  font-size: 16px;
+  padding: 7px;
+  text-align: center;
+}
+
+/* ── Sidebar tabs: shared fix so active state is visible when collapsed ── */
+.sidebar-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.sidebar-tabs button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  color: rgba(255,255,255,0.5);
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-tabs button:hover {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.8);
+}
+
+.sidebar-tabs button.active {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+/* ── Sidebar footer links (Report Bug / GitHub) ── */
+.sidebar-footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  margin-top: 2px;
+}
+
+.sidebar-footer-links a {
+  font-size: 11px;
+  color: rgba(255,255,255,0.3);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.sidebar-footer-links a:hover {
+  color: rgba(255,255,255,0.75);
+}
+
+.sidebar-footer-links .sep {
+  color: rgba(255,255,255,0.12);
+  font-size: 11px;
+}

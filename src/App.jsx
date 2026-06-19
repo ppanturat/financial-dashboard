@@ -12,6 +12,7 @@ import { AuthPage } from './pages/AuthPage'
 import { MarketView } from './pages/MarketView'
 import { PortfolioView } from './pages/PortfolioView'
 import { SocialView } from './pages/SocialView'
+import { GlobalIntelligence } from './pages/GlobalIntelligence'
 
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
@@ -21,34 +22,41 @@ import './App.css'
 
 export default function App() {
   const { session, loading: authLoading, signIn, signUp, signOut } = useAuth()
-  
-  // market state
+
   const { folders, loading: foldersLoading, createFolder, renameFolder, deleteFolder, addTicker, removeTicker } = useFolders(session)
-  
-  // portfolio state
-  const { 
-    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading, togglePortfolioPrivacy: _togglePrivacy,
-    holdings, livePrices, loadingHoldings, 
-    createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder, 
-    saveHolding, removeHolding 
+  const {
+    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading,
+    togglePortfolioPrivacy: _togglePrivacy, holdings, livePrices, loadingHoldings,
+    createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder,
+    saveHolding, removeHolding
   } = usePortfolio(session)
 
-  // safe wrapper — works whether usePortfolio exports it or not
   const togglePortfolioPrivacy = _togglePrivacy ?? ((folderId, isPublic) => {
     supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
   })
 
-  const [activeTab, setActiveTab]             = useState('market')
-  const [activeFolderId, setActiveFolderId]   = useState(null)
-  const [activeTicker, setActiveTicker]       = useState('')
-  const [sidebarOpen, setSidebarOpen]         = useState(false)
+  const [activeTab, setActiveTab]           = useState('market')
+  const [activeFolderId, setActiveFolderId] = useState(null)
+  const [activeTicker, setActiveTicker]     = useState('')
+  const [sidebarOpen, setSidebarOpen]       = useState(false)
+  // ── NEW: collapsible sidebar (persisted in localStorage) ──────────────────
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('sc_sidebar_collapsed') === 'true' } catch { return false }
+  })
+
+  const handleToggleCollapse = () => {
+    setSidebarCollapsed(c => {
+      const next = !c
+      try { localStorage.setItem('sc_sidebar_collapsed', String(next)) } catch {}
+      return next
+    })
+  }
 
   const { modal, confirm, close: closeModal, execute: executeModal } = useModal()
-  const search = useSearch()
-  const social = useSocial(session)
+  const search    = useSearch()
+  const social    = useSocial(session)
   const searchRef = useRef(null)
 
-  // auto-select first market folder + ticker
   useEffect(() => {
     if (!foldersLoading && folders.length > 0 && !activeFolderId) {
       setActiveFolderId(folders[0].id)
@@ -62,17 +70,20 @@ export default function App() {
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
-  if (authLoading) return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg, #f5f3ee)" }}><span style={{ opacity: 0.4, fontSize: 14 }}>Loading...</span></div>
+  if (authLoading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg, #f5f3ee)' }}>
+      <span style={{ opacity: 0.4, fontSize: 14 }}>Loading...</span>
+    </div>
+  )
   if (!session) return <AuthPage onSignIn={signIn} onSignUp={signUp} />
 
-  const activeFolder = activeTab === 'market' 
+  const activeFolder    = activeTab === 'market'
     ? folders.find(f => f.id === activeFolderId)
     : portfolioFolders.find(f => f.id === activePortfolioId)
 
-  // dynamic folder actions passed to sidebar
-  const currentFolders = activeTab === 'market' ? folders : portfolioFolders
+  const currentFolders  = activeTab === 'market' ? folders : portfolioFolders
   const currentActiveId = activeTab === 'market' ? activeFolderId : activePortfolioId
-  const currentLoading = activeTab === 'market' ? foldersLoading : portfolioLoading
+  const currentLoading  = activeTab === 'market' ? foldersLoading : portfolioLoading
 
   const handleSelectFolder = (folder) => {
     if (activeTab === 'market') {
@@ -85,18 +96,13 @@ export default function App() {
   }
 
   const handleCreateFolder = (name) => activeTab === 'market' ? createFolder(name) : createPortfolioFolder(name)
-  const handleRenameFolder = (id, name) => confirm('Rename Folder', `Rename to "${name}"?`, () => activeTab === 'market' ? renameFolder(id, name) : renamePortfolioFolder(id, name))
+  const handleRenameFolder = (id, name) => confirm('Rename Folder', `Rename to "${name}"?`, () =>
+    activeTab === 'market' ? renameFolder(id, name) : renamePortfolioFolder(id, name))
   const handleDeleteFolder = (id) => confirm('Delete Folder', 'Permanently delete this folder?', () => {
-    if (activeTab === 'market') {
-      deleteFolder(id)
-      if (activeFolderId === id) setActiveFolderId(null)
-    } else {
-      deletePortfolioFolder(id)
-      if (activePortfolioId === id) setActivePortfolioId(null)
-    }
+    if (activeTab === 'market') { deleteFolder(id); if (activeFolderId === id) setActiveFolderId(null) }
+    else { deletePortfolioFolder(id); if (activePortfolioId === id) setActivePortfolioId(null) }
   })
 
-  // market view ticker addition
   const handleAddTicker = async (symbol) => {
     if (activeTab === 'portfolio') setActiveTab('market')
     let fid = activeFolderId
@@ -105,7 +111,6 @@ export default function App() {
       fid = f?.id
       if (fid) setActiveFolderId(fid)
     } else if (!fid && folders.length > 0) {
-      // auto-select first folder when none is active
       fid = folders[0].id
       setActiveFolderId(fid)
     }
@@ -115,20 +120,26 @@ export default function App() {
   }
 
   return (
-    <div className="layout">
+    <div
+      className="layout"
+      // CSS custom prop so layout can adapt to collapsed sidebar width
+      style={{ '--sidebar-current-w': sidebarCollapsed ? 'var(--sidebar-w-collapsed, 64px)' : 'var(--sidebar-w, 240px)' }}
+    >
       {sidebarOpen && <div className="overlay" onClick={() => setSidebarOpen(false)} />}
-      
+
       <ConfirmModal modal={modal} onClose={closeModal} onExecute={executeModal} />
 
       <Sidebar
         isOpen={sidebarOpen}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleCollapse}
         session={session}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         folders={currentFolders}
         activeFolderId={currentActiveId}
         fetchingFolders={currentLoading}
-        marketFolders={folders} 
+        marketFolders={folders}
         onSelectFolder={handleSelectFolder}
         onCreateFolder={handleCreateFolder}
         onImportFolder={importMarketFolder}
@@ -159,23 +170,18 @@ export default function App() {
 
         <div className="content">
           {activeTab === 'market' ? (
-            <MarketView 
-              activeTicker={activeTicker} 
-              foldersLoading={foldersLoading} 
-            />
+            <MarketView activeTicker={activeTicker} foldersLoading={foldersLoading} />
           ) : activeTab === 'portfolio' ? (
-            <PortfolioView 
+            <PortfolioView
               activePortfolioId={activePortfolioId}
-              holdings={holdings}
-              livePrices={livePrices}
-              loadingHoldings={loadingHoldings}
-              marketFolders={folders}
-              saveHolding={saveHolding}
-              removeHolding={removeHolding}
-              openConfirmModal={confirm} 
+              holdings={holdings} livePrices={livePrices} loadingHoldings={loadingHoldings}
+              marketFolders={folders} saveHolding={saveHolding} removeHolding={removeHolding}
+              openConfirmModal={confirm}
             />
-          ) : (
+          ) : activeTab === 'social' ? (
             <SocialView social={social} portfolioFolders={portfolioFolders} session={session} togglePortfolioPrivacy={togglePortfolioPrivacy} />
+          ) : (
+            <GlobalIntelligence />
           )}
         </div>
       </main>
