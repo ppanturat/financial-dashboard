@@ -1,13 +1,78 @@
 import { useState, useRef, useEffect } from 'react'
 
+// ── SVG logout/power icon ─────────────────────────────────────────────────────
+function LogoutIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  )
+}
+
+// ── Nav items ─────────────────────────────────────────────────────────────────
 const NAV = [
-  { id: 'intelligence', label: 'News Feed',    icon: '📰' },
-  { id: 'market',       label: 'Market View',  icon: '📈' },
-  { id: 'portfolio',    label: 'Portfolio',    icon: '💼' },
-  { id: 'social',       label: 'Network',      icon: '👥' },
-  { id: 'profile',      label: 'Profile',      icon: '👤' },
+  { id: 'intelligence', label: 'News Feed',   icon: '📰' },
+  { id: 'market',       label: 'Market View', icon: '📈' },
+  { id: 'portfolio',    label: 'Portfolio',   icon: '💼' },
+  { id: 'social',       label: 'Network',     icon: '👥' },
+  { id: 'profile',      label: 'Profile',     icon: '👤' },
 ]
 
+const SHOW_FOLDERS = new Set(['market', 'portfolio'])
+const NO_NAV_CONTENT = new Set(['intelligence', 'social', 'profile'])
+
+// ── NavItem — handles tooltip + folder popover in collapsed mode ───────────────
+function NavItem({ tab, active, collapsed, onClick, folders, activeFolderId, onSelectFolder }) {
+  const showFolderPopover = collapsed && SHOW_FOLDERS.has(tab.id) && folders?.length > 0
+
+  return (
+    <div className="sidebar-nav-item">
+      <button
+        className={`sidebar-nav-btn ${active ? 'active' : ''}`}
+        onClick={() => onClick(tab.id)}
+        title={collapsed ? tab.label : undefined}
+        aria-label={tab.label}
+      >
+        <span className="sidebar-nav-icon">{tab.icon}</span>
+        <span className="sidebar-nav-label">{tab.label}</span>
+      </button>
+
+      {/* Tooltip — collapsed, no folder popover */}
+      {collapsed && !showFolderPopover && (
+        <div className="sidebar-nav-tooltip">{tab.label}</div>
+      )}
+
+      {/* Folder popover — collapsed, market/portfolio with folders */}
+      {showFolderPopover && (
+        <div className="sidebar-folder-popover">
+          <div className="folder-popover-title">{tab.id === 'market' ? 'Market Folders' : 'Portfolio Folders'}</div>
+          {folders.map(f => (
+            <button
+              key={f.id}
+              className={`folder-popover-item ${f.id === activeFolderId ? 'active' : ''}`}
+              onClick={(e) => { e.stopPropagation(); onSelectFolder(f) }}
+            >
+              <span className="folder-popover-dot" />
+              {f.name}
+            </button>
+          ))}
+          <div style={{ padding: '6px 10px 2px', fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
+            Click ▶ to expand sidebar for more options
+          </div>
+        </div>
+      )}
+
+      {/* Tooltip for folder tabs with popover — show tab name */}
+      {collapsed && showFolderPopover && (
+        <div className="sidebar-nav-tooltip" style={{ top: '50%' }}>{tab.label}</div>
+      )}
+    </div>
+  )
+}
+
+// ── Main Sidebar ──────────────────────────────────────────────────────────────
 export function Sidebar({
   session, activeTab, setActiveTab,
   folders, activeFolderId, fetchingFolders, marketFolders,
@@ -42,228 +107,162 @@ export function Sidebar({
   const handleConfirmImport = async () => {
     if (!importTargetFolder) return
     setIsImporting(true)
-    try {
-      await onImportFolder(importTargetFolder.name, importTickers)
-      setImportMode(false); setImportStep(1); setImportTargetFolder(null); setImportTickers([])
-    } catch (err) { alert(err.message) }
+    try { await onImportFolder(importTargetFolder.name, importTickers); setImportMode(false); setImportStep(1); setImportTargetFolder(null); setImportTickers([]) }
+    catch (err) { alert(err.message) }
     finally { setIsImporting(false) }
   }
 
-  // Tabs where we show folder lists
-  const showFolders = activeTab === 'market' || activeTab === 'portfolio'
+  const showFolderSection = SHOW_FOLDERS.has(activeTab) && !collapsed
+  const showNavContent    = !NO_NAV_CONTENT.has(activeTab) && !collapsed
 
   return (
-    <aside
-      className={`sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}
-      style={{ width: collapsed ? 64 : 'var(--sidebar-w)', transition: 'width 0.22s ease', flexShrink: 0 }}
-    >
-      {/* ── Brand ── */}
-      <div
-        className="sidebar-brand"
-        style={{
-          justifyContent: collapsed ? 'center' : 'space-between',
-          padding: collapsed ? '18px 0' : '18px 18px 16px',
-          gap: 8,
-        }}
-      >
-        {/* Logo mark — always centered when collapsed */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 }}>
-          <span className="brand-mark" style={{ flexShrink: 0, lineHeight: 1 }}>◈</span>
-          {!collapsed && <span className="brand-name">STOCK CHECKER</span>}
-        </div>
-        {/* Collapse toggle */}
-        <button
-          onClick={onToggleCollapse}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'rgba(255,255,255,0.35)', fontSize: 12, padding: '2px 4px',
-            borderRadius: 4, flexShrink: 0, lineHeight: 1, display: collapsed ? 'none' : 'block',
-          }}
-          onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.8)'}
-          onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.35)'}
-        >◀</button>
-        {/* Expand button — visible only when collapsed */}
-        {collapsed && (
-          <button
-            onClick={onToggleCollapse}
-            title="Expand sidebar"
-            style={{
-              position: 'absolute', top: 16, right: -12, zIndex: 10,
-              background: 'var(--sidebar-bg,#141312)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '50%', width: 22, height: 22,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'rgba(255,255,255,0.55)', fontSize: 10, cursor: 'pointer',
-            }}
-          >▶</button>
-        )}
+    <aside className={`sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
+
+      {/* ── Brand row ── */}
+      <div className="sidebar-brand">
+        <span className="brand-mark">◈</span>
+        <span className="brand-name">STOCK CHECKER</span>
+        {/* Collapse button — expanded only */}
+        <button className="sidebar-collapse-btn" onClick={onToggleCollapse} title="Collapse sidebar" aria-label="Collapse sidebar">
+          ◀
+        </button>
       </div>
 
+      {/* Expand bubble — collapsed only, positioned absolute */}
+      <button className="sidebar-expand-btn" onClick={onToggleCollapse} title="Expand sidebar" aria-label="Expand sidebar">
+        ▶
+      </button>
+
       {/* ── Nav tabs ── */}
-      <div style={{ padding: collapsed ? '6px 8px' : '6px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div className="sidebar-nav-list">
         {NAV.map(tab => (
-          <button
+          <NavItem
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            title={collapsed ? tab.label : undefined}
-            style={{
-              display: 'flex', alignItems: 'center',
-              gap: collapsed ? 0 : 9,
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'none',
-              border: 'none', borderRadius: 7, cursor: 'pointer',
-              color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.5)',
-              fontFamily: "'Syne',sans-serif", fontSize: 13, fontWeight: 600,
-              padding: collapsed ? '9px 0' : '8px 10px',
-              width: '100%', textAlign: 'left',
-              transition: 'background 0.15s, color 0.15s',
-            }}
-            onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
-            onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.background = 'none' }}
-          >
-            <span style={{ fontSize: collapsed ? 18 : 14, flexShrink: 0 }}>{tab.icon}</span>
-            {!collapsed && <span>{tab.label}</span>}
-          </button>
+            tab={tab}
+            active={activeTab === tab.id}
+            collapsed={collapsed}
+            onClick={setActiveTab}
+            folders={SHOW_FOLDERS.has(tab.id) ? folders : []}
+            activeFolderId={activeFolderId}
+            onSelectFolder={onSelectFolder}
+          />
         ))}
       </div>
 
-      {/* ── Folder label — only for market/portfolio ── */}
-      {!collapsed && showFolders && (
+      {/* ── Folder label ── */}
+      {showFolderSection && (
         <p className="sidebar-label">
           {activeTab === 'market' ? 'Market Folders' : 'Portfolio Folders'}
         </p>
       )}
 
-      {/* ── Nav content (hidden when collapsed) ── */}
-      {!collapsed && (
-        <nav className="sidebar-nav">
-          {activeTab === 'social' || activeTab === 'intelligence' || activeTab === 'profile' ? (
-            /* No folder list for these tabs */
-            <div />
-          ) : fetchingFolders ? (
-            <p className="sidebar-loading">Loading...</p>
-          ) : (
-            <>
-              {folders.map(f => (
-                <div key={f.id} className={`vault-row ${f.id === activeFolderId ? 'active' : ''}`}>
-                  {editingId === f.id ? (
-                    <input
-                      className="vault-edit-input" autoFocus value={editName}
-                      onChange={e => setEditName(e.target.value)}
-                      onBlur={() => commitEdit(f.id)}
-                      onKeyDown={e => { if (e.key === 'Enter') commitEdit(f.id); if (e.key === 'Escape') setEditingId(null) }}
-                    />
-                  ) : (
-                    <>
-                      <button className="vault-btn" onClick={() => onSelectFolder(f)}>
-                        <span className="vault-dot" />
-                        <span className="vault-label">{f.name}</span>
-                      </button>
-                      <div className="vault-actions">
-                        <button title="Rename" onClick={() => startEdit(f)}>✎</button>
-                        <button title="Delete" onClick={() => onDeleteFolder(f.id)}>✕</button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-
-              {newMode ? (
-                <div className="vault-row">
-                  <input
-                    ref={newRef} className="vault-edit-input" autoFocus
-                    placeholder="Folder Name..." value={newName}
-                    onChange={e => setNewName(e.target.value)}
-                    onBlur={commitNew}
-                    onKeyDown={e => { if (e.key === 'Enter') commitNew(); if (e.key === 'Escape') { setNewMode(false); setNewName('') } }}
-                  />
-                </div>
-              ) : importMode ? (
-                <div className="import-picker-menu">
-                  {importStep === 1 ? (
-                    <>
-                      <span className="import-label">Select Market Folder:</span>
-                      <div className="import-list">
-                        {marketFolders?.map(mf => (
-                          <button key={mf.id} className="import-item-btn" onClick={() => handleStartImport(mf)}>
-                            ↳ {mf.name} <span className="import-count">({mf.tickers?.length || 0})</span>
-                          </button>
-                        ))}
-                        {marketFolders?.length === 0 && <span className="import-empty">No market folders found.</span>}
-                      </div>
-                      <button className="btn-text btn-cancel" onClick={() => setImportMode(false)}>Cancel</button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="import-label">Select Tickers from {importTargetFolder?.name}:</span>
-                      <div className="import-list ticker-select-list">
-                        {importTargetFolder?.tickers?.map(t => (
-                          <label key={t} className="import-ticker-label">
-                            <input type="checkbox" checked={importTickers.includes(t)} onChange={() => toggleImportTicker(t)} />
-                            {t}
-                          </label>
-                        ))}
-                        {(!importTargetFolder?.tickers || importTargetFolder.tickers.length === 0) && <span className="import-empty">Empty folder.</span>}
-                      </div>
-                      <div className="import-actions">
-                        <button className="btn-text btn-cancel" onClick={() => setImportStep(1)} disabled={isImporting}>Back</button>
-                        <button className="btn-primary btn-small" onClick={handleConfirmImport} disabled={isImporting}>
-                          {isImporting ? 'Importing...' : 'Confirm'}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <div className="sidebar-btn-row">
-                  <button className="new-vault-btn" onClick={() => setNewMode(true)}>+ New Folder</button>
-                  {activeTab === 'portfolio' && (
-                    <button className="new-vault-btn import-btn" onClick={() => { setImportMode(true); setImportStep(1) }}>↓ Import</button>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </nav>
-      )}
-
-      {/* ── Footer ── */}
-      <div
-        className="sidebar-footer"
-        style={collapsed ? { padding: '12px 8px', alignItems: 'center' } : {}}
-      >
-        {!collapsed ? (
-          <>
-            <span className="user-email">{session?.user?.email}</span>
-            <button className="signout-btn" onClick={onSignOut}>Sign Out</button>
-            {/* Bug report / GitHub links */}
-            <div style={{
-              display: 'flex', gap: 8, justifyContent: 'center',
-              paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.07)',
-            }}>
-              <a href="https://github.com/ppanturat/financial-dashboard/issues/new" target="_blank" rel="noreferrer"
-                style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.15s' }}
-                onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.7)'}
-                onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.28)'}
-              >Report Bug</a>
-              <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 11 }}>•</span>
-              <a href="https://github.com/ppanturat/financial-dashboard" target="_blank" rel="noreferrer"
-                style={{ fontSize: 11, color: 'rgba(255,255,255,0.28)', textDecoration: 'none', transition: 'color 0.15s' }}
-                onMouseEnter={e => e.target.style.color = 'rgba(255,255,255,0.7)'}
-                onMouseLeave={e => e.target.style.color = 'rgba(255,255,255,0.28)'}
-              >GitHub</a>
-            </div>
-          </>
+      {/* ── Folder list / import / social ── */}
+      <nav className="sidebar-nav">
+        {NO_NAV_CONTENT.has(activeTab) ? null
+        : fetchingFolders ? (
+          <p className="sidebar-loading">Loading...</p>
         ) : (
-          <button
-            onClick={onSignOut} title="Sign Out"
-            style={{
-              background: 'none', border: '1px solid rgba(220,38,38,0.3)',
-              borderRadius: 7, color: '#b91c1c', cursor: 'pointer',
-              fontSize: 16, padding: '6px', width: '100%', textAlign: 'center',
-            }}
-          >⏏</button>
+          <>
+            {folders.map(f => (
+              <div key={f.id} className={`vault-row ${f.id === activeFolderId ? 'active' : ''}`}>
+                {editingId === f.id ? (
+                  <input className="vault-edit-input" autoFocus value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    onBlur={() => commitEdit(f.id)}
+                    onKeyDown={e => { if (e.key === 'Enter') commitEdit(f.id); if (e.key === 'Escape') setEditingId(null) }}
+                  />
+                ) : (
+                  <>
+                    <button className="vault-btn" onClick={() => onSelectFolder(f)}>
+                      <span className="vault-dot" />
+                      <span className="vault-label">{f.name}</span>
+                    </button>
+                    <div className="vault-actions">
+                      <button title="Rename" onClick={() => startEdit(f)}>✎</button>
+                      <button title="Delete" onClick={() => onDeleteFolder(f.id)}>✕</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+
+            {newMode ? (
+              <div className="vault-row">
+                <input ref={newRef} className="vault-edit-input" autoFocus placeholder="Folder Name..."
+                  value={newName} onChange={e => setNewName(e.target.value)}
+                  onBlur={commitNew}
+                  onKeyDown={e => { if (e.key === 'Enter') commitNew(); if (e.key === 'Escape') { setNewMode(false); setNewName('') } }}
+                />
+              </div>
+            ) : importMode ? (
+              <div className="import-picker-menu">
+                {importStep === 1 ? (
+                  <>
+                    <span className="import-label">Select Market Folder:</span>
+                    <div className="import-list">
+                      {marketFolders?.map(mf => (
+                        <button key={mf.id} className="import-item-btn" onClick={() => handleStartImport(mf)}>
+                          ↳ {mf.name} <span className="import-count">({mf.tickers?.length || 0})</span>
+                        </button>
+                      ))}
+                      {marketFolders?.length === 0 && <span className="import-empty">No market folders found.</span>}
+                    </div>
+                    <button className="btn-text btn-cancel" onClick={() => setImportMode(false)}>Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="import-label">Select Tickers from {importTargetFolder?.name}:</span>
+                    <div className="import-list ticker-select-list">
+                      {importTargetFolder?.tickers?.map(t => (
+                        <label key={t} className="import-ticker-label">
+                          <input type="checkbox" checked={importTickers.includes(t)} onChange={() => toggleImportTicker(t)} />
+                          {t}
+                        </label>
+                      ))}
+                      {(!importTargetFolder?.tickers || importTargetFolder.tickers.length === 0) && <span className="import-empty">Empty folder.</span>}
+                    </div>
+                    <div className="import-actions">
+                      <button className="btn-text btn-cancel" onClick={() => setImportStep(1)} disabled={isImporting}>Back</button>
+                      <button className="btn-primary btn-small" onClick={handleConfirmImport} disabled={isImporting}>
+                        {isImporting ? 'Importing...' : 'Confirm'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="sidebar-btn-row">
+                <button className="new-vault-btn" onClick={() => setNewMode(true)}>+ New Folder</button>
+                {activeTab === 'portfolio' && (
+                  <button className="new-vault-btn import-btn" onClick={() => { setImportMode(true); setImportStep(1) }}>↓ Import</button>
+                )}
+              </div>
+            )}
+          </>
         )}
+      </nav>
+
+      {/* ── Footer — pushed to bottom ── */}
+      <div className="sidebar-footer">
+        {/* Email */}
+        <span className="user-email">{session?.user?.email}</span>
+
+        {/* Bug / GitHub links */}
+        <div className="sidebar-footer-links">
+          <a href="https://github.com/ppanturat/financial-dashboard/issues/new" target="_blank" rel="noreferrer">
+            Report Bug
+          </a>
+          <span className="sep">•</span>
+          <a href="https://github.com/ppanturat/financial-dashboard" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+        </div>
+
+        {/* Sign-out — proper logout arrow icon */}
+        <button className="signout-btn" onClick={onSignOut} aria-label="Sign out">
+          <LogoutIcon size={15} />
+          <span className="signout-label">Sign Out</span>
+        </button>
       </div>
     </aside>
   )

@@ -1,0 +1,670 @@
+/* ==========================================================================
+   SIDEBAR — Full rewrite
+   - Collapsed: 64px, icons only, tooltips on hover, folders as icon popover
+   - Expanded: 240px, labels visible
+   - Sign-out at very bottom with proper icon (power/logout circle)
+   - Hover color distinction + click animation
+   - Font sizes bumped to WCAG-friendly baseline
+   ========================================================================== */
+
+/* ── Design token overrides (font scale) ──────────── */
+:root {
+  /* Bump base font size: industry standard is 16px body */
+  --font-base:   15px;
+  --font-sm:     13px;
+  --font-xs:     12px;
+  --font-lg:     17px;
+  --font-xl:     20px;
+  --font-2xl:    24px;
+  --font-3xl:    30px;
+  --font-mono:   14px;
+  --font-mono-sm: 12px;
+
+  --sidebar-w:           240px;
+  --sidebar-w-collapsed: 64px;
+  --sidebar-transition:  0.22s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── Sidebar shell ─────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: width var(--sidebar-transition), transform var(--sidebar-transition);
+  z-index: 50;
+  position: relative; /* needed for tooltip positioning */
+}
+
+.sidebar.collapsed {
+  width: var(--sidebar-w-collapsed);
+}
+
+/* ── Brand / logo row ──────────────────────────────── */
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--sidebar-line);
+  flex-shrink: 0;
+  min-height: 60px;
+}
+
+.sidebar.collapsed .sidebar-brand {
+  justify-content: center;
+  padding: 20px 0 16px;
+}
+
+.brand-mark {
+  font-size: 20px;
+  color: #fff;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.brand-name {
+  font-size: var(--font-xs);
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity var(--sidebar-transition);
+}
+
+.sidebar.collapsed .brand-name {
+  opacity: 0;
+  width: 0;
+  pointer-events: none;
+}
+
+/* Collapse toggle — sits top-right in expanded, hidden in collapsed */
+.sidebar-collapse-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,0.3);
+  font-size: 11px;
+  padding: 4px 5px;
+  border-radius: 5px;
+  transition: color .15s, background .15s;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-left: auto;
+}
+.sidebar-collapse-btn:hover {
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.08);
+}
+.sidebar.collapsed .sidebar-collapse-btn {
+  display: none;
+}
+
+/* Expand bubble — shown only in collapsed state */
+.sidebar-expand-btn {
+  position: absolute;
+  top: 20px;
+  right: -12px;
+  z-index: 60;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: #1e1c1b;
+  color: rgba(255,255,255,0.6);
+  font-size: 10px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s, color .15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+.sidebar-expand-btn:hover {
+  background: #2d2b29;
+  color: #fff;
+}
+.sidebar.collapsed .sidebar-expand-btn {
+  display: flex;
+}
+
+/* ── Nav tab list ──────────────────────────────────── */
+.sidebar-nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 8px 0;
+  flex-shrink: 0;
+}
+
+/* ── Each nav item row ─────────────────────────────── */
+.sidebar-nav-item {
+  position: relative; /* for tooltip */
+  display: flex;
+  align-items: stretch;
+}
+
+.sidebar-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 10px 10px;
+  color: rgba(255,255,255,0.45);
+  font-family: 'Syne', sans-serif;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  text-align: left;
+  transition: background .15s, color .15s, transform .1s;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Click ripple effect */
+.sidebar-nav-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0);
+  border-radius: 8px;
+  transition: background .3s;
+}
+.sidebar-nav-btn:active::after {
+  background: rgba(255,255,255,0.08);
+}
+.sidebar-nav-btn:active {
+  transform: scale(0.97);
+}
+
+.sidebar-nav-btn:hover {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.85);
+}
+
+.sidebar-nav-btn.active {
+  background: rgba(255,255,255,0.11);
+  color: #fff;
+}
+
+/* Active indicator dot */
+.sidebar-nav-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  background: #fff;
+  border-radius: 0 2px 2px 0;
+}
+
+.sidebar-nav-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: transform .15s;
+}
+.sidebar-nav-btn:hover .sidebar-nav-icon {
+  transform: scale(1.12);
+}
+.sidebar-nav-btn.active .sidebar-nav-icon {
+  filter: drop-shadow(0 0 4px rgba(255,255,255,0.4));
+}
+
+.sidebar-nav-label {
+  font-size: var(--font-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity var(--sidebar-transition);
+  letter-spacing: 0.01em;
+}
+.sidebar.collapsed .sidebar-nav-label {
+  opacity: 0;
+  width: 0;
+  pointer-events: none;
+}
+
+/* ── Hover tooltip (collapsed only) ───────────────── */
+.sidebar-nav-tooltip {
+  display: none;
+  position: absolute;
+  left: calc(var(--sidebar-w-collapsed) + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1e1c1b;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.9);
+  font-family: 'Syne', sans-serif;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border-radius: 7px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  pointer-events: none;
+  z-index: 100;
+}
+.sidebar-nav-tooltip::before {
+  content: '';
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-right: 5px solid rgba(255,255,255,0.15);
+}
+
+.sidebar.collapsed .sidebar-nav-item:hover .sidebar-nav-tooltip {
+  display: block;
+}
+
+/* ── Folder popover in collapsed mode ──────────────── */
+.sidebar-folder-popover {
+  display: none;
+  position: absolute;
+  left: calc(var(--sidebar-w-collapsed) + 8px);
+  top: 0;
+  background: #1e1c1b;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  padding: 8px;
+  min-width: 180px;
+  max-width: 240px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  z-index: 200;
+}
+.sidebar.collapsed .sidebar-nav-item:hover .sidebar-folder-popover {
+  display: block;
+}
+.folder-popover-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  padding: 4px 8px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  margin-bottom: 6px;
+}
+.folder-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  color: rgba(255,255,255,0.6);
+  font-family: 'Syne', sans-serif;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  transition: background .12s, color .12s;
+}
+.folder-popover-item:hover,
+.folder-popover-item.active {
+  background: rgba(255,255,255,0.09);
+  color: #fff;
+}
+.folder-popover-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  flex-shrink: 0;
+}
+.folder-popover-item.active .folder-popover-dot {
+  background: #fff;
+}
+
+/* ── Folder label / nav section ───────────────────── */
+.sidebar-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255,255,255,.4);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  padding: 14px 18px 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity var(--sidebar-transition);
+}
+.sidebar.collapsed .sidebar-label {
+  opacity: 0;
+  height: 0;
+  padding: 0;
+  pointer-events: none;
+}
+
+.sidebar-loading {
+  padding: 8px 18px;
+  font-size: var(--font-sm);
+  color: rgba(255,255,255,.3);
+  transition: opacity var(--sidebar-transition);
+}
+.sidebar.collapsed .sidebar-loading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: 4px 10px;
+  overflow-y: auto;
+  min-height: 0;
+  transition: opacity var(--sidebar-transition);
+}
+.sidebar.collapsed .sidebar-nav {
+  opacity: 0;
+  pointer-events: none;
+}
+.sidebar-nav::-webkit-scrollbar { width: 3px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 2px; }
+
+/* ── Vault rows (folders) ─────────────────────────── */
+.vault-row {
+  display: flex;
+  align-items: center;
+  border-radius: 7px;
+  margin-bottom: 2px;
+  min-height: 38px;
+}
+.vault-row.active            { background: rgba(255,255,255,.09); }
+.vault-row:not(.active):hover { background: rgba(255,255,255,.05); }
+
+.vault-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.5);
+  font-family: 'Syne', sans-serif;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: color .15s;
+  min-width: 0;
+}
+.vault-row.active .vault-btn { color: #fff; }
+.vault-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.25);
+  flex-shrink: 0;
+}
+.vault-row.active .vault-dot { background: #fff; }
+.vault-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255,255,255,.7);
+  font-size: var(--font-sm);
+}
+.vault-actions {
+  display: flex;
+  gap: 2px;
+  padding-right: 6px;
+  opacity: 0;
+  transition: opacity .15s;
+  flex-shrink: 0;
+}
+.vault-row:hover .vault-actions { opacity: 1; }
+.vault-actions button {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.3);
+  font-size: 11px;
+  padding: 4px 5px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color .12s, background .12s;
+}
+.vault-actions button:hover {
+  color: #fff;
+  background: rgba(255,255,255,.1);
+}
+
+.vault-edit-input {
+  flex: 1;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 6px;
+  color: #fff;
+  font-family: 'Syne', sans-serif;
+  font-size: var(--font-sm);
+  padding: 6px 10px;
+  margin: 3px 6px;
+  outline: none;
+  min-width: 0;
+}
+
+.new-vault-btn {
+  width: 100%;
+  background: none;
+  border: 1px dashed rgba(255,255,255,.25);
+  border-radius: 7px;
+  color: rgba(255,255,255,.55);
+  font-family: 'Syne', sans-serif;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: all .15s;
+  margin-top: 4px;
+}
+.new-vault-btn:hover {
+  color: rgba(255,255,255,.85);
+  border-color: rgba(255,255,255,.4);
+  background: rgba(255,255,255,.06);
+}
+
+/* ── Sidebar footer — always at bottom ─────────────── */
+.sidebar-footer {
+  padding: 12px 10px 16px;
+  border-top: 1px solid var(--sidebar-line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  padding: 10px 8px 14px;
+  align-items: center;
+}
+
+.user-email {
+  font-size: var(--font-xs);
+  color: rgba(255,255,255,.45);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 4px;
+  transition: opacity var(--sidebar-transition);
+}
+.sidebar.collapsed .user-email {
+  opacity: 0;
+  height: 0;
+  pointer-events: none;
+  padding: 0;
+}
+
+/* Footer links (Report Bug / GitHub) */
+.sidebar-footer-links {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 4px 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  transition: opacity var(--sidebar-transition);
+}
+.sidebar.collapsed .sidebar-footer-links {
+  opacity: 0;
+  height: 0;
+  pointer-events: none;
+  padding: 0;
+  border: none;
+}
+.sidebar-footer-links a {
+  font-size: var(--font-xs);
+  color: rgba(255,255,255,0.25);
+  text-decoration: none;
+  transition: color .15s;
+}
+.sidebar-footer-links a:hover { color: rgba(255,255,255,0.7); }
+.sidebar-footer-links .sep { color: rgba(255,255,255,0.12); font-size: 11px; }
+
+/* ── Sign-out button — proper logout icon ──────────── */
+/* Uses an inline SVG power/logout icon in the component */
+.signout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: none;
+  border: 1px solid rgba(220,38,38,.3);
+  border-radius: 8px;
+  color: rgba(200,50,50,0.8);
+  font-family: 'Syne', sans-serif;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+  width: 100%;
+}
+.signout-btn:hover {
+  border-color: var(--red);
+  color: #fff;
+  background: var(--red);
+}
+.sidebar.collapsed .signout-btn {
+  padding: 9px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+.sidebar.collapsed .signout-btn .signout-label {
+  display: none;
+}
+
+/* ==========================================================================
+   GLOBAL FONT SIZE INCREASE (WCAG 2.1 AA baseline)
+   Target: 15–16px body, 13px minimum for UI labels
+   ========================================================================== */
+
+body, html {
+  font-size: 16px;
+}
+
+/* Content area text */
+.content {
+  font-size: var(--font-base);
+}
+
+/* Metric cards */
+.metric-label  { font-size: var(--font-sm) !important; }
+.metric-value  { font-size: var(--font-2xl) !important; }
+.metric-info-btn { font-size: var(--font-sm) !important; }
+.metric-tooltip p { font-size: var(--font-sm) !important; }
+
+/* Section titles */
+.section-title { font-size: var(--font-lg) !important; }
+.desc-title    { font-size: var(--font-base) !important; font-weight: 700; }
+.desc-text     { font-size: var(--font-base) !important; line-height: 1.7; }
+
+/* Price row */
+.price-value   { font-size: var(--font-3xl) !important; }
+.price-delta   { font-size: var(--font-base) !important; }
+.ticker-name   { font-size: var(--font-xl) !important; }
+
+/* Assessment cards */
+.sweep-title   { font-size: var(--font-base) !important; }
+.sweep-text    { font-size: var(--font-base) !important; line-height: 1.7; }
+
+/* Header */
+.header-vault-name { font-size: var(--font-lg) !important; font-weight: 700; }
+
+/* Search */
+.search-input { font-size: var(--font-base) !important; }
+
+/* Buttons globally */
+.btn-primary { font-size: var(--font-base) !important; }
+.btn-text    { font-size: var(--font-base) !important; }
+
+/* Empty state */
+.empty-state h3 { font-size: var(--font-xl) !important; }
+.empty-state p  { font-size: var(--font-base) !important; }
+
+/* Auth */
+.auth-card h2  { font-size: var(--font-2xl) !important; }
+.auth-sub      { font-size: var(--font-base) !important; }
+
+/* Ticker chips */
+.chip-ticker  { font-size: var(--font-sm) !important; font-weight: 700; }
+
+/* Portfolio table */
+.port-table th, .port-table td { font-size: var(--font-sm) !important; }
+
+/* News feed */
+article a      { font-size: var(--font-base) !important; }
+article p      { font-size: var(--font-base) !important; }
+
+/* ==========================================================================
+   FIX: Random green lines in MarketView
+   These are caused by border-left on AdoptionRedFlagCards bleeding through
+   when rendered as direct flex children of the content column.
+   Force correct box model on all direct .content children.
+   ========================================================================== */
+
+.content > * {
+  /* Prevent any child's left/right border from creating line artifacts */
+  box-sizing: border-box;
+  /* Don't allow negative margins to bleed */
+  min-width: 0;
+}
+
+/* Specifically: assessment cards must never show a bare left-border line
+   outside their own background. The fix is to ensure the parent container
+   always has a solid background, which AdoptionRedFlagCards.jsx now does
+   via borderTop instead of borderLeft. */
+
+/* Skeleton animation */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+.skeleton {
+  background: rgba(0,0,0,0.07);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
