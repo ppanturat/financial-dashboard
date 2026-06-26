@@ -304,9 +304,9 @@ function EtfFullWidthMetric({ label, value, valueColor, description, borderColor
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 6,
       background: 'var(--surface-2, rgba(255,255,255,0.02))',
-      border: '1px solid var(--border)', 
-      borderLeft: `4px solid ${borderColor || 'var(--border)'}`,
-      borderRadius: 8, padding: '14px 18px',
+      border: '1px solid var(--border)',
+      borderTop: `3px solid ${borderColor || 'var(--border)'}`,
+      borderRadius: 8, padding: '14px 18px', boxSizing: 'border-box',
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em' }}>
@@ -408,8 +408,8 @@ function EtfAnalysisCard({ ticker, etfHoldings }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderLeft: '4px solid #000000', 
-      borderRadius: 'var(--r)', padding: '24px'
+      borderTop: '3px solid #111',
+      borderRadius: 'var(--r)', padding: '24px', boxSizing: 'border-box'
     }}>
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 18 }}>
@@ -513,9 +513,9 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)',
-      borderLeft: '4px solid #000000', // 🧠 CHANGED: Set to solid black to match ETF styling
+      borderTop: '3px solid #111',
       borderRadius: 'var(--r)',
-      padding: '24px'
+      padding: '24px', boxSizing: 'border-box'
     }}>
       
       {/* ── Header ── */}
@@ -553,8 +553,9 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
       <div style={{ 
         background: 'var(--surface-2, rgba(255,255,255,0.02))', 
         border: '1px solid var(--border)', 
-        borderLeft: '3px solid var(--muted)',
-        borderRadius: 8, padding: '16px', marginBottom: 20
+        borderTop: '3px solid var(--muted)',
+        borderRadius: 8, padding: '16px', marginBottom: 20,
+        boxSizing: 'border-box'
       }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>
           Bear vs. Bull Probability Check

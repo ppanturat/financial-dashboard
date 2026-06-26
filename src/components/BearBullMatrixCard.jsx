@@ -1,150 +1,83 @@
 /**
  * BearBullMatrixCard.jsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Renders the Bear vs. Bull Probability Matrix (Module C of assessmentEngine).
- * Bear case is always rendered first to maintain neutrality.
- * Takes pre-computed output from runBearBullMatrix() — no API calls here.
- *
- * Usage:
- *   import { runBearBullMatrix } from '../lib/assessmentEngine'
- *   const result = runBearBullMatrix(metrics)
- *   <BearBullMatrixCard result={result} />
+ * FIX: CaseBlock borderLeft → borderTop to prevent green/red line artifact
+ * between flex-gap siblings in the content column.
  */
 
-// ── Score bar ─────────────────────────────────────────────────────────────────
 function SignalBar({ score, max, color }) {
   const pct = max > 0 ? Math.min(100, (score / max) * 100) : 0
   return (
-    <div style={{
-      height: 4, borderRadius: 2,
-      background: 'rgba(0,0,0,0.06)',
-      overflow: 'hidden', flex: 1,
-    }}>
-      <div style={{
-        height: '100%', borderRadius: 2,
-        width: `${pct}%`,
-        background: color,
-        transition: 'width 0.7s cubic-bezier(0.4,0,0.2,1)',
-      }} />
+    <div style={{ height: 4, borderRadius: 2, background: 'rgba(0,0,0,0.06)', overflow: 'hidden', flex: 1 }}>
+      <div style={{ height: '100%', borderRadius: 2, width: `${pct}%`, background: color, transition: 'width 0.7s cubic-bezier(0.4,0,0.2,1)' }} />
     </div>
   )
 }
 
-// ── Case block ────────────────────────────────────────────────────────────────
 function CaseBlock({ side, text, score, maxScore }) {
-  const isBear  = side === 'bear'
-  const color   = isBear ? '#dc2626' : '#16a34a'
-  const bgColor = isBear ? '#fff5f5' : '#f0fdf4'
-  const border  = isBear ? '#fca5a5' : '#86efac'
-  const label   = isBear ? '🐻 Bear Case' : '🐂 Bull Case'
+  const isBear = side === 'bear'
+  const color  = isBear ? '#dc2626' : '#16a34a'
+  const bgColor= isBear ? '#fff5f5' : '#f0fdf4'
+  const border = isBear ? '#fca5a5' : '#86efac'
+  const label  = isBear ? '🐻 Bear Case' : '🐂 Bull Case'
 
   return (
     <div style={{
-      background: bgColor,
-      border: `1px solid ${border}`,
-      borderLeft: `3px solid ${color}`,
+      background:   bgColor,
+      border:       `1px solid ${border}`,
+      // FIX: borderTop only — no borderLeft
+      borderTop:    `3px solid ${color}`,
       borderRadius: 8,
-      padding: '14px 16px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 10,
+      padding:      '14px 16px',
+      display:      'flex',
+      flexDirection:'column',
+      gap:          10,
+      boxSizing:    'border-box',
     }}>
-      {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color, flexShrink: 0 }}>
-          {label}
-        </span>
+        <span style={{ fontSize: 12, fontWeight: 700, color, flexShrink: 0 }}>{label}</span>
         <SignalBar score={score} max={maxScore} color={color} />
-        <span style={{
-          fontFamily: "'DM Mono', monospace",
-          fontSize: 11, fontWeight: 700, color,
-          flexShrink: 0, minWidth: 24, textAlign: 'right',
-        }}>
+        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color, flexShrink: 0, minWidth: 24, textAlign: 'right' }}>
           {score}/{maxScore}
         </span>
       </div>
-
-      {/* Text */}
-      <p style={{
-        margin: 0, fontSize: 13,
-        color: '#374151',
-        lineHeight: 1.65,
-      }}>
-        {text}
-      </p>
+      <p style={{ margin: 0, fontSize: 13, color: '#374151', lineHeight: 1.65 }}>{text}</p>
     </div>
   )
 }
 
-// ── Net bias pill ─────────────────────────────────────────────────────────────
 function NetBiasPill({ netBias, bearScore, bullScore }) {
   const config = {
-    bear:    { label: 'Net Bearish',  color: '#dc2626', bg: '#fef2f2' },
-    neutral: { label: 'Net Neutral',  color: '#ca8a04', bg: '#fefce8' },
-    bull:    { label: 'Net Bullish',  color: '#16a34a', bg: '#f0fdf4' },
+    bear:    { label: 'Net Bearish', color: '#dc2626', bg: '#fef2f2' },
+    neutral: { label: 'Net Neutral', color: '#ca8a04', bg: '#fefce8' },
+    bull:    { label: 'Net Bullish', color: '#16a34a', bg: '#f0fdf4' },
   }
   const cfg = config[netBias] ?? config.neutral
   return (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 8,
-      background: cfg.bg, border: `1px solid ${cfg.color}33`,
-      borderRadius: 20, padding: '4px 12px',
-    }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>
-        {cfg.label}
-      </span>
-      <span style={{
-        fontFamily: "'DM Mono', monospace",
-        fontSize: 10, color: '#6b6a65',
-      }}>
-        Bull {bullScore} · Bear {bearScore}
-      </span>
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: cfg.bg, border: `1px solid ${cfg.color}33`, borderRadius: 20, padding: '4px 12px' }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>{cfg.label}</span>
+      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#6b6a65' }}>Bull {bullScore} · Bear {bearScore}</span>
     </div>
   )
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
 export function BearBullMatrixCard({ result }) {
   if (!result) return null
-
   const { bear, bull, netBias, bearScore, bullScore } = result
-  const maxScore = 8  // theoretical maximum per side
+  const maxScore = 8
 
   return (
-    <div style={{
-      background: 'var(--surface)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--r)',
-      padding: '16px 20px',
-      display: 'flex', flexDirection: 'column', gap: 14,
-    }}>
-      {/* Header */}
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
-            Bear vs. Bull Probability Matrix
-          </h3>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--faint)' }}>
-            Rule-based · deterministic · no AI
-          </p>
+          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>Bear vs. Bull Probability Matrix</h3>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--faint)' }}>Rule-based · deterministic · no AI</p>
         </div>
         <NetBiasPill netBias={netBias} bearScore={bearScore} bullScore={bullScore} />
       </div>
-
-      {/* Bear case — always first */}
       <CaseBlock side="bear" text={bear} score={bearScore} maxScore={maxScore} />
-
-      {/* Bull case */}
       <CaseBlock side="bull" text={bull} score={bullScore} maxScore={maxScore} />
-
-      {/* Disclosure */}
-      <p style={{
-        margin: 0, fontSize: 11, color: 'var(--faint)',
-        borderTop: '1px solid var(--border)', paddingTop: 10,
-        lineHeight: 1.5,
-      }}>
-        Generated by mathematical thresholds applied to reported financial data.
-        Not financial advice. Bear case rendered first by design to ensure analytical neutrality.
+      <p style={{ margin: 0, fontSize: 11, color: 'var(--faint)', borderTop: '1px solid var(--border)', paddingTop: 10, lineHeight: 1.5 }}>
+        Generated by mathematical thresholds applied to reported financial data. Not financial advice. Bear case rendered first by design to ensure analytical neutrality.
       </p>
     </div>
   )
