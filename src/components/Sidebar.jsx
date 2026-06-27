@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
 
-// ── SVG logout/power icon ─────────────────────────────────────────────────────
 function LogoutIcon({ size = 16 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -11,7 +10,7 @@ function LogoutIcon({ size = 16 }) {
   )
 }
 
-// ── Nav items ─────────────────────────────────────────────────────────────────
+// Tab order: News Feed | Market View | Portfolio | Network (feed) | Profile
 const NAV = [
   { id: 'intelligence', label: 'News Feed',   icon: '📰' },
   { id: 'market',       label: 'Market View', icon: '📈' },
@@ -20,59 +19,55 @@ const NAV = [
   { id: 'profile',      label: 'Profile',     icon: '👤' },
 ]
 
-const SHOW_FOLDERS = new Set(['market', 'portfolio'])
-const NO_NAV_CONTENT = new Set(['intelligence', 'social', 'profile'])
+const SHOW_FOLDERS    = new Set(['market', 'portfolio'])
+const NO_NAV_CONTENT  = new Set(['intelligence', 'social', 'profile'])
 
-// ── NavItem — handles tooltip + folder popover in collapsed mode ───────────────
 function NavItem({ tab, active, collapsed, onClick, folders, activeFolderId, onSelectFolder }) {
+  const [hovered, setHovered] = useState(false)
   const showFolderPopover = collapsed && SHOW_FOLDERS.has(tab.id) && folders?.length > 0
 
   return (
-    <div className="sidebar-nav-item">
+    <div
+      className="sidebar-nav-item"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <button
         className={`sidebar-nav-btn ${active ? 'active' : ''}`}
         onClick={() => onClick(tab.id)}
-        title={collapsed ? tab.label : undefined}
         aria-label={tab.label}
       >
         <span className="sidebar-nav-icon">{tab.icon}</span>
         <span className="sidebar-nav-label">{tab.label}</span>
       </button>
 
-      {/* Tooltip — collapsed, no folder popover */}
-      {collapsed && !showFolderPopover && (
+      {/* Tooltip — collapsed only, no folder popover */}
+      {collapsed && !showFolderPopover && hovered && (
         <div className="sidebar-nav-tooltip">{tab.label}</div>
       )}
 
-      {/* Folder popover — collapsed, market/portfolio with folders */}
-      {showFolderPopover && (
+      {/* Folder popover */}
+      {showFolderPopover && hovered && (
         <div className="sidebar-folder-popover">
           <div className="folder-popover-title">{tab.id === 'market' ? 'Market Folders' : 'Portfolio Folders'}</div>
           {folders.map(f => (
             <button
               key={f.id}
               className={`folder-popover-item ${f.id === activeFolderId ? 'active' : ''}`}
-              onClick={(e) => { e.stopPropagation(); onSelectFolder(f) }}
+              onClick={e => { e.stopPropagation(); onSelectFolder(f) }}
             >
-              <span className="folder-popover-dot" />
-              {f.name}
+              <span className="folder-popover-dot" />{f.name}
             </button>
           ))}
-          <div style={{ padding: '6px 10px 2px', fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
-            Click ▶ to expand sidebar for more options
+          <div style={{ padding: '6px 10px 2px', fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>
+            Click ▶ to expand sidebar
           </div>
         </div>
-      )}
-
-      {/* Tooltip for folder tabs with popover — show tab name */}
-      {collapsed && showFolderPopover && (
-        <div className="sidebar-nav-tooltip" style={{ top: '50%' }}>{tab.label}</div>
       )}
     </div>
   )
 }
 
-// ── Main Sidebar ──────────────────────────────────────────────────────────────
 export function Sidebar({
   session, activeTab, setActiveTab,
   folders, activeFolderId, fetchingFolders, marketFolders,
@@ -81,15 +76,15 @@ export function Sidebar({
   followedUsers, pendingRequests,
   collapsed, onToggleCollapse,
 }) {
-  const [editingId, setEditingId]               = useState(null)
-  const [editName, setEditName]                 = useState('')
-  const [newMode, setNewMode]                   = useState(false)
-  const [newName, setNewName]                   = useState('')
-  const [importMode, setImportMode]             = useState(false)
-  const [importStep, setImportStep]             = useState(1)
+  const [editingId, setEditingId]   = useState(null)
+  const [editName, setEditName]     = useState('')
+  const [newMode, setNewMode]       = useState(false)
+  const [newName, setNewName]       = useState('')
+  const [importMode, setImportMode] = useState(false)
+  const [importStep, setImportStep] = useState(1)
   const [importTargetFolder, setImportTargetFolder] = useState(null)
-  const [importTickers, setImportTickers]       = useState([])
-  const [isImporting, setIsImporting]           = useState(false)
+  const [importTickers, setImportTickers] = useState([])
+  const [isImporting, setIsImporting]     = useState(false)
   const newRef = useRef(null)
 
   useEffect(() => {
@@ -113,24 +108,32 @@ export function Sidebar({
   }
 
   const showFolderSection = SHOW_FOLDERS.has(activeTab) && !collapsed
-  const showNavContent    = !NO_NAV_CONTENT.has(activeTab) && !collapsed
 
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
 
-      {/* ── Brand row ── */}
+      {/* ── Brand row (only when expanded) ── */}
       <div className="sidebar-brand">
         <span className="brand-mark">◈</span>
         <span className="brand-name">STOCK CHECKER</span>
-        {/* Collapse button — expanded only */}
-        <button className="sidebar-collapse-btn" onClick={onToggleCollapse} title="Collapse sidebar" aria-label="Collapse sidebar">
-          ◀
+        <button
+          className="sidebar-collapse-btn"
+          onClick={onToggleCollapse}
+          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
       </div>
 
-      {/* Expand bubble — collapsed only, positioned absolute */}
-      <button className="sidebar-expand-btn" onClick={onToggleCollapse} title="Expand sidebar" aria-label="Expand sidebar">
-        ▶
+      {/* ── Expand button (only when collapsed) — rendered OUTSIDE sidebar flow so it's always visible ── */}
+      <button
+        className="sidebar-expand-btn"
+        onClick={onToggleCollapse}
+        title="Expand sidebar"
+        aria-label="Expand sidebar"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
 
       {/* ── Nav tabs ── */}
@@ -156,9 +159,9 @@ export function Sidebar({
         </p>
       )}
 
-      {/* ── Folder list / import / social ── */}
+      {/* ── Folder list / import ── */}
       <nav className="sidebar-nav">
-        {NO_NAV_CONTENT.has(activeTab) ? null
+        {NO_NAV_CONTENT.has(activeTab) || collapsed ? null
         : fetchingFolders ? (
           <p className="sidebar-loading">Loading...</p>
         ) : (
@@ -242,23 +245,14 @@ export function Sidebar({
         )}
       </nav>
 
-      {/* ── Footer — pushed to bottom ── */}
+      {/* ── Footer ── */}
       <div className="sidebar-footer">
-        {/* Email */}
         <span className="user-email">{session?.user?.email}</span>
-
-        {/* Bug / GitHub links */}
         <div className="sidebar-footer-links">
-          <a href="https://github.com/ppanturat/financial-dashboard/issues/new" target="_blank" rel="noreferrer">
-            Report Bug
-          </a>
+          <a href="https://github.com/ppanturat/financial-dashboard/issues/new" target="_blank" rel="noreferrer">Report Bug</a>
           <span className="sep">•</span>
-          <a href="https://github.com/ppanturat/financial-dashboard" target="_blank" rel="noreferrer">
-            GitHub
-          </a>
+          <a href="https://github.com/ppanturat/financial-dashboard" target="_blank" rel="noreferrer">GitHub</a>
         </div>
-
-        {/* Sign-out — proper logout arrow icon */}
         <button className="signout-btn" onClick={onSignOut} aria-label="Sign out">
           <LogoutIcon size={15} />
           <span className="signout-label">Sign Out</span>

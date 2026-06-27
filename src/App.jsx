@@ -10,8 +10,9 @@ import { useSocial } from './hooks/useSocial'
 import { AuthPage } from './pages/AuthPage'
 import { MarketView } from './pages/MarketView'
 import { PortfolioView } from './pages/PortfolioView'
-import { SocialView } from './pages/SocialView'
+import { NetworkFeed } from './pages/NetworkFeed'
 import { GlobalIntelligence } from './pages/GlobalIntelligence'
+import { ProfilePage } from './pages/ProfilePage'
 
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
@@ -35,12 +36,12 @@ export default function App() {
     supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
   })
 
+  // Tabs: intelligence (News Feed), market, portfolio, social (Network/feed), profile
   const [activeTab, setActiveTab]         = useState('market')
   const [activeFolderId, setActiveFolderId] = useState(null)
   const [activeTicker, setActiveTicker]   = useState('')
   const [sidebarOpen, setSidebarOpen]     = useState(false)
 
-  // ── Collapsible sidebar — persisted to localStorage ──────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('sc_sidebar_collapsed') === 'true' } catch { return false }
   })
@@ -114,7 +115,7 @@ export default function App() {
     setActiveTicker(ticker)
   }
 
-  const cleanHeaderTabs = new Set(['social', 'intelligence'])
+  const cleanHeaderTabs = new Set(['social', 'intelligence', 'profile'])
 
   return (
     <div className="layout">
@@ -161,7 +162,9 @@ export default function App() {
         />
 
         <div className="content">
-          {activeTab === 'market' ? (
+          {activeTab === 'intelligence' ? (
+            <GlobalIntelligence />
+          ) : activeTab === 'market' ? (
             <MarketView activeTicker={activeTicker} foldersLoading={foldersLoading} />
           ) : activeTab === 'portfolio' ? (
             <PortfolioView
@@ -171,10 +174,15 @@ export default function App() {
               openConfirmModal={confirm}
             />
           ) : activeTab === 'social' ? (
-            <SocialView social={social} portfolioFolders={portfolioFolders} session={session} togglePortfolioPrivacy={togglePortfolioPrivacy} />
-          ) : (
-            <GlobalIntelligence />
-          )}
+            <NetworkFeed social={social} onGoToProfile={() => setActiveTab('profile')} />
+          ) : activeTab === 'profile' ? (
+            <ProfilePage
+              social={social}
+              portfolioFolders={portfolioFolders}
+              session={session}
+              togglePortfolioPrivacy={togglePortfolioPrivacy}
+            />
+          ) : null}
         </div>
       </main>
     </div>

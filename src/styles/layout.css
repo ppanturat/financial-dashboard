@@ -1,71 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
-
-/* ==========================================================================
-   APP STYLESHEET
-   --------------------------------------------------------------------------
-   Structure:
-   1. Design Tokens
-   2. Base / Reset
-   3. Layout
-   4. Sidebar
-   5. Header & Navigation
-   6. Search
-   7. Content Sections
-   8. Shared Components
-   9. Modals
-   10. Authentication
-   11. Utilities
-   12. Responsive Rules
-
-   Refactor goals:
-   - Easier navigation
-   - Lower selector duplication
-   - Consistent spacing / naming
-   - Predictable responsive structure
-   ========================================================================== */
-
-/* ==========================================================================
-   3. LAYOUT
-   ========================================================================== */
-
-/* ── root layout ────────────────────────────────── */
+/* ── App shell ── */
 .layout {
   display: flex;
-  width: 100vw;
-  height: 100svh; /* use small viewport height — avoids mobile browser chrome overlap */
+  height: 100dvh;
   overflow: hidden;
   position: relative;
 }
-.main { 
-  flex: 1; 
-  display: flex; 
-  flex-direction: column; 
-  overflow: hidden; 
-  min-width: 0; 
-  min-height: 0; /* Allows inner contents to push scrolling state */
-}
-.overlay { display: none; }
 
-/* ── Footer ────────────────────────────────────── */
-.app-footer {
+.main {
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 12px 20px;
-  background: var(--card-bg, #fff);
-  border-top: 1px solid var(--border-color, #eaeaea);
-  font-size: 12px;
-  color: var(--text-muted, #888);
-  flex-shrink: 0;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  transition: margin-left var(--transition);
 }
 
-.app-footer a {
-  color: var(--text-muted, #888);
-  text-decoration: none;
-  transition: color 0.2s;
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px 24px 40px;
 }
 
-.app-footer a:hover {
-  color: var(--text-main, #111);
+/* Mobile overlay */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 90;
+  backdrop-filter: blur(2px);
+}
+
+/* ── Responsive content padding ── */
+@media (max-width: 640px) {
+  .content { padding: 14px 14px 32px; }
 }

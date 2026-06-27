@@ -1,62 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
-
-/* ==========================================================================
-   APP STYLESHEET
-   --------------------------------------------------------------------------
-   Structure:
-   1. Design Tokens
-   2. Base / Reset
-   3. Layout
-   4. Sidebar
-   5. Header & Navigation
-   6. Search
-   7. Content Sections
-   8. Shared Components
-   9. Modals
-   10. Authentication
-   11. Utilities
-   12. Responsive Rules
-
-   Refactor goals:
-   - Easier navigation
-   - Lower selector duplication
-   - Consistent spacing / naming
-   - Predictable responsive structure
-   ========================================================================== */
-
-/* ==========================================================================
-   1. DESIGN TOKENS
-   ========================================================================== */
-
-/* ── design tokens ──────────────────────────────── */
+/* ── Design tokens ── */
 :root {
-  --bg:            #f5f4f1;
-  --surface:       #ffffff;
-  --surface-2:     #f0ede8;
-  --border:        rgba(0,0,0,0.07);
-  --border-md:     rgba(0,0,0,0.12);
-  --text:          #111010;
-  --muted:         #6b6a65;
-  --faint:         #aaa9a3;
+  --bg:         #f5f3ee;
+  --surface:    #ffffff;
+  --surface-2:  #f0ede8;
+  --border:     #e5e1da;
+  --border-md:  #d4cfc8;
+  --text:       #1a1916;
+  --muted:      #6b6560;
+  --faint:      #9e9890;
+  --accent:     #4f46e5;
+  --green:      #16a34a;
+  --red:        #dc2626;
+  --r:          14px;
 
-  --sidebar-bg:    #141312;
-  --sidebar-line:  rgba(255,255,255,0.07);
-  --accent:        #141312;
-
-  --green:         #16a34a;
-  --green-bg:      #f0fdf4;
-  --green-border:  #bbf7d0;
-  --green-text:    #15803d;
-  --yellow-bg:     #fefce8;
-  --yellow-border: #fef08a;
-  --yellow-text:   #92400e;
-  --red:           #dc2626;
-  --red-bg:        #fef2f2;
-  --red-border:    #fecaca;
-  --red-text:      #b91c1c;
-
-  --sidebar-w:     240px;
-  --header-h:      56px;
-  --r:             10px;
-  --r-lg:          14px;
+  --sidebar-w:      220px;
+  --sidebar-w-col:  58px;
+  --header-h:       56px;
+  --transition:     0.22s ease;
 }

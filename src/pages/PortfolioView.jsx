@@ -5,6 +5,7 @@ import {
   BarChart, Bar, Area, AreaChart
 } from 'recharts'
 import { HoldingModal } from '../components/HoldingModal'
+import { TradeModal } from '../components/TradeModal'
 import { EmptyState } from '../components/EmptyState'
 import { api } from '../lib/api'
 
@@ -276,6 +277,8 @@ export function PortfolioView({
 }) {
   const [modalOpen, setModalOpen]   = useState(false)
   const [editingObj, setEditingObj] = useState(null)
+  const [tradeObj, setTradeObj]     = useState(null)
+  const [tradeModalOpen, setTradeModalOpen] = useState(false)
   const [currency, setCurrency]     = useState('USD')
   const [thbRate, setThbRate]       = useState(34.5)
 
@@ -283,6 +286,7 @@ export function PortfolioView({
 
   const handleOpenModal = (holding = null) => { setEditingObj(holding); setModalOpen(true) }
   const handleDelete = (id, ticker) => openConfirmModal('Delete Holding', `Remove ${ticker} from this folder?`, () => removeHolding(id))
+  const handleOpenTrade = (holding, side) => { setTradeObj({ holding, side }); setTradeModalOpen(true) }
 
   if (!activePortfolioId) return <EmptyState loading={loadingHoldings} />
   if (loadingHoldings) return <div className="chart-empty">Loading portfolio data...</div>
@@ -317,6 +321,14 @@ export function PortfolioView({
         isOpen={modalOpen} holding={editingObj}
         marketFolders={marketFolders}
         onClose={() => setModalOpen(false)} onSave={saveHolding}
+      />
+
+      <TradeModal
+        isOpen={tradeModalOpen}
+        holding={tradeObj?.holding}
+        livePrice={tradeObj?.holding ? (livePrices?.[tradeObj.holding.ticker] ?? null) : null}
+        onClose={() => { setTradeModalOpen(false); setTradeObj(null) }}
+        onSave={saveHolding}
       />
 
       {/* Header */}
@@ -414,8 +426,18 @@ export function PortfolioView({
 
                     {/* Actions */}
                     <td className="port-actions">
-                      <button onClick={() => handleOpenModal(h)}>✎</button>
-                      <button onClick={() => handleDelete(h.id, h.ticker)}>✕</button>
+                      <button
+                        className="trade-btn buy"
+                        title={`Buy more ${h.ticker}`}
+                        onClick={() => handleOpenTrade(h, 'buy')}
+                      >↑ Buy</button>
+                      <button
+                        className="trade-btn sell"
+                        title={`Sell ${h.ticker}`}
+                        onClick={() => handleOpenTrade(h, 'sell')}
+                      >↓ Sell</button>
+                      <button onClick={() => handleOpenModal(h)} title="Edit">✎</button>
+                      <button onClick={() => handleDelete(h.id, h.ticker)} title="Remove">✕</button>
                     </td>
                   </tr>
                 ))}
