@@ -10,9 +10,9 @@ import { useSocial } from './hooks/useSocial'
 import { AuthPage } from './pages/AuthPage'
 import { MarketView } from './pages/MarketView'
 import { PortfolioView } from './pages/PortfolioView'
-import { NetworkFeed } from './pages/NetworkFeed'
+import { NetworkFeed } from './pages/NetworkFeed'      // NEW: social activity feed
+import { SocialView } from './pages/SocialView'        // Profile / followers page
 import { GlobalIntelligence } from './pages/GlobalIntelligence'
-import { ProfilePage } from './pages/ProfilePage'
 
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
@@ -36,16 +36,15 @@ export default function App() {
     supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
   })
 
-  // Tabs: intelligence (News Feed), market, portfolio, social (Network/feed), profile
-  const [activeTab, setActiveTab]         = useState('market')
+  const [activeTab, setActiveTab]           = useState('market')
   const [activeFolderId, setActiveFolderId] = useState(null)
-  const [activeTicker, setActiveTicker]   = useState('')
-  const [sidebarOpen, setSidebarOpen]     = useState(false)
+  const [activeTicker, setActiveTicker]     = useState('')
+  const [sidebarOpen, setSidebarOpen]       = useState(false)
 
+  // Collapsible sidebar — persisted to localStorage
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('sc_sidebar_collapsed') === 'true' } catch { return false }
   })
-
   const handleToggleCollapse = () => {
     setSidebarCollapsed(c => {
       const next = !c
@@ -73,8 +72,8 @@ export default function App() {
   }, [])
 
   if (authLoading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg, #f5f3ee)' }}>
-      <span style={{ opacity: 0.4, fontSize: 16 }}>Loading...</span>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'var(--bg,#f5f3ee)' }}>
+      <span style={{ opacity:0.4, fontSize:16 }}>Loading...</span>
     </div>
   )
   if (!session) return <AuthPage onSignIn={signIn} onSignUp={signUp} />
@@ -115,6 +114,7 @@ export default function App() {
     setActiveTicker(ticker)
   }
 
+  // Tabs that don't show folder name or ticker pills in header
   const cleanHeaderTabs = new Set(['social', 'intelligence', 'profile'])
 
   return (
@@ -174,9 +174,14 @@ export default function App() {
               openConfirmModal={confirm}
             />
           ) : activeTab === 'social' ? (
-            <NetworkFeed social={social} onGoToProfile={() => setActiveTab('profile')} />
+            /* Network tab = activity feed of followed users' trades */
+            <NetworkFeed
+              social={social}
+              onGoToProfile={() => setActiveTab('profile')}
+            />
           ) : activeTab === 'profile' ? (
-            <ProfilePage
+            /* Profile tab = your profile, followers, portfolio privacy */
+            <SocialView
               social={social}
               portfolioFolders={portfolioFolders}
               session={session}
