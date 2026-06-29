@@ -1,12 +1,12 @@
 /* ==========================================================================
    APP ENTRY STYLESHEET
+   Import order matters — variables first, feature overrides last.
    ========================================================================== */
 
 @import "./styles/variables.css";
 @import "./styles/base.css";
 @import "./styles/layout.css";
 @import "./styles/sidebar.css";
-@import "./styles/sidebar-additions.css";
 @import "./styles/header.css";
 @import "./styles/dashboard.css";
 @import "./styles/components.css";

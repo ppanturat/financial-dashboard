@@ -10,8 +10,8 @@ import { useSocial } from './hooks/useSocial'
 import { AuthPage } from './pages/AuthPage'
 import { MarketView } from './pages/MarketView'
 import { PortfolioView } from './pages/PortfolioView'
-import { NetworkFeed } from './pages/NetworkFeed'      // NEW: social activity feed
-import { SocialView } from './pages/SocialView'        // Profile / followers page
+import { NetworkFeed } from './pages/NetworkFeed'
+import { SocialView } from './pages/SocialView'
 import { GlobalIntelligence } from './pages/GlobalIntelligence'
 
 import { Sidebar } from './components/Sidebar'
@@ -23,15 +23,22 @@ import './App.css'
 export default function App() {
   const { session, loading: authLoading, signIn, signUp, signOut } = useAuth()
 
-  const { folders, loading: foldersLoading, createFolder, renameFolder, deleteFolder, addTicker, removeTicker } = useFolders(session)
   const {
-    portfolioFolders, activePortfolioId, setActivePortfolioId, loadingFolders: portfolioLoading,
+    folders, loading: foldersLoading,
+    createFolder, renameFolder, deleteFolder, addTicker, removeTicker,
+  } = useFolders(session)
+
+  const {
+    portfolioFolders, activePortfolioId, setActivePortfolioId,
+    loadingFolders: portfolioLoading,
     togglePortfolioPrivacy: _togglePrivacy,
     holdings, livePrices, loadingHoldings,
-    createPortfolioFolder, importMarketFolder, renamePortfolioFolder, deletePortfolioFolder,
+    createPortfolioFolder, importMarketFolder,
+    renamePortfolioFolder, deletePortfolioFolder,
     saveHolding, removeHolding,
   } = usePortfolio(session)
 
+  // Fallback in case hook doesn't expose togglePortfolioPrivacy yet
   const togglePortfolioPrivacy = _togglePrivacy ?? ((folderId, isPublic) => {
     supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
   })
@@ -40,11 +47,30 @@ export default function App() {
   const [activeFolderId, setActiveFolderId] = useState(null)
   const [activeTicker, setActiveTicker]     = useState('')
   const [sidebarOpen, setSidebarOpen]       = useState(false)
-
-  // Collapsible sidebar — persisted to localStorage
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('sc_sidebar_collapsed') === 'true' } catch { return false }
   })
+
+  const { modal, confirm, close: closeModal, execute: executeModal } = useModal()
+  const search    = useSearch()
+  const social    = useSocial(session)
+  const searchRef = useRef(null)
+
+  // Auto-select first folder on load
+  useEffect(() => {
+    if (!foldersLoading && folders.length > 0 && !activeFolderId) {
+      setActiveFolderId(folders[0].id)
+      setActiveTicker(folders[0].tickers[0] ?? '')
+    }
+  }, [folders, foldersLoading])
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    const fn = e => { if (searchRef.current && !searchRef.current.contains(e.target)) search.close() }
+    document.addEventListener('mousedown', fn)
+    return () => document.removeEventListener('mousedown', fn)
+  }, [])
+
   const handleToggleCollapse = () => {
     setSidebarCollapsed(c => {
       const next = !c
@@ -53,69 +79,62 @@ export default function App() {
     })
   }
 
-  const { modal, confirm, close: closeModal, execute: executeModal } = useModal()
-  const search    = useSearch()
-  const social    = useSocial(session)
-  const searchRef = useRef(null)
-
-  useEffect(() => {
-    if (!foldersLoading && folders.length > 0 && !activeFolderId) {
-      setActiveFolderId(folders[0].id)
-      setActiveTicker(folders[0].tickers[0] ?? '')
-    }
-  }, [folders, foldersLoading])
-
-  useEffect(() => {
-    const fn = e => { if (searchRef.current && !searchRef.current.contains(e.target)) search.close() }
-    document.addEventListener('mousedown', fn)
-    return () => document.removeEventListener('mousedown', fn)
-  }, [])
-
   if (authLoading) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', background:'var(--bg,#f5f3ee)' }}>
-      <span style={{ opacity:0.4, fontSize:16 }}>Loading...</span>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg, #f5f3ee)' }}>
+      <span style={{ opacity: 0.4, fontSize: 16 }}>Loading…</span>
     </div>
   )
   if (!session) return <AuthPage onSignIn={signIn} onSignUp={signUp} />
 
-  const activeFolder    = activeTab === 'market'
+  // Which folder list + active ID to show in the sidebar
+  const isMarket        = activeTab === 'market'
+  const currentFolders  = isMarket ? folders : portfolioFolders
+  const currentActiveId = isMarket ? activeFolderId : activePortfolioId
+  const currentLoading  = isMarket ? foldersLoading : portfolioLoading
+
+  // Active folder for header title
+  const activeFolder = isMarket
     ? folders.find(f => f.id === activeFolderId)
     : portfolioFolders.find(f => f.id === activePortfolioId)
 
-  const currentFolders  = activeTab === 'market' ? folders : portfolioFolders
-  const currentActiveId = activeTab === 'market' ? activeFolderId : activePortfolioId
-  const currentLoading  = activeTab === 'market' ? foldersLoading : portfolioLoading
+  // Tabs that show no folder name / ticker chips in the header
+  const cleanHeaderTabs = new Set(['social', 'intelligence', 'profile'])
 
+  // ── Folder handlers ────────────────────────────────────────────────────────
   const handleSelectFolder = folder => {
-    if (activeTab === 'market') { setActiveFolderId(folder.id); setActiveTicker(folder.tickers[0] ?? '') }
+    if (isMarket) { setActiveFolderId(folder.id); setActiveTicker(folder.tickers[0] ?? '') }
     else { setActivePortfolioId(folder.id) }
     setSidebarOpen(false)
   }
 
-  const handleCreateFolder = name => activeTab === 'market' ? createFolder(name) : createPortfolioFolder(name)
-  const handleRenameFolder = (id, name) => confirm('Rename Folder', `Rename to "${name}"?`, () =>
-    activeTab === 'market' ? renameFolder(id, name) : renamePortfolioFolder(id, name))
-  const handleDeleteFolder = id => confirm('Delete Folder', 'Permanently delete this folder?', () => {
-    if (activeTab === 'market') { deleteFolder(id); if (activeFolderId === id) setActiveFolderId(null) }
-    else { deletePortfolioFolder(id); if (activePortfolioId === id) setActivePortfolioId(null) }
-  })
+  const handleCreateFolder = name =>
+    isMarket ? createFolder(name) : createPortfolioFolder(name)
+
+  const handleRenameFolder = (id, name) =>
+    confirm('Rename Folder', `Rename to "${name}"?`, () =>
+      isMarket ? renameFolder(id, name) : renamePortfolioFolder(id, name))
+
+  const handleDeleteFolder = id =>
+    confirm('Delete Folder', 'Permanently delete this folder?', () => {
+      if (isMarket) { deleteFolder(id); if (activeFolderId === id) setActiveFolderId(null) }
+      else { deletePortfolioFolder(id); if (activePortfolioId === id) setActivePortfolioId(null) }
+    })
 
   const handleAddTicker = async symbol => {
     if (activeTab === 'portfolio') setActiveTab('market')
     let fid = activeFolderId
     if (!fid && folders.length === 0) {
-      const f = await createFolder('My Folder'); fid = f?.id
+      const f = await createFolder('My Folder')
+      fid = f?.id
       if (fid) setActiveFolderId(fid)
-    } else if (!fid && folders.length > 0) {
-      fid = folders[0].id; setActiveFolderId(fid)
+    } else if (!fid) {
+      fid = folders[0].id
+      setActiveFolderId(fid)
     }
     if (!fid) return
     const ticker = await addTicker(fid, symbol, session.user.id)
     setActiveTicker(ticker)
   }
-
-  // Tabs that don't show folder name or ticker pills in header
-  const cleanHeaderTabs = new Set(['social', 'intelligence', 'profile'])
 
   return (
     <div className="layout">
@@ -150,44 +169,53 @@ export default function App() {
           tickers={activeTab === 'market' ? (activeFolder?.tickers ?? []) : []}
           activeTicker={activeTicker}
           onSelectTicker={setActiveTicker}
-          onRemoveTicker={symbol => confirm('Remove Asset', `Remove ${symbol}?`, () => removeTicker(activeFolderId, symbol))}
+          onRemoveTicker={symbol =>
+            confirm('Remove Asset', `Remove ${symbol}?`, () => removeTicker(activeFolderId, symbol))}
           onHamburger={() => setSidebarOpen(o => !o)}
           search={{
             query: search.query, results: search.results, open: search.open,
             selectedIndex: search.selectedIndex,
             onQueryChange: q => { search.setQuery(q); search.setOpen(true) },
-            onFocus: () => search.setOpen(true), onKey: search.handleKey,
-            onSelect: handleAddTicker, onClear: search.clear, searchRef,
+            onFocus: () => search.setOpen(true),
+            onKey: search.handleKey,
+            onSelect: handleAddTicker,
+            onClear: search.clear,
+            searchRef,
           }}
         />
 
         <div className="content">
-          {activeTab === 'intelligence' ? (
-            <GlobalIntelligence />
-          ) : activeTab === 'market' ? (
+          {activeTab === 'intelligence' && <GlobalIntelligence />}
+
+          {activeTab === 'market' && (
             <MarketView activeTicker={activeTicker} foldersLoading={foldersLoading} />
-          ) : activeTab === 'portfolio' ? (
+          )}
+
+          {activeTab === 'portfolio' && (
             <PortfolioView
               activePortfolioId={activePortfolioId}
-              holdings={holdings} livePrices={livePrices} loadingHoldings={loadingHoldings}
-              marketFolders={folders} saveHolding={saveHolding} removeHolding={removeHolding}
+              holdings={holdings}
+              livePrices={livePrices}
+              loadingHoldings={loadingHoldings}
+              marketFolders={folders}
+              saveHolding={saveHolding}
+              removeHolding={removeHolding}
               openConfirmModal={confirm}
             />
-          ) : activeTab === 'social' ? (
-            /* Network tab = activity feed of followed users' trades */
-            <NetworkFeed
-              social={social}
-              onGoToProfile={() => setActiveTab('profile')}
-            />
-          ) : activeTab === 'profile' ? (
-            /* Profile tab = your profile, followers, portfolio privacy */
+          )}
+
+          {activeTab === 'social' && (
+            <NetworkFeed social={social} onGoToProfile={() => setActiveTab('profile')} />
+          )}
+
+          {activeTab === 'profile' && (
             <SocialView
               social={social}
               portfolioFolders={portfolioFolders}
               session={session}
               togglePortfolioPrivacy={togglePortfolioPrivacy}
             />
-          ) : null}
+          )}
         </div>
       </main>
     </div>

@@ -3,15 +3,14 @@ import { api } from '../lib/api'
 import { cleanDescription } from '../lib/formatters'
 
 export function useStockData(ticker, timeframe) {
-  const [chartData, setChartData] = useState([])
+  const [chartData, setChartData]     = useState([])
   const [currentPrice, setCurrentPrice] = useState(null)
-  const [quoteType, setQuoteType] = useState('EQUITY')
-  const [metrics, setMetrics] = useState(null)
+  const [quoteType, setQuoteType]     = useState('EQUITY')
+  const [metrics, setMetrics]         = useState(null)
   const [description, setDescription] = useState('')
-  const [aiScan, setAiScan] = useState(null)
   const [etfHoldings, setEtfHoldings] = useState(null)
   const [loadingData, setLoadingData] = useState(false)
-  const [loadingAi, setLoadingAi] = useState(false)
+  const [loadingExtra, setLoadingExtra] = useState(false)
 
   const prevTickerRef = useRef(null)
 
@@ -25,9 +24,8 @@ export function useStockData(ticker, timeframe) {
     const run = async () => {
       if (isNewTicker) {
         setLoadingData(true)
-        setLoadingAi(true)
+        setLoadingExtra(true)
         setMetrics(null)
-        setAiScan(null)
         setEtfHoldings(null)
         setCurrentPrice(null)
         setDescription('')
@@ -46,27 +44,20 @@ export function useStockData(ticker, timeframe) {
           setDescription(cleanDescription(data.description ?? ''))
           setLoadingData(false)
 
-          if (data.quoteType !== 'ETF') {
-            setLoadingAi(true)
-            try {
-              const ai = await api.aiScan(ticker, ctrl.signal)
-              setAiScan(ai)
-            } catch { /* ai is optional */ }
-            setLoadingAi(false)
-          } else {
-            // fetch ETF top holdings for the breakdown display
+          if (data.quoteType === 'ETF') {
             try {
               const holdings = await api.etfHoldings(ticker, ctrl.signal)
               setEtfHoldings(holdings ?? [])
             } catch { setEtfHoldings([]) }
-            setLoadingAi(false)
           }
+
+          setLoadingExtra(false)
         }
       } catch (e) {
         if (e.name !== 'AbortError' && isNewTicker) {
-          setDescription('failed to fetch data.')
+          setDescription('Failed to fetch data.')
           setLoadingData(false)
-          setLoadingAi(false)
+          setLoadingExtra(false)
         }
       }
     }
@@ -77,13 +68,19 @@ export function useStockData(ticker, timeframe) {
 
   const isUp = chartData.length > 1
     && chartData[chartData.length - 1].price >= chartData[0].price
-  const graphColor = isUp ? '#16a34a' : '#dc2626'
-  const priceChange = chartData.length > 1
-    ? ((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price * 100)
-    : null
 
   return {
-    chartData, currentPrice, quoteType, metrics, description, aiScan, etfHoldings,
-    loadingData, loadingAi, graphColor, priceChange,
+    chartData,
+    currentPrice,
+    quoteType,
+    metrics,
+    description,
+    etfHoldings,
+    loadingData,
+    loadingExtra,
+    graphColor:  isUp ? '#16a34a' : '#dc2626',
+    priceChange: chartData.length > 1
+      ? ((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price * 100)
+      : null,
   }
 }
