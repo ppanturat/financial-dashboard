@@ -42,7 +42,8 @@ function Gauge({ score, accent }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: 180, height: 99, overflow: 'visible' }} aria-label={`Fear/Greed gauge score ${score}`}>
+      {/* extra viewBox width/height so edge labels never clip, plus side padding */}
+      <svg viewBox={`-14 0 ${W + 28} ${H + 6}`} style={{ width: 208, height: 105, overflow: 'visible' }} aria-label={`Fear/Greed gauge score ${score}`}>
         <defs>
           <linearGradient id="fgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%"   stopColor="#ef4444" />
@@ -68,9 +69,9 @@ function Gauge({ score, accent }) {
         <circle cx={CX} cy={CY} r={7} fill="#1a1916" />
         <circle cx={CX} cy={CY} r={3} fill="#fff" />
 
-        {/* Edge labels */}
-        <text x={CX - R} y={H - 2} fontSize="9" fontWeight="700" fill="#ef4444" fontFamily="'DM Mono',monospace" textAnchor="start">FEAR</text>
-        <text x={CX + R} y={H - 2} fontSize="9" fontWeight="700" fill="#22c55e" fontFamily="'DM Mono',monospace" textAnchor="end">GREED</text>
+        {/* Edge labels — positioned below/outside the arc ends with room to breathe */}
+        <text x={CX - R - 6} y={H + 2} fontSize="11" fontWeight="700" fill="#ef4444" fontFamily="'DM Mono',monospace" textAnchor="start">FEAR</text>
+        <text x={CX + R + 6} y={H + 2} fontSize="11" fontWeight="700" fill="#22c55e" fontFamily="'DM Mono',monospace" textAnchor="end">GREED</text>
       </svg>
 
       <div style={{ textAlign: 'center', marginTop: 2 }}>
@@ -131,7 +132,6 @@ export function FearGreedBanner() {
   const devSign   = (data.dma_deviation ?? 0) >= 0 ? '+' : ''
   const deviation = data.dma_deviation != null ? `${devSign}${(data.dma_deviation * 100).toFixed(1)}%` : '—'
   const rsi       = data.rsi14 != null ? data.rsi14.toFixed(1) : '—'
-  const price     = data.current_price != null ? `$${data.current_price}` : '—'
 
   return (
     <div style={{
@@ -162,7 +162,6 @@ export function FearGreedBanner() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <StatPill label="200-DMA Δ" value={deviation} accent={cfg.accent} />
           <StatPill label="RSI 14D"   value={rsi} />
-          <StatPill label="VOO Price" value={price} />
         </div>
 
         <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
