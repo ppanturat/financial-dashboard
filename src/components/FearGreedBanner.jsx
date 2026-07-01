@@ -70,8 +70,8 @@ function Gauge({ score, accent }) {
         <circle cx={CX} cy={CY} r={3} fill="#fff" />
 
         {/* Edge labels — positioned below/outside the arc ends with room to breathe */}
-        <text x={CX - R - 6} y={H + 2} fontSize="11" fontWeight="700" fill="#ef4444" fontFamily="'DM Mono',monospace" textAnchor="start" padding-top="20">FEAR</text>
-        <text x={CX + R + 6} y={H + 2} fontSize="11" fontWeight="700" fill="#22c55e" fontFamily="'DM Mono',monospace" textAnchor="end" padding-top="20">GREED</text>
+        <text x={CX - R - 15} y={H + 12} fontSize="11" fontWeight="700" fill="#ef4444" fontFamily="'DM Mono',monospace" textAnchor="start" padding-top="20">FEAR</text>
+        <text x={CX + R + 15} y={H + 12} fontSize="11" fontWeight="700" fill="#22c55e" fontFamily="'DM Mono',monospace" textAnchor="end" padding-top="20">GREED</text>
       </svg>
 
       <div style={{ textAlign: 'center', marginTop: 2 }}>
