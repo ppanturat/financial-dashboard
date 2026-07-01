@@ -98,7 +98,18 @@ function EditProfileModal({ profile, userId, onSave, onClose }) {
   const [form, setForm] = useState({ name: profile?.name || '', username: profile?.username || '', avatar_url: profile?.avatar_url || '' })
   const [saving, setSaving] = useState(false)
   const inputStyle = { width: '100%', padding: '10px 13px', background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 10, fontSize: 14, color: 'var(--text)', fontFamily: "var(--font-body),sans-serif", outline: 'none', boxSizing: 'border-box', transition: 'border-color .15s' }
-  const handleSave = async () => { if (!form.name.trim() || !form.username.trim()) return; setSaving(true); await onSave(form); setSaving(false); onClose() }
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.username.trim()) return
+    setSaving(true)
+    try {
+      await onSave(form)
+      onClose()
+    } catch (err) {
+      alert('Could not save profile: ' + (err?.message || 'unknown error'))
+    } finally {
+      setSaving(false)
+    }
+  }
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(245,244,241,0.88)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 20, padding: '24px 24px 20px', width: '100%', maxWidth: 400, boxShadow: '0 8px 40px rgba(0,0,0,0.10)' }}>

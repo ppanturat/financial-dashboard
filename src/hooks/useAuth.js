@@ -21,10 +21,14 @@ async function ensureProfile(user) {
     if (!existing) {
       await supabase.from('profiles').insert({ id: user.id, name, username })
     } else if (!existing.name && name) {
-      await supabase.from('profiles').update({ name, username }).eq('id', user.id)
+      await supabase.from('profiles').update({ name }).eq('id', user.id)
+    } else if (!existing.username && username) {
+      await supabase.from('profiles').update({ username }).eq('id', user.id)
     }
-  } catch {
-    // Profile upsert is non-critical — silently ignore
+  } catch (err) {
+    // Non-critical background sync — log so failures aren't invisible,
+    // but never block the auth flow.
+    console.warn('[ensureProfile] failed:', err)
   }
 }
 

@@ -118,8 +118,24 @@ export function useSocial(session) {
   }
 
   const updateProfile = async (payload) => {
-    await supabase.from('profiles').upsert({ id: session.user.id, ...payload })
-    setProfile(prev => ({ ...prev, ...payload }))
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(payload)
+      .eq('id', session.user.id)
+      .select()
+      .single()
+
+    if (error) {
+      // Surface the failure instead of silently pretending it worked —
+      // previously this used .upsert() with no error check, so a failed
+      // write would still show the new name in the UI (optimistic state)
+      // while the database kept the old value.
+      console.error('[updateProfile] failed to save:', error)
+      throw error
+    }
+
+    setProfile(data)
+    return data
   }
 
   const getSentRequestStatus = (targetUserId) => {
