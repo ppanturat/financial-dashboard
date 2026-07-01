@@ -36,7 +36,7 @@ function CaseBlock({ side, text, score, maxScore }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color, flexShrink: 0 }}>{label}</span>
         <SignalBar score={score} max={maxScore} color={color} />
-        <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 11, fontWeight: 700, color, flexShrink: 0, minWidth: 24, textAlign: 'right' }}>
+        <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 11, fontWeight: 700, color, flexShrink: 0, minWidth: 24, textAlign: 'right' }}>
           {score}/{maxScore}
         </span>
       </div>
@@ -55,7 +55,7 @@ function NetBiasPill({ netBias, bearScore, bullScore }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: cfg.bg, border: `1px solid ${cfg.color}33`, borderRadius: 20, padding: '4px 12px' }}>
       <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>{cfg.label}</span>
-      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 10, color: '#6b6a65' }}>Bull {bullScore} · Bear {bearScore}</span>
+      <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 10, color: '#6b6a65' }}>Bull {bullScore} · Bear {bearScore}</span>
     </div>
   )
 }

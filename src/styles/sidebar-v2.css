@@ -161,7 +161,7 @@
   cursor: pointer;
   padding: 10px 10px;
   color: rgba(255,255,255,0.45);
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: var(--font-sm);
   font-weight: 600;
   text-align: left;
@@ -247,7 +247,7 @@
   background: #1e1c1b;
   border: 1px solid rgba(255,255,255,0.15);
   color: rgba(255,255,255,0.9);
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: var(--font-sm);
   font-weight: 600;
   white-space: nowrap;
@@ -314,7 +314,7 @@
   width: 100%;
   text-align: left;
   color: rgba(255,255,255,0.6);
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: var(--font-sm);
   font-weight: 500;
   transition: background .12s, color .12s;
@@ -400,7 +400,7 @@
   background: none;
   border: none;
   color: rgba(255,255,255,.5);
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: var(--font-sm);
   font-weight: 500;
   padding: 8px 10px;
@@ -456,7 +456,7 @@
   border: 1px solid rgba(255,255,255,.15);
   border-radius: 6px;
   color: #fff;
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: var(--font-sm);
   padding: 6px 10px;
   margin: 3px 6px;
@@ -470,7 +470,7 @@
   border: 1px dashed rgba(255,255,255,.25);
   border-radius: 7px;
   color: rgba(255,255,255,.55);
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: var(--font-sm);
   font-weight: 600;
   padding: 8px 10px;
@@ -554,7 +554,7 @@
   border: 1px solid rgba(220,38,38,.3);
   border-radius: 8px;
   color: rgba(200,50,50,0.8);
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-body), sans-serif;
   font-size: var(--font-sm);
   font-weight: 600;
   padding: 8px 12px;

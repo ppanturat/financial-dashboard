@@ -312,7 +312,7 @@ function EtfFullWidthMetric({ label, value, valueColor, description, borderColor
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.07em' }}>
           {label}
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: valueColor || 'var(--text)', fontFamily: "'DM Mono', monospace" }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: valueColor || 'var(--text)', fontFamily: "var(--font-body), monospace" }}>
           {value}
         </span>
       </div>
@@ -383,11 +383,11 @@ function EtfHoldingsBreakdown({ holdings }) {
       <div style={{ display: 'grid', gap: 10 }}>
         {topHoldings.map((h, i) => (
           <div key={h.ticker || i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 52, flexShrink: 0 }}>{h.ticker}</span>
+            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 52, flexShrink: 0 }}>{h.ticker}</span>
             <div style={{ flex: 1, height: 8, background: 'var(--surface-2, rgba(255,255,255,0.06))', borderRadius: 4, overflow: 'hidden' }}>
               <div style={{ height: '100%', borderRadius: 4, width: `${(h.weight / maxPct) * 100}%`, background: BAR_COLORS[i] || BAR_COLORS[BAR_COLORS.length - 1], transition: 'width .5s ease' }} />
             </div>
-            <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--faint)', minWidth: 42, textAlign: 'right', flexShrink: 0 }}>{(h.weight * 100).toFixed(1)}%</span>
+            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, color: 'var(--faint)', minWidth: 42, textAlign: 'right', flexShrink: 0 }}>{(h.weight * 100).toFixed(1)}%</span>
             {h.name && (
               <span style={{ fontSize: 12, color: 'var(--faint)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160, flexShrink: 1 }}>{h.name}</span>
             )}
@@ -417,7 +417,7 @@ function EtfAnalysisCard({ ticker, etfHoldings }) {
           <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: '#111', padding: '4px 10px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
             Fund Analysis
           </span>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--faint)' }}>
+          <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 13, color: 'var(--faint)' }}>
             {ticker} · ETF
           </span>
         </div>
@@ -524,7 +524,7 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
           <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: 'var(--accent)', padding: '4px 10px', borderRadius: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
             Quantitative Assessment
           </span>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--faint)' }}>
+          <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 13, color: 'var(--faint)' }}>
             {ticker} · Rule-Based Engine
           </span>
         </div>
@@ -533,7 +533,7 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
             fontSize: 12, fontWeight: 700, padding: '6px 14px', borderRadius: 24,
             color: verdictColor, background: verdictColor + '18', border: `1px solid ${verdictColor}44`,
           }}>{verdict}</span>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, color: 'var(--faint)' }}>{score}/100</span>
+          <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 13, color: 'var(--faint)' }}>{score}/100</span>
         </div>
       </div>
 

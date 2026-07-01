@@ -9,7 +9,7 @@ const inputStyle = {
   background: 'var(--surface-2)',
   color: 'var(--text)',
   fontSize: 14,
-  fontFamily: "'Syne', sans-serif",
+  fontFamily: "var(--font-body), sans-serif",
   outline: 'none',
   boxSizing: 'border-box',
   transition: 'border-color .15s',

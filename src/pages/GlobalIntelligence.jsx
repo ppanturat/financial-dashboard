@@ -128,7 +128,7 @@ function NewsSection({ title, subtitle, items, accent = 'var(--text)' }) {
   return (
     <div style={{ marginBottom: 24 }}>
       <div style={{ marginBottom: 12 }}>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800, color: accent }}>{title}</h3>
+        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: accent }}>{title}</h3>
         {subtitle && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--faint)' }}>{subtitle}</p>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -189,7 +189,7 @@ export function GlobalIntelligence() {
       {/* Header row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>Market Intelligence</h2>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--text)' }}>Market Intelligence</h2>
           <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--faint)' }}>
             Interest rates · CPI · Earnings · Tech sector · Macro trends
           </p>

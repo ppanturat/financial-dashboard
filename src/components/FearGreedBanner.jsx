@@ -43,7 +43,7 @@ function Gauge({ score, accent }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
       {/* extra viewBox width/height so edge labels never clip, plus side padding */}
-      <svg viewBox={`-14 0 ${W + 28} ${H + 6}`} style={{ width: 208, height: 105, overflow: 'visible' }} aria-label={`Fear/Greed gauge score ${score}`}>
+      <svg viewBox={`-14 0 ${W + 28} ${H + 6}`} style={{ width: 208 * 1.2, height: 105 * 1.2, overflow: 'visible' }} aria-label={`Fear/Greed gauge score ${score}`}>
         <defs>
           <linearGradient id="fgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%"   stopColor="#ef4444" />
@@ -70,13 +70,13 @@ function Gauge({ score, accent }) {
         <circle cx={CX} cy={CY} r={3} fill="#fff" />
 
         {/* Edge labels — positioned below/outside the arc ends with room to breathe */}
-        <text x={CX - R - 15} y={H + 12} fontSize="11" fontWeight="700" fill="#ef4444" fontFamily="'DM Mono',monospace" textAnchor="start" padding-top="20">FEAR</text>
-        <text x={CX + R + 15} y={H + 12} fontSize="11" fontWeight="700" fill="#22c55e" fontFamily="'DM Mono',monospace" textAnchor="end" padding-top="20">GREED</text>
+        <text x={CX - R - 20} y={H + 17} fontSize="15" fontWeight="700" fill="#ef4444" fontFamily="var(--font-body),monospace" textAnchor="start" padding-top="20">FEAR</text>
+        <text x={CX + R + 23} y={H + 17} fontSize="15" fontWeight="700" fill="#22c55e" fontFamily="var(--font-body),monospace" textAnchor="end" padding-top="20">GREED</text>
       </svg>
 
       <div style={{ textAlign: 'center', marginTop: 2 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, fontFamily: "'DM Mono',monospace", color: accent, lineHeight: 1 }}>{score}</div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: accent, letterSpacing: '.05em', marginTop: 3 }}>{zoneLabel(score)}</div>
+        <div style={{ fontSize: 25, fontWeight: 800, fontFamily: "var(--font-body),monospace", color: accent, lineHeight: 1 }}>{score}</div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: accent, letterSpacing: '.05em', marginTop: 3 }}>{zoneLabel(score)}</div>
       </div>
     </div>
   )
@@ -95,7 +95,7 @@ function StatPill({ label, value, accent }) {
       <span style={{ fontSize: 10, color: 'var(--faint, #9e9890)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>
         {label}
       </span>
-      <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 14, fontWeight: 700, color: accent ?? 'var(--text, #1a1916)' }}>
+      <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 14, fontWeight: 700, color: accent ?? 'var(--text, #1a1916)' }}>
         {value}
       </span>
     </div>
@@ -151,10 +151,10 @@ export function FearGreedBanner() {
 
       <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.1em' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.1em' }}>
             Market Sentiment · VOO
           </div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: cfg.accent, marginTop: 2, fontFamily: "'Syne',sans-serif" }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: cfg.accent, marginTop: 2, fontFamily: "var(--font-body),sans-serif" }}>
             {cfg.label}
           </div>
         </div>
@@ -164,7 +164,7 @@ export function FearGreedBanner() {
           <StatPill label="RSI 14D"   value={rsi} />
         </div>
 
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--muted)', lineHeight: 1.6 }}>
+        <p style={{ margin: 0, fontSize: 14, color: 'var(--muted)', lineHeight: 1.6 }}>
           {cfg.message}
         </p>
       </div>

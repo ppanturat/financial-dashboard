@@ -55,7 +55,7 @@
   border: 1px solid !important;
   cursor: pointer;
   transition: all 0.12s;
-  font-family: 'Syne', sans-serif;
+  font-family: var(--font-body), sans-serif;
   line-height: 1.3;
 }
 .trade-btn.buy {

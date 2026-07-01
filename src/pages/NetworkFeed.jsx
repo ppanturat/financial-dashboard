@@ -18,7 +18,7 @@ function Avatar({ name, avatarUrl, size = 36 }) {
       background: `hsl(${hue},55%,62%)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       color: '#fff', fontWeight: 700, fontSize: size > 40 ? 16 : 13,
-      fontFamily: "'Syne',sans-serif", userSelect: 'none',
+      fontFamily: "var(--font-body),sans-serif", userSelect: 'none',
     }}>{initials}</div>
   )
 }
@@ -126,7 +126,7 @@ function TradeCard({ item }) {
           }}>
             {isBuy ? '↑ BOUGHT' : '↓ SOLD'}
           </span>
-          <span style={{ fontFamily: "'DM Mono',monospace", fontWeight: 700, background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 5, padding: '1px 7px', fontSize: 12 }}>
+          <span style={{ fontFamily: "var(--font-body),monospace", fontWeight: 700, background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 5, padding: '1px 7px', fontSize: 12 }}>
             {item.ticker}
           </span>
         </div>
@@ -136,23 +136,23 @@ function TradeCard({ item }) {
           {isBuy && item.shares > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Shares</span>
-              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700 }}>{item.shares.toFixed(4)}</span>
+              <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700 }}>{item.shares.toFixed(4)}</span>
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Avg Cost</span>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700 }}>{fmtUSD(item.avgCost)}</span>
+            <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700 }}>{fmtUSD(item.avgCost)}</span>
           </div>
           {isBuy && item.value > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Position Value</span>
-              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700 }}>{fmtUSD(item.value)}</span>
+              <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700 }}>{fmtUSD(item.value)}</span>
             </div>
           )}
           {isBuy && item.shares > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>P&amp;L</span>
-              <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: isPnlPos ? '#16a34a' : '#dc2626' }}>
+              <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700, color: isPnlPos ? '#16a34a' : '#dc2626' }}>
                 {isPnlPos ? '+' : ''}{fmtUSD(item.pnl)} ({isPnlPos ? '+' : ''}{item.pnlPct.toFixed(2)}%)
               </span>
             </div>
@@ -167,7 +167,7 @@ function TradeCard({ item }) {
 
       {/* Live price badge */}
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700 }}>{fmtUSD(item.livePrice)}</div>
+        <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700 }}>{fmtUSD(item.livePrice)}</div>
         <div style={{ fontSize: 10, color: 'var(--faint)', marginTop: 2 }}>live</div>
       </div>
     </div>
@@ -207,7 +207,7 @@ function EmptyFeed({ followedCount, onGoToProfile }) {
         <>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>No one followed yet</div>
           <div style={{ fontSize: 13, marginBottom: 18 }}>Follow investors to see their trades here.</div>
-          <button onClick={onGoToProfile} style={{ padding: '9px 20px', borderRadius: 10, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: "'Syne',sans-serif", cursor: 'pointer' }}>
+          <button onClick={onGoToProfile} style={{ padding: '9px 20px', borderRadius: 10, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body),sans-serif", cursor: 'pointer' }}>
             Find Investors →
           </button>
         </>
@@ -264,7 +264,7 @@ export function NetworkFeed({ social, onGoToProfile }) {
 
   const filterBtnStyle = active => ({
     padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    fontSize: 12, fontWeight: 600, fontFamily: "'Syne',sans-serif",
+    fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body),sans-serif",
     transition: 'all .15s',
     background: active ? 'var(--accent)' : 'var(--surface-2)',
     color: active ? '#fff' : 'var(--muted)',
@@ -288,7 +288,7 @@ export function NetworkFeed({ social, onGoToProfile }) {
           borderRadius: 9, padding: '8px 15px', cursor: 'pointer',
           fontSize: 12, fontWeight: 600, color: 'var(--text)',
           display: 'flex', alignItems: 'center', gap: 6,
-          fontFamily: "'Syne',sans-serif", transition: 'all .15s',
+          fontFamily: "var(--font-body),sans-serif", transition: 'all .15s',
         }}
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'transparent' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-md)' }}
