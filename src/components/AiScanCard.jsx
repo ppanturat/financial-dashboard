@@ -22,7 +22,7 @@ function QualityDots({ score }) {
           transition: 'background 0.2s',
         }} />
       ))}
-      <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 4, fontFamily: "'DM Mono',monospace" }}>
+      <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 4, fontFamily: "var(--font-body),monospace" }}>
         {score}/10
       </span>
     </div>
@@ -100,7 +100,7 @@ export function AiScanCard({ aiScan, loading }) {
             background: cfg.bg, border: `1px solid ${cfg.border}`,
             borderRadius: 8, padding: '4px 12px',
             fontWeight: 800, fontSize: 13, color: cfg.color,
-            fontFamily: "'Syne', sans-serif",
+            fontFamily: "var(--font-body), sans-serif",
           }}>
             {cfg.icon} AI {cfg.label}
           </span>
@@ -118,7 +118,7 @@ export function AiScanCard({ aiScan, loading }) {
           style={{
             background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 7,
             padding: '4px 10px', cursor: 'pointer', fontSize: 11,
-            color: '#6b7280', fontWeight: 600, fontFamily: "'Syne', sans-serif",
+            color: '#6b7280', fontWeight: 600, fontFamily: "var(--font-body), sans-serif",
             display: 'flex', alignItems: 'center', gap: 4,
           }}
         >

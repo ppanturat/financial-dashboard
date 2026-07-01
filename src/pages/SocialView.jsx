@@ -17,7 +17,7 @@ function Avatar({ name, avatarUrl, size = 40, style = {} }) {
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       background: `hsl(${hue}, 55%, 62%)`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: '#fff', fontWeight: 700, fontSize, fontFamily: "'Syne', sans-serif",
+      color: '#fff', fontWeight: 700, fontSize, fontFamily: "var(--font-body), sans-serif",
       userSelect: 'none', ...style,
     }}>{initials}</div>
   )
@@ -101,7 +101,7 @@ function EditProfileModal({ profile, userId, onSave, onClose }) {
   const inputStyle = {
     width: '100%', padding: '10px 13px', background: 'var(--surface-2)',
     border: '1px solid var(--border-md)', borderRadius: 10, fontSize: 14,
-    color: 'var(--text)', fontFamily: "'Syne', sans-serif", outline: 'none',
+    color: 'var(--text)', fontFamily: "var(--font-body), sans-serif", outline: 'none',
     boxSizing: 'border-box', transition: 'border-color .15s',
   }
 
@@ -126,14 +126,14 @@ function EditProfileModal({ profile, userId, onSave, onClose }) {
           <div>
             <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', letterSpacing: '.08em', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>Username</label>
             <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)', fontSize: 14, fontFamily: "'DM Mono', monospace", pointerEvents: 'none' }}>@</span>
-              <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value.replace(/\s/g, '').toLowerCase() }))} placeholder="username" style={{ ...inputStyle, paddingLeft: 28, fontFamily: "'DM Mono', monospace" }} onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border-md)'} />
+              <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)', fontSize: 14, fontFamily: "var(--font-body), monospace", pointerEvents: 'none' }}>@</span>
+              <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value.replace(/\s/g, '').toLowerCase() }))} placeholder="username" style={{ ...inputStyle, paddingLeft: 28, fontFamily: "var(--font-body), monospace" }} onFocus={e => e.target.style.borderColor = 'var(--accent)'} onBlur={e => e.target.style.borderColor = 'var(--border-md)'} />
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 14, fontWeight: 600, fontFamily: "'Syne', sans-serif", cursor: 'pointer' }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving || !form.name.trim() || !form.username.trim()} style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: "'Syne', sans-serif", cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 14, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", cursor: 'pointer' }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving || !form.name.trim() || !form.username.trim()} style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
@@ -146,7 +146,7 @@ function PrivacyToggle({ isPublic, onClick }) {
   return (
     <button onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20,
-      cursor: 'pointer', border: 'none', fontFamily: "'Syne', sans-serif", fontSize: 12, fontWeight: 600,
+      cursor: 'pointer', border: 'none', fontFamily: "var(--font-body), sans-serif", fontSize: 12, fontWeight: 600,
       transition: 'all .15s', flexShrink: 0,
       background: isPublic ? '#f0fdf4' : 'var(--surface-2)',
       color: isPublic ? '#16a34a' : 'var(--muted)',
@@ -172,7 +172,7 @@ function UserRow({ user, right, sub }) {
           {user.name || 'Investor'}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-          {user.username && <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--faint)' }}>@{user.username}</span>}
+          {user.username && <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, color: 'var(--faint)' }}>@{user.username}</span>}
           {sub}
         </div>
       </div>
@@ -255,7 +255,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
   const tabs     = ['overview', 'holdings', 'charts']
   const tabStyle = t => ({
     padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-    fontFamily: "'Syne', sans-serif", border: 'none', transition: 'all .15s',
+    fontFamily: "var(--font-body), sans-serif", border: 'none', transition: 'all .15s',
     background: activeTab === t ? 'var(--accent)' : 'var(--surface-2)',
     color: activeTab === t ? '#fff' : 'var(--muted)',
     outline: activeTab === t ? 'none' : '1px solid var(--border-md)',
@@ -271,18 +271,18 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
           <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 8, padding: 2, border: '1px solid var(--border-md)', gap: 2 }}>
             {['USD','THB'].map(c => (
-              <button key={c} onClick={() => setCurrency(c)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: "'DM Mono', monospace", transition: 'all .15s', background: currency === c ? 'var(--accent)' : 'transparent', color: currency === c ? '#fff' : 'var(--muted)' }}>{c}</button>
+              <button key={c} onClick={() => setCurrency(c)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: "var(--font-body), monospace", transition: 'all .15s', background: currency === c ? 'var(--accent)' : 'transparent', color: currency === c ? '#fff' : 'var(--muted)' }}>{c}</button>
             ))}
           </div>
           {!loading && (
             <>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Portfolio Value</div>
-                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace" }}>{fmtCurr(totalValue, currency, thbRate)}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-body), monospace" }}>{fmtCurr(totalValue, currency, thbRate)}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Total P&L</div>
-                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: pnlPos ? '#16a34a' : '#dc2626' }}>
+                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-body), monospace", color: pnlPos ? '#16a34a' : '#dc2626' }}>
                   {pnlPos ? '+' : ''}{fmtCurr(totalPnL, currency, thbRate)} ({pnlPos ? '+' : ''}{totalPnLPct.toFixed(2)}%)
                 </div>
               </div>
@@ -310,7 +310,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                       {tickerStats.slice(0, 5).map((t, i) => (
                         <div key={t.ticker} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                           <div style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 700, color: 'var(--text)', minWidth: 40 }}>{t.ticker}</span>
+                          <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, fontWeight: 700, color: 'var(--text)', minWidth: 40 }}>{t.ticker}</span>
                           <span style={{ fontSize: 10, color: 'var(--faint)' }}>{t.weight.toFixed(1)}%</span>
                         </div>
                       ))}
@@ -327,7 +327,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '8px 12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 11, color: 'var(--faint)', fontWeight: 600 }}>{label}</span>
-                    <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: color || 'var(--text)' }}>{value}</span>
+                    <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700, color: color || 'var(--text)' }}>{value}</span>
                   </div>
                 ))}
               </div>
@@ -339,12 +339,12 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                   {tickerStats.map((t, i) => (
                     <div key={t.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, background: PIE_COLORS[i % PIE_COLORS.length] }} />
-                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 52 }}>{t.ticker}</span>
+                      <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 52 }}>{t.ticker}</span>
                       <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${Math.min(t.weight, 100)}%`, background: PIE_COLORS[i % PIE_COLORS.length], borderRadius: 4, transition: 'width .4s' }} />
                       </div>
-                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, color: 'var(--faint)', minWidth: 38, textAlign: 'right' }}>{t.weight.toFixed(1)}%</span>
-                      <span style={{ fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 700, color: t.pnl >= 0 ? '#16a34a' : '#dc2626', minWidth: 60, textAlign: 'right' }}>
+                      <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, color: 'var(--faint)', minWidth: 38, textAlign: 'right' }}>{t.weight.toFixed(1)}%</span>
+                      <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, fontWeight: 700, color: t.pnl >= 0 ? '#16a34a' : '#dc2626', minWidth: 60, textAlign: 'right' }}>
                         {t.pnl >= 0 ? '+' : ''}{t.pnlPct.toFixed(2)}%
                       </span>
                     </div>
@@ -365,7 +365,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                   <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{folder.name}</span>
                     <Badge>Public</Badge>
-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--faint)', fontFamily: "'DM Mono', monospace" }}>{fHoldings.length} holding{fHoldings.length !== 1 ? 's' : ''}</span>
+                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--faint)', fontFamily: "var(--font-body), monospace" }}>{fHoldings.length} holding{fHoldings.length !== 1 ? 's' : ''}</span>
                   </div>
                   {fHoldings.length > 0 ? (
                     <div style={{ overflowX: 'auto' }}>
@@ -388,13 +388,13 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                             const isPos  = pnl >= 0
                             return (
                               <tr key={h.id} style={{ borderBottom: i < fHoldings.length-1 ? '1px solid var(--border)' : 'none' }}>
-                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700 }}>{h.ticker}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{shares.toFixed(4)}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--muted)' }}>{fmtCurr(cost, currency, thbRate)}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>{loading ? '…' : price != null ? fmtCurr(price, currency, thbRate) : '—'}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 700 }}>{fmtCurr(value, currency, thbRate)}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnl==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>{pnl==null?'—':`${isPos?'+':''}${fmtCurr(Math.abs(pnl),currency,thbRate)}`}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, color: pnlPct==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>{pnlPct==null?'—':`${isPos?'+':''}${pnlPct.toFixed(2)}%`}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700 }}>{h.ticker}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, color: 'var(--muted)' }}>{shares.toFixed(4)}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, color: 'var(--muted)' }}>{fmtCurr(cost, currency, thbRate)}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12 }}>{loading ? '…' : price != null ? fmtCurr(price, currency, thbRate) : '—'}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700 }}>{fmtCurr(value, currency, thbRate)}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 600, color: pnl==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>{pnl==null?'—':`${isPos?'+':''}${fmtCurr(Math.abs(pnl),currency,thbRate)}`}</td>
+                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 600, color: pnlPct==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>{pnlPct==null?'—':`${isPos?'+':''}${pnlPct.toFixed(2)}%`}</td>
                               </tr>
                             )
                           })}
@@ -426,27 +426,27 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                     <div key={t.ticker} style={{ background: 'var(--surface-2)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
                         <div>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700 }}>{t.ticker}</div>
+                          <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 13, fontWeight: 700 }}>{t.ticker}</div>
                           <div style={{ fontSize: 10, color: 'var(--faint)', marginTop: 1 }}>{t.shares.toFixed(4)} shares</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 13, fontWeight: 700 }}>{t.currentPrice != null ? fmtCurr(t.currentPrice, currency, thbRate) : '—'}</div>
-                          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, fontWeight: 700, color: isPos ? '#16a34a' : '#dc2626' }}>{t.pnlPct != null ? `${isPos?'+':''}${t.pnlPct.toFixed(2)}%` : '—'}</div>
+                          <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 13, fontWeight: 700 }}>{t.currentPrice != null ? fmtCurr(t.currentPrice, currency, thbRate) : '—'}</div>
+                          <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 10, fontWeight: 700, color: isPos ? '#16a34a' : '#dc2626' }}>{t.pnlPct != null ? `${isPos?'+':''}${t.pnlPct.toFixed(2)}%` : '—'}</div>
                         </div>
                       </div>
                       {t.sparkline?.length > 1 ? (
                         <ResponsiveContainer width="100%" height={60}>
                           <LineChart data={t.sparkline} margin={{ top: 2, right: 2, left: 0, bottom: 2 }}>
                             <Line type="monotone" dataKey="price" stroke={color} strokeWidth={1.5} dot={false} />
-                            <Tooltip contentStyle={{ background: '#111', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 11 }} itemStyle={{ color, fontFamily: "'DM Mono', monospace" }} formatter={v => [fmtCurr(v, currency, thbRate), '']} labelFormatter={() => ''} />
+                            <Tooltip contentStyle={{ background: '#111', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 11 }} itemStyle={{ color, fontFamily: "var(--font-body), monospace" }} formatter={v => [fmtCurr(v, currency, thbRate), '']} labelFormatter={() => ''} />
                           </LineChart>
                         </ResponsiveContainer>
                       ) : (
                         <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--faint)', fontStyle: 'italic' }}>No chart data</div>
                       )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                        <span style={{ fontSize: 10, color: 'var(--faint)' }}>Value: <span style={{ fontFamily: "'DM Mono', monospace", color: 'var(--text)', fontWeight: 700 }}>{fmtCurr(t.value, currency, thbRate)}</span></span>
-                        <span style={{ fontSize: 10, color: isPos ? '#16a34a' : '#dc2626', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{t.pnl != null ? `${isPos?'+':''}${fmtCurr(Math.abs(t.pnl),currency,thbRate)}` : '—'}</span>
+                        <span style={{ fontSize: 10, color: 'var(--faint)' }}>Value: <span style={{ fontFamily: "var(--font-body), monospace", color: 'var(--text)', fontWeight: 700 }}>{fmtCurr(t.value, currency, thbRate)}</span></span>
+                        <span style={{ fontSize: 10, color: isPos ? '#16a34a' : '#dc2626', fontFamily: "var(--font-body), monospace", fontWeight: 700 }}>{t.pnl != null ? `${isPos?'+':''}${fmtCurr(Math.abs(t.pnl),currency,thbRate)}` : '—'}</span>
                       </div>
                     </div>
                   )
@@ -489,7 +489,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
           <Avatar name={displayName} avatarUrl={avatarUrl} size={56} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-            <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 12, color: 'var(--faint)', marginTop: 2 }}>@{username}</div>
+            <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, color: 'var(--faint)', marginTop: 2 }}>@{username}</div>
             {/* Stats row */}
             <div style={{ display: 'flex', gap: 18, marginTop: 8, flexWrap: 'wrap' }}>
               {[
@@ -499,7 +499,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                 { label: 'Public', value: myPublic },
               ].map(({ label, value }) => (
                 <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: "'DM Mono', monospace" }}>{value}</span>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: "var(--font-body), monospace" }}>{value}</span>
                   <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</span>
                 </div>
               ))}
@@ -509,7 +509,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
             padding: '8px 16px', borderRadius: 10, flexShrink: 0,
             background: 'var(--surface-2)', border: '1px solid var(--border-md)',
             color: 'var(--text)', fontSize: 13, fontWeight: 600,
-            fontFamily: "'Syne', sans-serif", cursor: 'pointer', transition: 'all .15s',
+            fontFamily: "var(--font-body), sans-serif", cursor: 'pointer', transition: 'all .15s',
           }}
           onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'transparent' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-md)' }}
@@ -529,11 +529,11 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                   <Avatar name={reqProfile.name || reqProfile.username || '?'} avatarUrl={reqProfile.avatar_url} size={36} />
                   <div style={{ flex: 1, minWidth: 80 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{reqProfile.name || 'Investor'}</div>
-                    {reqProfile.username && <div style={{ fontSize: 11, color: 'var(--faint)', fontFamily: "'DM Mono', monospace", marginTop: 1 }}>@{reqProfile.username}</div>}
+                    {reqProfile.username && <div style={{ fontSize: 11, color: 'var(--faint)', fontFamily: "var(--font-body), monospace", marginTop: 1 }}>@{reqProfile.username}</div>}
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                    <button onClick={() => social.respondToRequest(req.id, 'rejected')} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}>Decline</button>
-                    <button onClick={() => social.respondToRequest(req.id, 'accepted')} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}>Accept</button>
+                    <button onClick={() => social.respondToRequest(req.id, 'rejected')} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}>Decline</button>
+                    <button onClick={() => social.respondToRequest(req.id, 'accepted')} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}>Accept</button>
                   </div>
                 </div>
               )
@@ -571,14 +571,14 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                               background: isExpanded ? 'var(--accent)' : 'var(--surface-2)',
                               border: isExpanded ? 'none' : '1px solid var(--border-md)',
                               color: isExpanded ? '#fff' : 'var(--text)',
-                              fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif",
+                              fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif",
                               transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 5,
                             }}
                           >
                             {isExpanded ? '▲' : '▼'} {isExpanded ? 'Collapse' : 'View Details'}
                           </button>
                         )}
-                        <button onClick={() => social.unfollow(u.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif", transition: 'all .15s' }}
+                        <button onClick={() => social.unfollow(u.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", transition: 'all .15s' }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
                         >Unfollow</button>
@@ -605,11 +605,11 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                 <UserRow key={u.id} user={u} sub={null}
                   right={
                     isFollowingBack ? (
-                      <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif", background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>Following back</span>
+                      <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>Following back</span>
                     ) : status === 'pending' ? (
-                      <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif", background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border-md)' }}>Pending</span>
+                      <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border-md)' }}>Pending</span>
                     ) : (
-                      <button onClick={() => social.sendFollowRequest(u.id)} style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}>Follow back</button>
+                      <button onClick={() => social.sendFollowRequest(u.id)} style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}>Follow back</button>
                     )
                   }
                 />
@@ -648,7 +648,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
           <input
             value={searchVal} onChange={e => setSearchVal(e.target.value)}
             placeholder="Search by name or username…"
-            style={{ width: '100%', padding: '10px 13px 10px 36px', background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 10, fontSize: 14, color: 'var(--text)', fontFamily: "'Syne', sans-serif", outline: 'none', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '10px 13px 10px 36px', background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 10, fontSize: 14, color: 'var(--text)', fontFamily: "var(--font-body), sans-serif", outline: 'none', boxSizing: 'border-box' }}
             onFocus={e => e.target.style.borderColor = 'var(--accent)'}
             onBlur={e => e.target.style.borderColor = 'var(--border-md)'}
           />
@@ -664,13 +664,13 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                   <UserRow key={p.id} user={p} sub={null}
                     right={
                       status === 'accepted' ? (
-                        <button onClick={() => social.unfollow(p.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}
+                        <button onClick={() => social.unfollow(p.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}>Unfollow</button>
                       ) : status === 'pending' ? (
                         <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border-md)' }}>Pending</span>
                       ) : (
-                        <button onClick={() => social.sendFollowRequest(p.id)} style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "'Syne', sans-serif" }}>+ Follow</button>
+                        <button onClick={() => social.sendFollowRequest(p.id)} style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}>+ Follow</button>
                       )
                     }
                   />

@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
 /* ==========================================================================
    APP STYLESHEET
@@ -52,7 +51,7 @@
 .ticker-chip.active { background: var(--accent); border-color: var(--accent); }
 .chip-ticker {
   background: none; border: none;
-  font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+  font-family: var(--font-body), monospace; font-size: 12px; font-weight: 500;
   color: var(--muted); padding: 5px 8px; cursor: pointer;
 }
 .ticker-chip.active .chip-ticker { color: #fff; }
@@ -80,7 +79,7 @@
 .search-icon { padding: 0 8px 0 10px; color: var(--faint); font-size: 17px; flex-shrink: 0; }
 .search-box input {
   flex: 1; background: none; border: none; outline: none;
-  font-family: 'Syne', sans-serif; font-size: 13px; color: var(--text);
+  font-family: var(--font-body), sans-serif; font-size: 13px; color: var(--text);
   padding: 8px 0; min-width: 0;
 }
 .search-box input::placeholder { color: var(--faint); }
@@ -104,7 +103,7 @@
   transition: background .1s;
 }
 .drop-item:hover, .drop-item.highlighted { background: var(--surface-2); }
-.drop-symbol { font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 600; color: var(--text); min-width: 54px; flex-shrink: 0; }
+.drop-symbol { font-family: var(--font-body), monospace; font-size: 13px; font-weight: 600; color: var(--text); min-width: 54px; flex-shrink: 0; }
 .drop-name   { font-size: 12px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .drop-type   { font-size: 10px; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; flex-shrink: 0; }
 .drop-empty  { padding: 12px 10px; font-size: 12px; color: var(--muted); cursor: pointer; }

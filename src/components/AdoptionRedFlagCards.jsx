@@ -75,7 +75,7 @@ export function TerminalRedFlagCard({ result }) {
           borderRadius: 6, padding: '5px 10px',
         }}>
           <span style={{ fontSize: 10, color: '#6b6a65', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Cash Runway</span>
-          <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 12, fontWeight: 700, color: result.severity === 'danger' ? '#dc2626' : '#ca8a04' }}>
+          <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700, color: result.severity === 'danger' ? '#dc2626' : '#ca8a04' }}>
             {runwayStr}
           </span>
         </div>

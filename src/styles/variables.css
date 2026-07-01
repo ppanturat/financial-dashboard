@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Chivo:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
 
 /* ==========================================================================
    APP STYLESHEET
@@ -30,6 +30,8 @@
 
 /* ── design tokens ──────────────────────────────── */
 :root {
+  --font-heading:  'Fraunces', serif;
+  --font-body:     'Chivo', sans-serif;
   --bg:            #f5f4f1;
   --surface:       #ffffff;
   --surface-2:     #f0ede8;

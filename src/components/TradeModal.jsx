@@ -68,7 +68,7 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
     width: '100%', padding: '10px 13px',
     background: 'var(--surface-2)', border: '1px solid var(--border-md)',
     borderRadius: 10, fontSize: 14, color: 'var(--text)',
-    fontFamily: "'Syne',sans-serif", outline: 'none', boxSizing: 'border-box',
+    fontFamily: "var(--font-body),sans-serif", outline: 'none', boxSizing: 'border-box',
   }
 
   return (
@@ -79,8 +79,8 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontFamily: "'DM Mono',monospace", fontSize: 18, fontWeight: 800 }}>{holding.ticker}</span>
-            {livePrice && <span style={{ fontSize: 12, color: 'var(--faint)', fontFamily: "'DM Mono',monospace" }}>{fmt(livePrice)}</span>}
+            <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 18, fontWeight: 800 }}>{holding.ticker}</span>
+            {livePrice && <span style={{ fontSize: 12, color: 'var(--faint)', fontFamily: "var(--font-body),monospace" }}>{fmt(livePrice)}</span>}
           </div>
           <button onClick={onClose} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 14, cursor: 'pointer' }}>✕</button>
         </div>
@@ -90,7 +90,7 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
           {['buy','sell'].map(s => (
             <button key={s} onClick={() => { setSide(s); setError('') }} style={{
               flex: 1, padding: '9px 0', borderRadius: 9, border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: 700, fontFamily: "'Syne',sans-serif",
+              fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body),sans-serif",
               transition: 'all .15s',
               background: side === s ? (s === 'buy' ? '#16a34a' : '#dc2626') : 'transparent',
               color: side === s ? '#fff' : 'var(--muted)',
@@ -102,15 +102,15 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
         <div style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '10px 13px', marginBottom: 16, display: 'flex', gap: 24 }}>
           <div>
             <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Held</div>
-            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700 }}>{existingShares.toFixed(4)}</div>
+            <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700 }}>{existingShares.toFixed(4)}</div>
           </div>
           <div>
             <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Avg Cost</div>
-            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700 }}>{fmt(existingAvg)}</div>
+            <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700 }}>{fmt(existingAvg)}</div>
           </div>
           <div>
             <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Position Value</div>
-            <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700 }}>{fmt(existingShares * (livePrice || existingAvg))}</div>
+            <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700 }}>{fmt(existingShares * (livePrice || existingAvg))}</div>
           </div>
         </div>
 
@@ -148,17 +148,17 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
               {isBuy && totalTrade > 0 && (
                 <div>
                   <div style={{ fontSize: 10, color: 'var(--faint)' }}>Total Cost</div>
-                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: accent }}>{fmt(totalTrade)}</div>
+                  <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700, color: accent }}>{fmt(totalTrade)}</div>
                 </div>
               )}
               <div>
                 <div style={{ fontSize: 10, color: 'var(--faint)' }}>New Shares</div>
-                <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: newShares < 0 ? '#dc2626' : 'var(--text)' }}>{newShares.toFixed(4)}</div>
+                <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700, color: newShares < 0 ? '#dc2626' : 'var(--text)' }}>{newShares.toFixed(4)}</div>
               </div>
               {isBuy && (
                 <div>
                   <div style={{ fontSize: 10, color: 'var(--faint)' }}>New Avg Cost</div>
-                  <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700 }}>{fmt(newAvg)}</div>
+                  <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700 }}>{fmt(newAvg)}</div>
                 </div>
               )}
             </div>
@@ -169,8 +169,8 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 14, fontWeight: 600, fontFamily: "'Syne',sans-serif", cursor: 'pointer' }}>Cancel</button>
-          <button onClick={handleExecute} style={{ flex: 2, padding: '11px', borderRadius: 10, background: accent, border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: "'Syne',sans-serif", cursor: 'pointer' }}>
+          <button onClick={onClose} style={{ flex: 1, padding: '11px', borderRadius: 10, background: 'var(--surface-2)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 14, fontWeight: 600, fontFamily: "var(--font-body),sans-serif", cursor: 'pointer' }}>Cancel</button>
+          <button onClick={handleExecute} style={{ flex: 2, padding: '11px', borderRadius: 10, background: accent, border: 'none', color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: "var(--font-body),sans-serif", cursor: 'pointer' }}>
             {isBuy ? `↑ Buy ${tradeShares > 0 ? tradeShares.toFixed(4) : ''} ${holding.ticker}` : `↓ Sell ${tradeShares > 0 ? tradeShares.toFixed(4) : ''} ${holding.ticker}`}
           </button>
         </div>

@@ -76,19 +76,19 @@ export function ValuationBadge({ ticker }) {
       <div style={{ display: 'flex', gap: 12 }}>
         <div>
           <div style={{ fontSize: 10, color: '#6b6a65', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Fwd P/E</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: cfg.color }}>{currentPE ?? '—'}×</div>
+          <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700, color: cfg.color }}>{currentPE ?? '—'}×</div>
         </div>
         <div style={{ width: 1, background: 'rgba(0,0,0,0.08)', alignSelf: 'stretch' }} />
         <div>
           <div style={{ fontSize: 10, color: '#6b6a65', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Hist. Median P/E</div>
-          <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: '#111' }}>{medianPE ?? '—'}×</div>
+          <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700, color: '#111' }}>{medianPE ?? '—'}×</div>
         </div>
         {discountPct && (
           <>
             <div style={{ width: 1, background: 'rgba(0,0,0,0.08)', alignSelf: 'stretch' }} />
             <div>
               <div style={{ fontSize: 10, color: '#6b6a65', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Spread</div>
-              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: 13, fontWeight: 700, color: cfg.color }}>{discountPct}% {direction}</div>
+              <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700, color: cfg.color }}>{discountPct}% {direction}</div>
             </div>
           </>
         )}

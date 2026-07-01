@@ -24,7 +24,7 @@ function ScaleBar({ scale, color }) {
       {segments.map((seg, i) => (
         <div key={i} style={{
           fontSize: 12, color: 'rgba(255,255,255,0.65)',
-          fontFamily: "'DM Mono',monospace",
+          fontFamily: "var(--font-body),monospace",
           lineHeight: 1.5, marginBottom: 2,
           paddingLeft: 8, borderLeft: `2px solid rgba(255,255,255,${0.1 + (i / segments.length) * 0.3})`,
         }}>
