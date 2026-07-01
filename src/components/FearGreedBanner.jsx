@@ -152,7 +152,7 @@ export function FearGreedBanner() {
       <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.1em' }}>
-            Market Sentiment · VOO
+            Market Sentiment
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, color: cfg.accent, marginTop: 2, fontFamily: "var(--font-body),sans-serif" }}>
             {cfg.label}
