@@ -8,7 +8,7 @@ A personal finance web app for tracking stocks, managing investment portfolios, 
 
 This project is a personal side project, **not a financial product**, and nothing in it is financial advice.
 
-- **Not financial advice.** Prices, metrics, charts, "AI scans," and assessment cards are for informational and educational purposes only. Nothing here is a recommendation to buy, sell, or hold any security. Always do your own research and consult a licensed financial advisor before making investment decisions.
+- **Not financial advice.** Prices, metrics, charts, and assessment cards are for informational and educational purposes only. Nothing here is a recommendation to buy, sell, or hold any security. Always do your own research and consult a licensed financial advisor before making investment decisions.
 - **We don't generate market data — we just fetch it.** All prices, fundamentals, dividends, and news are pulled live from third-party sources (primarily Yahoo Finance via the `yfinance` library). This app has no control over that data's accuracy, completeness, or timeliness. Data can be delayed, incomplete, or wrong — verify anything important against your broker or an official source before acting on it.
 - **AI-generated content can be wrong.** The AI-assisted analysis is generated automatically and may misinterpret data or produce inaccurate summaries. Treat it as a starting point for your own research, not a conclusion.
 - **No warranty.** This software is provided "as is" (see [LICENSE](./LICENSE)) with no guarantee of uptime, correctness, or fitness for any particular purpose. Use at your own risk.
