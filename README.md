@@ -1,6 +1,17 @@
 # Stock Dashboard
 
-A personal finance web app for tracking stocks, managing investment portfolios, and following other investors.
+A personal finance web app for tracking stocks, managing investment portfolios, and following other investors. Built with **React (Vite)** on the frontend and a **FastAPI** backend that pulls market data from Yahoo Finance (`yfinance`).
+
+---
+
+## ⚠️ Disclaimer
+
+This project is a personal side project, **not a financial product**, and nothing in it is financial advice.
+
+- **Not financial advice.** Prices, metrics, charts, "AI scans," and assessment cards are for informational and educational purposes only. Nothing here is a recommendation to buy, sell, or hold any security. Always do your own research and consult a licensed financial advisor before making investment decisions.
+- **We don't generate market data — we just fetch it.** All prices, fundamentals, dividends, and news are pulled live from third-party sources (primarily Yahoo Finance via the `yfinance` library). This app has no control over that data's accuracy, completeness, or timeliness. Data can be delayed, incomplete, or wrong — verify anything important against your broker or an official source before acting on it.
+- **AI-generated content can be wrong.** The AI-assisted analysis is generated automatically and may misinterpret data or produce inaccurate summaries. Treat it as a starting point for your own research, not a conclusion.
+- **No warranty.** This software is provided "as is" (see [LICENSE](./LICENSE)) with no guarantee of uptime, correctness, or fitness for any particular purpose. Use at your own risk.
 
 ---
 
@@ -34,7 +45,7 @@ Research individual stocks and ETFs.
 
 Metrics are not shown for ETFs — the tile area will display "N/A" in that case.
 
-**Assessment cards:** Below the metrics, a rule-based written assessment summarises whether the numbers lean bullish or bearish. An AI scan below that offers a more detailed take. The AI result is cached, so the first load for any ticker may take a moment; subsequent loads are instant.
+**Assessment cards:** Below the metrics, a rule-based written assessment summarises whether the numbers lean bullish or bearish. An AI scan below that offers a more detailed take. The AI result is cached, so the first load for any ticker may take a moment; subsequent loads are instant. As noted above, treat both as informational only, not investment advice.
 
 **ETFs:** Opening an ETF replaces the metrics section with a breakdown of the fund's top holdings.
 
@@ -84,8 +95,8 @@ Connect with other users and see their shared portfolios.
 ### Prerequisites
 
 - Node.js 18 or later
+- Python 3.10+ (for the FastAPI backend)
 - A Supabase project (for auth and database)
-- The Python backend running locally on port 8000
 
 ### Environment variables
 
@@ -96,14 +107,23 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### Install and start
+Add any backend-specific secrets (e.g. keys used by the AI scan feature) to a `.env` file read by the FastAPI app — see `requirements.txt` / `api/index.py` for what's required.
+
+### Install and start the frontend
 
 ```bash
 npm install
 npm run dev
 ```
 
-The frontend expects the Python backend at `http://localhost:8000/api` in development. In production it proxies requests to `/api` on the same origin.
+### Install and start the backend
+
+```bash
+pip install -r requirements.txt
+uvicorn api.index:app --reload --port 8000
+```
+
+The frontend expects the Python backend at `http://localhost:8000/api` in development. In production it proxies requests to `/api` on the same origin (see `vercel.json`).
 
 ### Required Supabase tables
 
@@ -121,13 +141,27 @@ Enable row-level security on all tables. The `portfolio_folders.is_public` flag 
 
 ### Backend endpoints
 
-The Python backend must expose:
+The FastAPI backend (`api/index.py`) exposes:
 
 | Endpoint | Used for |
 |---|---|
-| `GET /api/search/:query` | Ticker search |
-| `GET /api/data/:ticker?timeframe=` | Price chart, metrics, description |
-| `GET /api/ai/:ticker` | AI scan (cached in Supabase after first call) |
-| `GET /api/etf-holdings/:ticker` | ETF top holdings breakdown |
-| `GET /api/dividends?tickers=` | Dividend data |
-| `GET /api/bulk_prices?tickers=` | Live prices for portfolio holdings |
+| `GET /api/search/{query}` | Ticker search |
+| `GET /api/data/{ticker}` | Price chart, metrics, description (accepts `timeframe`) |
+| `GET /api/dividends` | Dividend data (accepts `tickers`) |
+| `GET /api/bulk_prices` | Live prices for portfolio holdings (accepts `tickers`) |
+| `GET /api/bulk_sectors` | Sector lookup for a list of tickers |
+| `GET /api/etf-holdings/{ticker}` | ETF top holdings breakdown |
+| `GET /api/financials/{ticker}` | Income statement / balance sheet / cash flow data |
+| `GET /api/macro` | Macro market indicators |
+| `GET /api/news/{ticker}` | Ticker-specific news |
+| `GET /api/market-news` | General market news |
+| `GET /api/valuation/{ticker}` | Valuation context for a ticker |
+
+All market data is sourced from Yahoo Finance via `yfinance` — see the [Disclaimer](#️-disclaimer) above.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](./LICENSE) — free to use, modify, and distribute, with no warranty. \
+*Note this covers the code only; it does not grant any rights to the third-party market data the app fetches at runtime (that data belongs to its original providers, e.g. Yahoo Finance, and is subject to their own terms of use).*
