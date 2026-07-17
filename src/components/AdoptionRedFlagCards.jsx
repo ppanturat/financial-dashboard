@@ -10,8 +10,6 @@
  * Solution: borderTop accent only. The card always has a solid background
  * so there is nothing to bleed between siblings.
  */
-import { useState } from 'react'
-
 const SEVERITY = {
   danger:  { color: '#dc2626', bg: '#fef2f2', border: '#fca5a5', icon: '🚨', badgeLabel: 'Critical Flag' },
   warning: { color: '#ea580c', bg: '#fff7ed', border: '#fdba74', icon: '⚠️',  badgeLabel: 'Warning'       },

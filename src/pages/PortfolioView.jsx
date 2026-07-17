@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ChartTooltip,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as LineTooltip, ReferenceLine,
+  XAxis, YAxis, CartesianGrid, Tooltip as LineTooltip, ReferenceLine,
   BarChart, Bar, Area, AreaChart
 } from 'recharts'
 import { HoldingModal } from '../components/HoldingModal'
@@ -196,9 +196,11 @@ function DividendChart({ holdings, defaultCurrency, thbRate }) {
   const [error, setError] = useState(null)
   const accentColor = '#d97706'
 
+  // Fetch dividend data whenever the holdings list changes.
   useEffect(() => {
     if (!holdings.length) return
     const tickers = [...new Set(holdings.map(h => h.ticker.toUpperCase()))].join(',')
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true); setError(null)
     api.dividends(tickers)
       .then(data => { setDivData(data); setLoading(false) })
@@ -291,8 +293,6 @@ export function PortfolioView({
   if (!activePortfolioId) return <EmptyState loading={loadingHoldings} />
   if (loadingHoldings) return <div className="chart-empty">Loading portfolio data...</div>
 
-  let totalPortfolioValue = 0, totalCostBasis = 0
-
   const pieData = holdings.map(h => {
     const amount    = parseFloat(h.amount)    || 0
     const buyPrice  = parseFloat(h.buy_price) || 0
@@ -302,10 +302,11 @@ export function PortfolioView({
     const costBasis    = amount * buyPrice
     const profitLoss   = currentValue - costBasis
     const profitLossPct = costBasis > 0 ? (profitLoss / costBasis) * 100 : 0
-    totalPortfolioValue += currentValue
-    totalCostBasis      += costBasis
     return { ...h, currentValue, livePrice, profitLoss, profitLossPct, costBasis }
   }).sort((a, b) => b.currentValue - a.currentValue)
+
+  const totalPortfolioValue = pieData.reduce((sum, h) => sum + h.currentValue, 0)
+  const totalCostBasis      = pieData.reduce((sum, h) => sum + h.costBasis, 0)
 
   const pieDataWithPct = pieData.map(h => ({
     ...h,

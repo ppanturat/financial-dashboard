@@ -14,6 +14,7 @@ export function usePortfolio(session) {
   // fetch folders on mount
   useEffect(() => {
     if (!session) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPortfolioFolders([])
       setLoadingFolders(false)
       return
@@ -70,7 +71,10 @@ export function usePortfolio(session) {
     setLoadingHoldings(false)
   }, [session, activePortfolioId])
 
+  // Loads holdings for the active portfolio folder — legitimate fetch-on-
+  // dependency-change pattern (loadHoldings itself sets state on completion).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadHoldings()
   }, [loadHoldings])
 

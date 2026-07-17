@@ -31,9 +31,11 @@ export function ValuationBadge({ ticker }) {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Fetch valuation with proper cleanup/abort on ticker change.
   useEffect(() => {
     if (!ticker) return
     const ctrl = new AbortController()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     setData(null)
     api.valuation(ticker, ctrl.signal)

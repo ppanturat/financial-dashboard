@@ -199,17 +199,14 @@ function PortfolioCard({ item }) {
   )
 }
 
-function EmptyFeed({ followedCount, onGoToProfile }) {
+function EmptyFeed({ followedCount }) {
   return (
     <div style={{ textAlign: 'center', padding: '56px 20px', color: 'var(--faint)' }}>
       <div style={{ fontSize: 40, marginBottom: 14 }}>👥</div>
       {followedCount === 0 ? (
         <>
           <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--muted)', marginBottom: 6 }}>No one followed yet</div>
-          <div style={{ fontSize: 13, marginBottom: 18 }}>Follow investors to see their trades here.</div>
-          <button onClick={onGoToProfile} style={{ padding: '9px 20px', borderRadius: 10, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: "var(--font-body),sans-serif", cursor: 'pointer' }}>
-            Find Investors →
-          </button>
+          <div style={{ fontSize: 13 }}>Follow investors above to see their trades here.</div>
         </>
       ) : (
         <>
@@ -236,21 +233,22 @@ function SkeletonCard() {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export function NetworkFeed({ social, onGoToProfile }) {
+export function NetworkFeed({ social }) {
   const [livePrices, setLivePrices]     = useState({})
   const [loadingPrices, setLoadingPrices] = useState(false)
   const [filterType, setFilterType]     = useState('all') // 'all' | 'buy' | 'sell'
 
   const { followedUsers = [], feed = [], feedHoldings = [] } = social
+  const feedTickersKey = [...new Set(feedHoldings.map(h => h.ticker))].join(',')
 
   useEffect(() => {
-    const tickers = [...new Set(feedHoldings.map(h => h.ticker))].join(',')
-    if (!tickers) return
+    if (!feedTickersKey) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoadingPrices(true)
-    api.bulkPrices(tickers)
+    api.bulkPrices(feedTickersKey)
       .then(d => { setLivePrices(d); setLoadingPrices(false) })
       .catch(() => setLoadingPrices(false))
-  }, [feedHoldings.map(h => h.ticker).join(',')])
+  }, [feedTickersKey])
 
   const allItems = buildActivityItems(followedUsers, feed, feedHoldings, livePrices)
 
@@ -274,25 +272,13 @@ export function NetworkFeed({ social, onGoToProfile }) {
   return (
     <div style={{ paddingBottom: 48 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 10 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>Network Feed</h2>
-          <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--faint)' }}>
-            {followedUsers.length > 0
-              ? `Trades from ${followedUsers.length} investor${followedUsers.length > 1 ? 's' : ''} you follow`
-              : 'Follow investors to see their trades here'}
-          </p>
-        </div>
-        <button onClick={onGoToProfile} style={{
-          background: 'var(--surface)', border: '1px solid var(--border-md)',
-          borderRadius: 9, padding: '8px 15px', cursor: 'pointer',
-          fontSize: 12, fontWeight: 600, color: 'var(--text)',
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontFamily: "var(--font-body),sans-serif", transition: 'all .15s',
-        }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'transparent' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-md)' }}
-        >👤 My Profile</button>
+      <div style={{ marginBottom: 18 }}>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--text)' }}>Network Feed</h2>
+        <p style={{ margin: '3px 0 0', fontSize: 12, color: 'var(--faint)' }}>
+          {followedUsers.length > 0
+            ? `Trades from ${followedUsers.length} investor${followedUsers.length > 1 ? 's' : ''} you follow`
+            : 'Follow investors above to see their trades here'}
+        </p>
       </div>
 
       {/* Filter bar */}
@@ -313,7 +299,7 @@ export function NetworkFeed({ social, onGoToProfile }) {
 
       {/* Empty state */}
       {!loadingPrices && allItems.length === 0 && (
-        <EmptyFeed followedCount={followedUsers.length} onGoToProfile={onGoToProfile} />
+        <EmptyFeed followedCount={followedUsers.length} />
       )}
 
       {/* Feed */}

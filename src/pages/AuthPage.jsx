@@ -155,6 +155,7 @@ export function AuthPage({ onSignIn, onSignUp }) {
     } catch (err) {
       // Truly unexpected throw (should not happen now that useAuth wraps everything,
       // but kept as ultimate safety net)
+      console.error('[AuthPage] unexpected sign-in error:', err)
       setLoginErrors({ general: 'An unexpected error occurred. Please try again.' })
     } finally {
       // FIX: Use finally so setLoading(false) ALWAYS runs, even if an error is
@@ -204,6 +205,7 @@ export function AuthPage({ onSignIn, onSignUp }) {
         setView('check_email')
       }
     } catch (err) {
+      console.error('[AuthPage] unexpected sign-up error:', err)
       setRegErrors({ general: 'An unexpected error occurred. Please try again.' })
     } finally {
       setLoading(false)

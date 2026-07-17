@@ -126,7 +126,6 @@ const SEGMENTS_MAP = {
   WMT:   ['RETAIL','ECOM'],
   TGT:   ['RETAIL'],
   COST:  ['RETAIL'],
-  AMZN:  ['ECOM','CLOUD','MEGA CAP'],
   // ── FINANCE ───────────────────────────────────
   JPM:   ['BANKING','FINANCE','MEGA CAP'],
   BAC:   ['BANKING','FINANCE'],
@@ -216,7 +215,6 @@ const SEGMENTS_MAP = {
   PH:    ['INDUSTRIAL'],
   FDX:   ['LOGISTICS'],
   UPS:   ['LOGISTICS'],
-  AMGN:  ['BIOTECH'],
   // ── CYBER ─────────────────────────────────────
   CRWD:  ['CYBER','SOFTWARE'],
   PANW:  ['CYBER','SOFTWARE'],

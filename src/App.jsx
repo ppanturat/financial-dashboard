@@ -10,7 +10,6 @@ import { useSocial } from './hooks/useSocial'
 import { AuthPage } from './pages/AuthPage'
 import { MarketView } from './pages/MarketView'
 import { PortfolioView } from './pages/PortfolioView'
-import { NetworkFeed } from './pages/NetworkFeed'
 import { SocialView } from './pages/SocialView'
 import { GlobalIntelligence } from './pages/GlobalIntelligence'
 
@@ -56,9 +55,13 @@ export default function App() {
   const social    = useSocial(session)
   const searchRef = useRef(null)
 
-  // Auto-select first folder on load
+  // Auto-select first folder on load. Kept as an effect (not derived at
+  // render) because several handlers below read `activeFolderId` directly
+  // and need it to hold a real id once folders finish loading, not just a
+  // display-time fallback.
   useEffect(() => {
     if (!foldersLoading && folders.length > 0 && !activeFolderId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveFolderId(folders[0].id)
       setActiveTicker(folders[0].tickers[0] ?? '')
     }
@@ -74,7 +77,7 @@ export default function App() {
   const handleToggleCollapse = () => {
     setSidebarCollapsed(c => {
       const next = !c
-      try { localStorage.setItem('sc_sidebar_collapsed', String(next)) } catch {}
+      try { localStorage.setItem('sc_sidebar_collapsed', String(next)) } catch { /* private browsing / quota exceeded — non-critical, ignore */ }
       return next
     })
   }
@@ -98,7 +101,7 @@ export default function App() {
     : portfolioFolders.find(f => f.id === activePortfolioId)
 
   // Tabs that show no folder name / ticker chips in the header
-  const cleanHeaderTabs = new Set(['social', 'intelligence', 'profile'])
+  const cleanHeaderTabs = new Set(['social', 'intelligence'])
 
   // ── Folder handlers ────────────────────────────────────────────────────────
   const handleSelectFolder = folder => {
@@ -158,8 +161,6 @@ export default function App() {
         onRenameFolder={handleRenameFolder}
         onDeleteFolder={handleDeleteFolder}
         onSignOut={signOut}
-        followedUsers={social.followedUsers}
-        pendingRequests={social.requests}
       />
 
       <main className="main">
@@ -205,10 +206,6 @@ export default function App() {
           )}
 
           {activeTab === 'social' && (
-            <NetworkFeed social={social} onGoToProfile={() => setActiveTab('profile')} />
-          )}
-
-          {activeTab === 'profile' && (
             <SocialView
               social={social}
               portfolioFolders={portfolioFolders}

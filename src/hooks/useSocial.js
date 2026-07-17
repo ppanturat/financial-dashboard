@@ -81,6 +81,7 @@ export function useSocial(session) {
     }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { load() }, [session])
 
   const sendFollowRequest = async (targetId) => {

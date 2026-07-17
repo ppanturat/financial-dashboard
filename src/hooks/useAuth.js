@@ -80,13 +80,14 @@ export function useAuth() {
       // onAuthStateChange itself threw — treat as "no session"
       console.warn('[useAuth] onAuthStateChange error:', err)
       clearTimeout(timeout)
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSession(null)
       markLoaded()
     }
 
     return () => {
       clearTimeout(timeout)
-      try { subscription?.unsubscribe() } catch {}
+      try { subscription?.unsubscribe() } catch { /* already unsubscribed / noop client — non-critical, ignore */ }
     }
   }, [])
 

@@ -173,6 +173,8 @@ export function GlobalIntelligence() {
     return () => ctrl.abort()
   }, [])
 
+  // Fetch news with cleanup/abort — textbook effect usage.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { const cleanup = load(); return cleanup }, [load])
 
   // Split into tiers — tier 1 (trusted) always first

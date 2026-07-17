@@ -1,5 +1,3 @@
-const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
-
 function scoreWarChest(v) {
   if (v == null) return null
   if (v >= 3)   return { score: 95, label: 'Exceptional', color: 'green', note: 'Cash reserves dwarf total debt — near-zero financial distress risk.' }
@@ -86,9 +84,7 @@ function computeWeightedScore(warChest, fcf, margin, pe, growth) {
 }
 
 // Builds a rich, paragraph-style verdict from scores
-function buildVerdict(score, scores, metrics) {
-  const redFlags = scores.filter(s => s?.color === 'red').length
-  const yellows  = scores.filter(s => s?.color === 'yellow').length
+function buildVerdict(score, scores) {
   const greens   = scores.filter(s => s?.color === 'green').length
   const available = scores.filter(Boolean).length
 
@@ -169,7 +165,7 @@ export function generateMetricsSummary(metrics) {
   const scores   = [warChest, fcf, margin, pe, growth]
   const avgScore = computeWeightedScore(warChest, fcf, margin, pe, growth)
 
-  const verdict = buildVerdict(avgScore, scores, metrics)
+  const verdict = buildVerdict(avgScore, scores)
 
   return {
     score: avgScore,

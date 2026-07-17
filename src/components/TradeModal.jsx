@@ -16,8 +16,10 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
   const [price, setPrice]     = useState('')
   const [error, setError]     = useState('')
 
+  // Resets the trade form each time the modal opens.
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSide('buy')
       setShares('')
       setPrice(livePrice ? livePrice.toFixed(2) : (holding?.buy_price || ''))

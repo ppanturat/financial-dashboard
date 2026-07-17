@@ -12,8 +12,10 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
   const [isSearching, setIsSearching] = useState(false)
   const overlayRef = useRef(null)
 
+  // Resets the form when the modal opens for a (possibly different) holding.
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTicker(holding?.ticker || '')
       setAmount(holding?.amount || '')
       setBuyPrice(holding?.buy_price || '')
@@ -30,7 +32,9 @@ export function HoldingModal({ isOpen, holding, marketFolders, onClose, onSave }
     return () => window.removeEventListener('keydown', handler)
   }, [isOpen, onClose])
 
+  // Debounced ticker search as the user types.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!searchQuery.trim()) { setSearchResults([]); setIsSearching(false); return }
     setIsSearching(true)
     const q = searchQuery.toUpperCase().trim()

@@ -190,6 +190,8 @@ export function StockNewsFeed({ ticker }) {
     return () => ctrl.abort()
   }, [ticker])
 
+  // Fetch news with proper cleanup/abort on ticker change — textbook effect usage.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { const cleanup = load(); return cleanup }, [load])
 
   return (

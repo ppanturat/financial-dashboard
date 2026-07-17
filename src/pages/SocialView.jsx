@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { api } from '../lib/api'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts'
+import { LineChart, Line, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { NetworkFeed } from './NetworkFeed'
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 
@@ -206,6 +207,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
   const folders     = feed.filter(f => f.user_id === user.id)
   const allHoldings = feedHoldings.filter(h => folders.some(f => f.id === h.folder_id))
   const tickers     = [...new Set(allHoldings.map(h => h.ticker))]
+  const tickersKey  = tickers.join(',')
 
   const fetchPrices = useCallback(async () => {
     if (!tickers.length) { setLoading(false); return }
@@ -224,8 +226,12 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
       } catch { results[ticker] = { price: null, change: null } }
     }))
     setPrices(results); setCharts(chartResults); setLoading(false)
-  }, [tickers.join(',')])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickersKey])
 
+  // Fetch-on-mount/dependency-change pattern (React's own recommended way to
+  // load external data into state) — not the "derived state" anti-pattern.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchPrices() }, [fetchPrices])
   useEffect(() => { fetchThbRate().then(setThbRate) }, [])
 
@@ -460,12 +466,35 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
   )
 }
 
+// ── Generic list modal (used by Following/Followers stat clicks) ─────────────
+function ListModal({ title, count, onClose, children }) {
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(245,244,241,0.88)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 20, padding: '24px 24px 20px', width: '100%', maxWidth: 440, maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 40px rgba(0,0,0,0.10)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16, fontWeight: 700 }}>{title}</span>
+            {count != null && (
+              <span style={{ fontSize: 10, background: 'var(--surface-2)', color: 'var(--faint)', border: '1px solid var(--border-md)', padding: '1px 7px', borderRadius: 99, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+            )}
+          </div>
+          <button onClick={onClose} style={{ background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 8, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)', fontSize: 14, cursor: 'pointer' }}>✕</button>
+        </div>
+        <div style={{ overflowY: 'auto', display: 'grid', gap: 10 }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main SocialView ───────────────────────────────────────────────────────────
 
 export function SocialView({ social, portfolioFolders, session, togglePortfolioPrivacy }) {
   const [editing, setEditing]           = useState(false)
   const [searchVal, setSearchVal]       = useState('')
   const [expandedUser, setExpandedUser] = useState(null)
+  const [listModal, setListModal]       = useState(null) // 'following' | 'followers' | null
 
   const profile     = social.profile
   const displayName = profile?.name || 'Investor'
@@ -480,6 +509,10 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
   const myPortfolios = portfolioFolders?.length || 0
   const myPublic     = portfolioFolders?.filter(f => f.is_public)?.length || 0
 
+  const statTileStyle = { display: 'flex', flexDirection: 'column', gap: 0, background: 'none', border: 'none', padding: 0, textAlign: 'left', font: 'inherit' }
+  const statValueStyle = { fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: "var(--font-body), monospace" }
+  const statLabelStyle = { fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }
+
   return (
     <div style={{ display: 'grid', gap: 14, width: '100%', alignContent: 'start' }}>
 
@@ -490,19 +523,24 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
             <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, color: 'var(--faint)', marginTop: 2 }}>@{username}</div>
-            {/* Stats row */}
+            {/* Stats row — Following / Followers are clickable and open a list */}
             <div style={{ display: 'flex', gap: 18, marginTop: 8, flexWrap: 'wrap' }}>
-              {[
-                { label: 'Following', value: myFollowing },
-                { label: 'Followers', value: myFollowers },
-                { label: 'Portfolios', value: myPortfolios },
-                { label: 'Public', value: myPublic },
-              ].map(({ label, value }) => (
-                <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: "var(--font-body), monospace" }}>{value}</span>
-                  <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</span>
-                </div>
-              ))}
+              <button onClick={() => setListModal('following')} style={{ ...statTileStyle, cursor: 'pointer' }}>
+                <span style={statValueStyle}>{myFollowing}</span>
+                <span style={statLabelStyle}>Following</span>
+              </button>
+              <button onClick={() => setListModal('followers')} style={{ ...statTileStyle, cursor: 'pointer' }}>
+                <span style={statValueStyle}>{myFollowers}</span>
+                <span style={statLabelStyle}>Followers</span>
+              </button>
+              <div style={statTileStyle}>
+                <span style={statValueStyle}>{myPortfolios}</span>
+                <span style={statLabelStyle}>Portfolios</span>
+              </div>
+              <div style={statTileStyle}>
+                <span style={statValueStyle}>{myPublic}</span>
+                <span style={statLabelStyle}>Public</span>
+              </div>
             </div>
           </div>
           <button onClick={() => setEditing(true)} style={{
@@ -536,83 +574,6 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                     <button onClick={() => social.respondToRequest(req.id, 'accepted')} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}>Accept</button>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        </Card>
-      )}
-
-      {/* ── Following ── */}
-      {social.followedUsers?.length > 0 && (
-        <Card>
-          <SectionLabel count={social.followedUsers.length}>Following</SectionLabel>
-          <div style={{ display: 'grid', gap: 10 }}>
-            {social.followedUsers.map(u => {
-              const pubFolders = social.feed?.filter(f => f.user_id === u.id) || []
-              const isExpanded = expandedUser === u.id
-              // Check if they follow me back
-              const followsBack = social.followers?.some(f => f.id === u.id)
-              return (
-                <div key={u.id}>
-                  <UserRow user={u}
-                    sub={
-                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                        {pubFolders.length > 0 && <Badge>{pubFolders.length} public portfolio{pubFolders.length > 1 ? 's' : ''}</Badge>}
-                        {followsBack && <Badge color="#7c3aed" bg="#f5f3ff" border="#ddd6fe">Mutual</Badge>}
-                      </div>
-                    }
-                    right={
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                        {pubFolders.length > 0 && (
-                          <button
-                            onClick={() => setExpandedUser(isExpanded ? null : u.id)}
-                            style={{
-                              padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
-                              background: isExpanded ? 'var(--accent)' : 'var(--surface-2)',
-                              border: isExpanded ? 'none' : '1px solid var(--border-md)',
-                              color: isExpanded ? '#fff' : 'var(--text)',
-                              fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif",
-                              transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 5,
-                            }}
-                          >
-                            {isExpanded ? '▲' : '▼'} {isExpanded ? 'Collapse' : 'View Details'}
-                          </button>
-                        )}
-                        <button onClick={() => social.unfollow(u.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", transition: 'all .15s' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
-                        >Unfollow</button>
-                      </div>
-                    }
-                  />
-                  {isExpanded && <UserDetailPanel user={u} feed={social.feed || []} feedHoldings={social.feedHoldings || []} />}
-                </div>
-              )
-            })}
-          </div>
-        </Card>
-      )}
-
-      {/* ── Followers ── */}
-      {social.followers?.length > 0 && (
-        <Card>
-          <SectionLabel count={social.followers.length}>Followers</SectionLabel>
-          <div style={{ display: 'grid', gap: 8 }}>
-            {social.followers.map(u => {
-              const status         = getStatus(u.id)
-              const isFollowingBack = social.followedUsers?.some(f => f.id === u.id)
-              return (
-                <UserRow key={u.id} user={u} sub={null}
-                  right={
-                    isFollowingBack ? (
-                      <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>Following back</span>
-                    ) : status === 'pending' ? (
-                      <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border-md)' }}>Pending</span>
-                    ) : (
-                      <button onClick={() => social.sendFollowRequest(u.id)} style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}>Follow back</button>
-                    )
-                  }
-                />
               )
             })}
           </div>
@@ -682,6 +643,83 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
           <p style={{ fontSize: 13, color: 'var(--faint)', fontStyle: 'italic' }}>Search for investors to send a follow request.</p>
         )}
       </Card>
+
+      {/* ── Network Feed — trades/portfolios from people you follow ── */}
+      <NetworkFeed social={social} />
+
+      {/* ── Following list modal ── */}
+      {listModal === 'following' && (
+        <ListModal title="Following" count={social.followedUsers?.length} onClose={() => setListModal(null)}>
+          {!social.followedUsers?.length ? (
+            <p style={{ fontSize: 13, color: 'var(--faint)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>Not following anyone yet — search below to find investors.</p>
+          ) : social.followedUsers.map(u => {
+            const pubFolders = social.feed?.filter(f => f.user_id === u.id) || []
+            const isExpanded = expandedUser === u.id
+            const followsBack = social.followers?.some(f => f.id === u.id)
+            return (
+              <div key={u.id}>
+                <UserRow user={u}
+                  sub={
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                      {pubFolders.length > 0 && <Badge>{pubFolders.length} public portfolio{pubFolders.length > 1 ? 's' : ''}</Badge>}
+                      {followsBack && <Badge color="#7c3aed" bg="#f5f3ff" border="#ddd6fe">Mutual</Badge>}
+                    </div>
+                  }
+                  right={
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                      {pubFolders.length > 0 && (
+                        <button
+                          onClick={() => setExpandedUser(isExpanded ? null : u.id)}
+                          style={{
+                            padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+                            background: isExpanded ? 'var(--accent)' : 'var(--surface-2)',
+                            border: isExpanded ? 'none' : '1px solid var(--border-md)',
+                            color: isExpanded ? '#fff' : 'var(--text)',
+                            fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif",
+                            transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 5,
+                          }}
+                        >
+                          {isExpanded ? '▲' : '▼'} {isExpanded ? 'Collapse' : 'View Details'}
+                        </button>
+                      )}
+                      <button onClick={() => social.unfollow(u.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", transition: 'all .15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
+                      >Unfollow</button>
+                    </div>
+                  }
+                />
+                {isExpanded && <UserDetailPanel user={u} feed={social.feed || []} feedHoldings={social.feedHoldings || []} />}
+              </div>
+            )
+          })}
+        </ListModal>
+      )}
+
+      {/* ── Followers list modal ── */}
+      {listModal === 'followers' && (
+        <ListModal title="Followers" count={social.followers?.length} onClose={() => setListModal(null)}>
+          {!social.followers?.length ? (
+            <p style={{ fontSize: 13, color: 'var(--faint)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>No followers yet.</p>
+          ) : social.followers.map(u => {
+            const status         = getStatus(u.id)
+            const isFollowingBack = social.followedUsers?.some(f => f.id === u.id)
+            return (
+              <UserRow key={u.id} user={u} sub={null}
+                right={
+                  isFollowingBack ? (
+                    <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>Following back</span>
+                  ) : status === 'pending' ? (
+                    <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border-md)' }}>Pending</span>
+                  ) : (
+                    <button onClick={() => social.sendFollowRequest(u.id)} style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--accent)', border: 'none', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}>Follow back</button>
+                  )
+                }
+              />
+            )
+          })}
+        </ListModal>
+      )}
 
       {editing && <EditProfileModal profile={profile} userId={session?.user?.id} onSave={social.updateProfile} onClose={() => setEditing(false)} />}
     </div>

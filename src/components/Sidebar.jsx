@@ -17,11 +17,10 @@ const NAV = [
   { id: 'market',       label: 'Market View', icon: '📈' },
   { id: 'portfolio',    label: 'Portfolio',   icon: '💼' },
   { id: 'social',       label: 'Network',     icon: '👥' },
-  { id: 'profile',      label: 'Profile',     icon: '👤' },
 ]
 
 const SHOW_FOLDERS = new Set(['market', 'portfolio'])
-const NO_NAV_CONTENT = new Set(['intelligence', 'social', 'profile'])
+const NO_NAV_CONTENT = new Set(['intelligence', 'social'])
 
 // ── NavItem — handles tooltip + folder popover in collapsed mode ───────────────
 function NavItem({ tab, active, collapsed, onClick, folders, activeFolderId, onSelectFolder }) {
@@ -78,7 +77,6 @@ export function Sidebar({
   folders, activeFolderId, fetchingFolders, marketFolders,
   isOpen, onSelectFolder, onCreateFolder, onImportFolder,
   onRenameFolder, onDeleteFolder, onSignOut,
-  followedUsers, pendingRequests,
   collapsed, onToggleCollapse,
 }) {
   const [editingId, setEditingId]               = useState(null)
@@ -92,7 +90,9 @@ export function Sidebar({
   const [isImporting, setIsImporting]           = useState(false)
   const newRef = useRef(null)
 
+  // Resets in-progress folder editor/import UI whenever the active tab changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImportMode(false); setImportStep(1)
     setImportTargetFolder(null); setImportTickers([])
     setNewMode(false); setNewName('')
@@ -113,7 +113,6 @@ export function Sidebar({
   }
 
   const showFolderSection = SHOW_FOLDERS.has(activeTab) && !collapsed
-  const showNavContent    = !NO_NAV_CONTENT.has(activeTab) && !collapsed
 
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>

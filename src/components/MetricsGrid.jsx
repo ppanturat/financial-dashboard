@@ -12,7 +12,7 @@ import { METRIC_DEFS } from '../lib/constants'
 import { fmt, getMetricColor } from '../lib/formatters'
 
 // ── Scale bar for tooltip ─────────────────────────────────────────────────────
-function ScaleBar({ scale, color }) {
+function ScaleBar({ scale }) {
   if (!scale) return null
   // Simple visual: parse the scale string for segments
   const segments = scale.split('·').map(s => s.trim()).filter(Boolean)

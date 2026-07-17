@@ -7,6 +7,7 @@ export function useFolders(session) {
 
   // load folders + tickers from supabase on session change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!session) { setFolders([]); setLoading(false); return }
     const load = async () => {
       setLoading(true)
