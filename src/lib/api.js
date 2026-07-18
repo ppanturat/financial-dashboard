@@ -24,6 +24,7 @@ export const api = {
   bulkSectors: (tickers, signal)          => get(`/bulk_sectors?tickers=${encodeURIComponent(tickers)}`, signal),
   financials:  (ticker, signal)           => get(`/financials/${ticker}`, signal),
   valuation:   (ticker, signal)           => get(`/valuation/${ticker}`, signal),
+  technicals:  (ticker, signal)           => get(`/technicals/${ticker}`, signal),
 
   // ── News ─────────────────────────────────────────────────────────────────
   stockNews:   (ticker, signal)           => get(`/news/${ticker}`, signal),

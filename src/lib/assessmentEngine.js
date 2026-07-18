@@ -11,7 +11,10 @@
  *   runBearBullMatrix(metrics)       → Module C result { bear, bull }
  *   runFundamentalSweep(metrics)     → Full sweep (existing engine, refactored here)
  *   runFullAssessment(metrics)       → All modules combined
+ *   evaluateBuySignal(ticker)        → Module D (Technical Trigger) — async, boolean
  */
+
+import { api } from './api'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -506,5 +509,97 @@ export function runFullAssessment(metrics = {}) {
     adoption,        // Module A
     redFlag,         // Module B
     bearBull,        // Module C
+  }
+}
+
+// ─── Technical Trigger Module (RSI / SMA / Volume breakout) ────────────────
+// Unlike the modules above, this one needs daily price/volume history rather
+// than the single-snapshot `metrics` object, so it fetches its own data via
+// GET /api/technicals/{ticker} (last 50 trading days, oldest first).
+
+/** Simple moving average over the trailing `period` values. */
+function calculateSMA(values, period) {
+  if (values.length < period) return null
+  const slice = values.slice(-period)
+  return slice.reduce((sum, v) => sum + v, 0) / period
+}
+
+/**
+ * Wilder's RSI, returned as a full series (not just the latest value) so
+ * callers can check for a threshold *crossing* over the last few days.
+ * rsiSeries[k] corresponds to closes[period + k].
+ */
+function calculateRSISeries(closes, period = 14) {
+  if (closes.length < period + 1) return []
+
+  let gainSum = 0, lossSum = 0
+  for (let i = 1; i <= period; i++) {
+    const diff = closes[i] - closes[i - 1]
+    if (diff >= 0) gainSum += diff
+    else lossSum -= diff
+  }
+  let avgGain = gainSum / period
+  let avgLoss = lossSum / period
+
+  const toRSI = (gain, loss) => (loss === 0 ? 100 : 100 - 100 / (1 + gain / loss))
+  const series = [toRSI(avgGain, avgLoss)]
+
+  for (let i = period + 1; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1]
+    const gain = diff > 0 ? diff : 0
+    const loss = diff < 0 ? -diff : 0
+    // Wilder smoothing (same method the backend's Fear & Greed RSI uses).
+    avgGain = (avgGain * (period - 1) + gain) / period
+    avgLoss = (avgLoss * (period - 1) + loss) / period
+    series.push(toRSI(avgGain, avgLoss))
+  }
+  return series
+}
+
+/**
+ * Evaluates a rule-based technical "buy signal" for a ticker. Fetches the
+ * last 50 daily closes/volumes and returns true ONLY IF all three hold:
+ *   1. 14-day RSI crossed from below 30 to above 30 within the last 3 days.
+ *   2. Current price is above the 50-day SMA.
+ *   3. Today's volume is at least 10% above the trailing 20-day average volume.
+ *
+ * @param {string} ticker
+ * @returns {Promise<boolean>}
+ */
+export async function evaluateBuySignal(ticker) {
+  try {
+    const data    = await api.technicals(ticker)
+    const closes  = data?.closes  ?? []
+    const volumes = data?.volumes ?? []
+
+    // Need a full 50-day window for the SMA-50, and 21 days (20 + today) for volume.
+    if (closes.length < 50 || volumes.length < 21) return false
+
+    // 1. RSI-14 crossed from below 30 to above 30 within the last 3 days.
+    const rsiSeries = calculateRSISeries(closes, 14)
+    if (rsiSeries.length < 4) return false
+    const lastFourRSI = rsiSeries.slice(-4) // gives 3 day-over-day transitions
+    let crossedUp = false
+    for (let i = 1; i < lastFourRSI.length; i++) {
+      if (lastFourRSI[i - 1] < 30 && lastFourRSI[i] >= 30) { crossedUp = true; break }
+    }
+    if (!crossedUp) return false
+
+    // 2. Current price above the 50-day SMA.
+    const sma50         = calculateSMA(closes, 50)
+    const currentPrice  = closes[closes.length - 1]
+    if (sma50 == null || currentPrice <= sma50) return false
+
+    // 3. Today's volume >= 110% of the trailing 20-day average (today excluded).
+    const priorVolumes = volumes.slice(-21, -1)
+    if (priorVolumes.length < 20) return false
+    const avgVolume20 = priorVolumes.reduce((sum, v) => sum + v, 0) / priorVolumes.length
+    const todayVolume = volumes[volumes.length - 1]
+    if (todayVolume < avgVolume20 * 1.10) return false
+
+    return true
+  } catch (err) {
+    console.error(`[TechnicalTriggerModule] evaluateBuySignal failed for ${ticker}:`, err)
+    return false
   }
 }
