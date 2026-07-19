@@ -4,7 +4,7 @@ import { api } from '../lib/api'
 import { LineChart, Line, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { NetworkFeed } from './NetworkFeed'
 
-// ── Shared primitives ─────────────────────────────────────────────────────────
+// shared primitives
 
 function Avatar({ name, avatarUrl, size = 40, style = {} }) {
   const initials = (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
@@ -52,7 +52,7 @@ function Badge({ color = '#16a34a', bg = '#f0fdf4', border = '#bbf7d0', children
   )
 }
 
-// ── Avatar uploader ───────────────────────────────────────────────────────────
+// avatar uploader
 function AvatarUploader({ name, currentUrl, userId, onUploaded }) {
   const fileRef = useRef()
   const [uploading, setUploading] = useState(false)
@@ -94,7 +94,7 @@ function AvatarUploader({ name, currentUrl, userId, onUploaded }) {
   )
 }
 
-// ── Edit profile modal ────────────────────────────────────────────────────────
+// edit profile modal
 function EditProfileModal({ profile, userId, onSave, onClose }) {
   const [form, setForm] = useState({ name: profile?.name || '', username: profile?.username || '', avatar_url: profile?.avatar_url || '' })
   const [saving, setSaving] = useState(false)
@@ -159,7 +159,7 @@ function PrivacyToggle({ isPublic, onClick }) {
   )
 }
 
-// ── User row ──────────────────────────────────────────────────────────────────
+// user row
 function UserRow({ user, right, sub }) {
   return (
     <div style={{
@@ -182,7 +182,7 @@ function UserRow({ user, right, sub }) {
   )
 }
 
-// ── User detail panel ─────────────────────────────────────────────────────────
+// user detail panel
 const PIE_COLORS = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d']
 
 async function fetchThbRate() {
@@ -229,8 +229,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tickersKey])
 
-  // Fetch-on-mount/dependency-change pattern (React's own recommended way to
-  // load external data into state) — not the "derived state" anti-pattern.
+  // fetch-on-mount pattern, not the derived-state anti-pattern
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchPrices() }, [fetchPrices])
   useEffect(() => { fetchThbRate().then(setThbRate) }, [])
@@ -466,7 +465,7 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
   )
 }
 
-// ── Generic list modal (used by Following/Followers stat clicks) ─────────────
+// generic list modal (following/followers/portfolios stat clicks)
 function ListModal({ title, count, onClose, children }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(245,244,241,0.88)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -488,22 +487,19 @@ function ListModal({ title, count, onClose, children }) {
   )
 }
 
-// ── Main SocialView ───────────────────────────────────────────────────────────
+// main SocialView
 
 export function SocialView({ social, portfolioFolders, session, togglePortfolioPrivacy }) {
   const [editing, setEditing]           = useState(false)
-  const [searchVal, setSearchVal]       = useState('')
   const [expandedUser, setExpandedUser] = useState(null)
-  const [listModal, setListModal]       = useState(null) // 'following' | 'followers' | null
+  const [listModal, setListModal]       = useState(null) // 'following' | 'followers' | 'portfolios' | null
 
   const profile     = social.profile
   const displayName = profile?.name || 'Investor'
   const username    = profile?.username || 'user'
   const avatarUrl   = profile?.avatar_url || null
   const getStatus   = id => social.getSentRequestStatus(id)
-  const filtered    = social.filteredProfiles(searchVal)
 
-  // Stats for my own profile header
   const myFollowing  = social.followedUsers?.length || 0
   const myFollowers  = social.followers?.length || 0
   const myPortfolios = portfolioFolders?.length || 0
@@ -523,7 +519,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
             <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, color: 'var(--faint)', marginTop: 2 }}>@{username}</div>
-            {/* Stats row — Following / Followers are clickable and open a list */}
+            {/* following/followers/portfolios stats open a list on click */}
             <div style={{ display: 'flex', gap: 18, marginTop: 8, flexWrap: 'wrap' }}>
               <button onClick={() => setListModal('following')} style={{ ...statTileStyle, cursor: 'pointer' }}>
                 <span style={statValueStyle}>{myFollowing}</span>
@@ -533,10 +529,10 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
                 <span style={statValueStyle}>{myFollowers}</span>
                 <span style={statLabelStyle}>Followers</span>
               </button>
-              <div style={statTileStyle}>
+              <button onClick={() => setListModal('portfolios')} style={{ ...statTileStyle, cursor: 'pointer' }}>
                 <span style={statValueStyle}>{myPortfolios}</span>
                 <span style={statLabelStyle}>Portfolios</span>
-              </div>
+              </button>
               <div style={statTileStyle}>
                 <span style={statValueStyle}>{myPublic}</span>
                 <span style={statLabelStyle}>Public</span>
@@ -580,71 +576,7 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
         </Card>
       )}
 
-      {/* ── Portfolio Privacy ── */}
-      <Card>
-        <SectionLabel count={portfolioFolders?.length}>Portfolio Privacy</SectionLabel>
-        {!portfolioFolders?.length ? (
-          <p style={{ fontSize: 13, color: 'var(--faint)', fontStyle: 'italic' }}>No portfolios yet. Create one in the Portfolio tab.</p>
-        ) : (
-          <div style={{ display: 'grid', gap: 8 }}>
-            {portfolioFolders.map(folder => (
-              <div key={folder.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '11px 13px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: folder.is_public ? '#16a34a' : 'var(--faint)', transition: 'background .2s' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 2 }}>{folder.is_public ? 'Visible to followers' : 'Only visible to you'}</div>
-                </div>
-                <PrivacyToggle isPublic={folder.is_public} onClick={() => togglePortfolioPrivacy(folder.id, !folder.is_public)} />
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* ── Find Investors ── */}
-      <Card>
-        <SectionLabel>Find Investors</SectionLabel>
-        <div style={{ position: 'relative', marginBottom: searchVal ? 12 : 0 }}>
-          <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
-          <input
-            value={searchVal} onChange={e => setSearchVal(e.target.value)}
-            placeholder="Search by name or username…"
-            style={{ width: '100%', padding: '10px 13px 10px 36px', background: 'var(--surface-2)', border: '1px solid var(--border-md)', borderRadius: 10, fontSize: 14, color: 'var(--text)', fontFamily: "var(--font-body), sans-serif", outline: 'none', boxSizing: 'border-box' }}
-            onFocus={e => e.target.style.borderColor = 'var(--accent)'}
-            onBlur={e => e.target.style.borderColor = 'var(--border-md)'}
-          />
-        </div>
-        {searchVal ? (
-          filtered.length === 0 ? (
-            <p style={{ fontSize: 13, color: 'var(--faint)', textAlign: 'center', padding: '12px 0', fontStyle: 'italic' }}>No investors found for "{searchVal}"</p>
-          ) : (
-            <div style={{ display: 'grid', gap: 8 }}>
-              {filtered.map(p => {
-                const status = getStatus(p.id)
-                return (
-                  <UserRow key={p.id} user={p} sub={null}
-                    right={
-                      status === 'accepted' ? (
-                        <button onClick={() => social.unfollow(p.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}>Unfollow</button>
-                      ) : status === 'pending' ? (
-                        <span style={{ padding: '6px 12px', borderRadius: 8, flexShrink: 0, fontSize: 12, fontWeight: 600, background: 'var(--surface-2)', color: 'var(--muted)', border: '1px solid var(--border-md)' }}>Pending</span>
-                      ) : (
-                        <button onClick={() => social.sendFollowRequest(p.id)} style={{ padding: '6px 14px', borderRadius: 8, cursor: 'pointer', flexShrink: 0, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif" }}>+ Follow</button>
-                      )
-                    }
-                  />
-                )
-              })}
-            </div>
-          )
-        ) : (
-          <p style={{ fontSize: 13, color: 'var(--faint)', fontStyle: 'italic' }}>Search for investors to send a follow request.</p>
-        )}
-      </Card>
-
-      {/* ── Network Feed — trades/portfolios from people you follow ── */}
+      {/* network feed — trades/portfolios from people you follow */}
       <NetworkFeed social={social} />
 
       {/* ── Following list modal ── */}
@@ -718,6 +650,23 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
               />
             )
           })}
+        </ListModal>
+      )}
+
+      {listModal === 'portfolios' && (
+        <ListModal title="Portfolios" count={portfolioFolders?.length} onClose={() => setListModal(null)}>
+          {!portfolioFolders?.length ? (
+            <p style={{ fontSize: 13, color: 'var(--faint)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>No portfolios yet. Create one in the Portfolio tab.</p>
+          ) : portfolioFolders.map(folder => (
+            <div key={folder.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '11px 13px', borderRadius: 12, background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: folder.is_public ? '#16a34a' : 'var(--faint)' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{folder.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 2 }}>{folder.is_public ? 'Visible to followers' : 'Only visible to you'}</div>
+              </div>
+              <PrivacyToggle isPublic={folder.is_public} onClick={() => togglePortfolioPrivacy(folder.id, !folder.is_public)} />
+            </div>
+          ))}
         </ListModal>
       )}
 

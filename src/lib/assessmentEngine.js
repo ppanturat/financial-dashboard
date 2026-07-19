@@ -1,24 +1,21 @@
 /**
- * assessmentEngine.js
- * ─────────────────────────────────────────────────────────────────────────────
- * Pure deterministic, rule-based assessment engine.
- * No AI/LLM APIs. All text is pre-written and triggered by mathematical
- * thresholds applied to raw financial metrics.
+ * pure deterministic, rule-based assessment engine — no AI/LLM APIs, all text
+ * is pre-written and triggered by mathematical thresholds on raw metrics.
  *
- * Exports:
- *   runAdoptionCheck(metrics)        → Module A result or null
- *   runTerminalRedFlagSweep(metrics) → Module B result or null
- *   runBearBullMatrix(metrics)       → Module C result { bear, bull }
- *   runFundamentalSweep(metrics)     → Full sweep (existing engine, refactored here)
- *   runFullAssessment(metrics)       → All modules combined
- *   evaluateBuySignal(ticker)        → Module D (Technical Trigger) — async, boolean
+ * exports:
+ *   runAdoptionCheck(metrics)        -> module A result or null
+ *   runTerminalRedFlagSweep(metrics) -> module B result or null
+ *   runBearBullMatrix(metrics)       -> module C result { bear, bull }
+ *   runFundamentalSweep(metrics)     -> full 5-point sweep
+ *   runFullAssessment(metrics)       -> all modules combined
+ *   evaluateBuySignal(ticker)        -> module D (technical trigger), async boolean
  */
 
 import { api } from './api'
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// helpers
 
-/** Format an absolute dollar value into a readable string (e.g. $4.2B, $320M). */
+/** formats an absolute dollar value, e.g. $4.2B, $320M */
 function fmtDollars(val) {
   if (val == null) return '?'
   const abs = Math.abs(val)
@@ -28,20 +25,19 @@ function fmtDollars(val) {
   return `$${val.toFixed(0)}`
 }
 
-/** Format a fraction as a percentage string (e.g. 0.23 → "23.0%"). */
+/** formats a fraction as a percentage string, e.g. 0.23 -> "23.0%" */
 function fmtPct(val, decimals = 1) {
   if (val == null) return '?%'
   return `${(val * 100).toFixed(decimals)}%`
 }
 
-// ─── Module A: Adoption Reality Check ────────────────────────────────────────
+// module A: adoption reality check
 
 /**
- * Rule:
- *   If Revenue YoY Growth < 15% AND R&D Spend > Gross Profit
- *   → return a warning text block.
+ * rule: if revenue YoY growth < 15% and R&D spend > gross profit, return a
+ * warning text block.
  *
- * @param {object} metrics – raw metrics from the /api/data endpoint
+ * @param {object} metrics - raw metrics from the /api/data endpoint
  * @returns {{ triggered: boolean, severity: string, title: string, text: string } | null}
  */
 export function runAdoptionCheck(metrics = {}) {
@@ -49,7 +45,7 @@ export function runAdoptionCheck(metrics = {}) {
   const rd  = metrics.research_development // absolute $
   const gp  = metrics.gross_profit        // absolute $
 
-  // Need at least revenue YoY to run any check
+  // need revenue YoY to run any check
   if (rev == null) return null
 
   const lowGrowth = rev < 0.15
@@ -71,7 +67,7 @@ export function runAdoptionCheck(metrics = {}) {
     }
   }
 
-  // Partial trigger: low growth without extreme R&D
+  // partial trigger: low growth without extreme R&D
   if (lowGrowth && rev >= 0) {
     return {
       triggered: false,
@@ -93,7 +89,7 @@ export function runAdoptionCheck(metrics = {}) {
     }
   }
 
-  // Growth is healthy (≥ 15%) — no flag
+  // growth is healthy (>= 15%), no flag
   return {
     triggered: false,
     severity: 'pass',
@@ -103,12 +99,11 @@ export function runAdoptionCheck(metrics = {}) {
   }
 }
 
-// ─── Module B: Terminal Red Flag Sweep ───────────────────────────────────────
+// module B: terminal red flag sweep
 
 /**
- * Rule:
- *   Cash Runway = Total Cash / |Negative FCF|
- *   If Runway < 1.5 years → critical red flag (dilution risk).
+ * rule: cash runway = total cash / |negative FCF|; runway < 1.5 years is a
+ * critical red flag (dilution risk).
  *
  * @param {object} metrics
  * @returns {{ triggered: boolean, severity: string, title: string, text: string, runway: number|null } | null}
@@ -120,7 +115,7 @@ export function runTerminalRedFlagSweep(metrics = {}) {
 
   if (fcf == null || cash == null) return null
 
-  // Only applies when FCF is negative (burning cash)
+  // only applies when FCF is negative (burning cash)
   if (fcf >= 0) {
     return {
       triggered: false,
@@ -155,7 +150,7 @@ export function runTerminalRedFlagSweep(metrics = {}) {
     }
   }
 
-  // Between 1.5 and 3 years — caution zone
+  // between 1.5 and 3 years, caution zone
   if (runway < 3) {
     return {
       triggered: false,
@@ -168,7 +163,7 @@ export function runTerminalRedFlagSweep(metrics = {}) {
     }
   }
 
-  // Comfortable runway
+  // comfortable runway
   return {
     triggered: false,
     severity: 'pass',
@@ -180,13 +175,12 @@ export function runTerminalRedFlagSweep(metrics = {}) {
   }
 }
 
-// ─── Module C: Bear vs. Bull Probability Matrix ───────────────────────────────
+// module C: bear vs. bull probability matrix
 
 /**
- * Rule:
- *   Bear Case auto-triggers on: high debt, margin compression, slowing growth.
- *   Bull Case triggers on: FCF expansion, high War Chest ratio, gross margin strength.
- *   Bear Case is always rendered first (neutrality).
+ * rule: bear case auto-triggers on high debt, margin compression, slowing
+ * growth; bull case triggers on FCF expansion, high war chest ratio, gross
+ * margin strength. bear case always renders first (neutrality).
  *
  * @param {object} metrics
  * @returns {{ bear: string, bull: string, netBias: 'bear'|'neutral'|'bull' }}
@@ -200,7 +194,7 @@ export function runBearBullMatrix(metrics = {}) {
   const om    = metrics.operating_margin
   const pe    = metrics.forward_pe
 
-  // ── Bear signals ──────────────────────────────────────────────────────────
+  // bear signals
   const bearSignals = []
   let bearScore = 0
 
@@ -238,7 +232,7 @@ export function runBearBullMatrix(metrics = {}) {
     bearScore += 1
   }
 
-  // ── Bull signals ──────────────────────────────────────────────────────────
+  // bull signals
   const bullSignals = []
   let bullScore = 0
 
@@ -274,7 +268,7 @@ export function runBearBullMatrix(metrics = {}) {
     bullScore += 1
   }
 
-  // ── Compose Bear paragraph ────────────────────────────────────────────────
+  // compose bear paragraph
   let bear
   if (bearSignals.length === 0) {
     bear = 'The bear case for this equity is currently structurally weak. '
@@ -298,7 +292,7 @@ export function runBearBullMatrix(metrics = {}) {
     }
   }
 
-  // ── Compose Bull paragraph ────────────────────────────────────────────────
+  // compose bull paragraph
   let bull
   if (bullSignals.length === 0) {
     bull = 'The bull case is currently lacking quantitative confirmation. '
@@ -322,7 +316,7 @@ export function runBearBullMatrix(metrics = {}) {
     }
   }
 
-  // ── Net bias ──────────────────────────────────────────────────────────────
+  // net bias
   let netBias
   if (bullScore > bearScore + 1)      netBias = 'bull'
   else if (bearScore > bullScore + 1) netBias = 'bear'
@@ -331,12 +325,9 @@ export function runBearBullMatrix(metrics = {}) {
   return { bear, bull, netBias, bullScore, bearScore }
 }
 
-// ─── Full Fundamental Sweep (refactored from RuleBasedAssessmentCard) ────────
+// full fundamental sweep
 
-/**
- * Runs all five core sweep checks (Liquidity, FCF, Margins, Valuation, Growth).
- * Returns null if no metrics are available.
- */
+/** runs all 5 core sweep checks (liquidity, FCF, margins, valuation, growth); null if no metrics available */
 export function runFundamentalSweep(metrics = {}) {
   const wcr = metrics?.war_chest_ratio
   const fcf = metrics?.fcf
@@ -349,7 +340,7 @@ export function runFundamentalSweep(metrics = {}) {
   const sweep = []
   let flagCount = 0, bullCount = 0, bearCount = 0, neutralCount = 0
 
-  // 1. Balance Sheet Liquidity
+  // 1. balance sheet liquidity
   if (wcr != null) {
     if (wcr >= 2) {
       bullCount++
@@ -366,7 +357,7 @@ export function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  // 2. Free Cash Flow
+  // 2. free cash flow
   if (fcf != null) {
     if (fcf > 5e9) {
       bullCount++
@@ -383,7 +374,7 @@ export function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  // 3. Unit Economics
+  // 3. unit economics
   if (gm != null) {
     const pct = (gm * 100).toFixed(1)
     if (gm > 0.6) {
@@ -401,7 +392,7 @@ export function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  // 4. Valuation
+  // 4. valuation
   if (pe != null && pe > 0) {
     if (pe < 15) {
       bullCount++
@@ -418,7 +409,7 @@ export function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  // 5. Growth Velocity
+  // 5. growth velocity
   if (rev != null) {
     const pct = (rev * 100).toFixed(1)
     if (rev > 0.25) {
@@ -436,7 +427,7 @@ export function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  // ── Score calculation ──────────────────────────────────────────────────────
+  // score calculation
   const fcfWeight = fcf != null ? (fcf > 5e9 ? 2 : fcf > 0 ? 1 : fcf > -1e9 ? -1 : -2) : 0
   const gmWeight  = gm  != null ? (gm > 0.6 ? 2 : gm > 0.3 ? 1 : gm > 0.1 ? -1 : -2) : 0
   const wcrWeight = wcr != null ? (wcr >= 2 ? 2 : wcr >= 1 ? 1 : wcr >= 0.5 ? -1 : -2) : 0
@@ -490,13 +481,11 @@ export function runFundamentalSweep(metrics = {}) {
   }
 }
 
-// ─── Master runner ────────────────────────────────────────────────────────────
+// master runner
 
 /**
- * Runs all modules and returns a unified assessment object.
- *
- * @param {object} metrics – raw metrics from /api/data
- * @returns {object}
+ * runs all modules and returns a unified assessment object.
+ * @param {object} metrics - raw metrics from /api/data
  */
 export function runFullAssessment(metrics = {}) {
   const sweep    = runFundamentalSweep(metrics)
@@ -512,23 +501,17 @@ export function runFullAssessment(metrics = {}) {
   }
 }
 
-// ─── Technical Trigger Module (RSI / SMA / Volume breakout) ────────────────
-// Unlike the modules above, this one needs daily price/volume history rather
-// than the single-snapshot `metrics` object, so it fetches its own data via
-// GET /api/technicals/{ticker} (last 50 trading days, oldest first).
+// module D: technical trigger (RSI / SMA / volume breakout) — needs daily
+// price/volume history, so it fetches its own data via GET /api/technicals/{ticker}
 
-/** Simple moving average over the trailing `period` values. */
+/** simple moving average over the trailing `period` values */
 function calculateSMA(values, period) {
   if (values.length < period) return null
   const slice = values.slice(-period)
   return slice.reduce((sum, v) => sum + v, 0) / period
 }
 
-/**
- * Wilder's RSI, returned as a full series (not just the latest value) so
- * callers can check for a threshold *crossing* over the last few days.
- * rsiSeries[k] corresponds to closes[period + k].
- */
+/** wilder's RSI as a full series (not just latest) so callers can check for a threshold crossing; rsiSeries[k] corresponds to closes[period + k] */
 function calculateRSISeries(closes, period = 14) {
   if (closes.length < period + 1) return []
 
@@ -548,7 +531,7 @@ function calculateRSISeries(closes, period = 14) {
     const diff = closes[i] - closes[i - 1]
     const gain = diff > 0 ? diff : 0
     const loss = diff < 0 ? -diff : 0
-    // Wilder smoothing (same method the backend's Fear & Greed RSI uses).
+    // wilder smoothing, same method the backend's fear & greed RSI uses
     avgGain = (avgGain * (period - 1) + gain) / period
     avgLoss = (avgLoss * (period - 1) + loss) / period
     series.push(toRSI(avgGain, avgLoss))
@@ -556,50 +539,51 @@ function calculateRSISeries(closes, period = 14) {
   return series
 }
 
-/**
- * Evaluates a rule-based technical "buy signal" for a ticker. Fetches the
- * last 50 daily closes/volumes and returns true ONLY IF all three hold:
- *   1. 14-day RSI crossed from below 30 to above 30 within the last 3 days.
- *   2. Current price is above the 50-day SMA.
- *   3. Today's volume is at least 10% above the trailing 20-day average volume.
- *
- * @param {string} ticker
- * @returns {Promise<boolean>}
- */
-export async function evaluateBuySignal(ticker) {
+// fetches technicals and returns each criterion + the final signal
+export async function evaluateTechnicalSignal(ticker) {
+  const empty = { rsiCrossedUp: false, aboveSMA50: false, volumeSpike: false, signal: false, rsi: null, sma50: null, currentPrice: null, avgVolume20: null, todayVolume: null }
   try {
     const data    = await api.technicals(ticker)
     const closes  = data?.closes  ?? []
     const volumes = data?.volumes ?? []
 
-    // Need a full 50-day window for the SMA-50, and 21 days (20 + today) for volume.
-    if (closes.length < 50 || volumes.length < 21) return false
+    // need 50 days for SMA-50, 21 days (20 + today) for volume avg
+    if (closes.length < 50 || volumes.length < 21) return empty
 
-    // 1. RSI-14 crossed from below 30 to above 30 within the last 3 days.
     const rsiSeries = calculateRSISeries(closes, 14)
-    if (rsiSeries.length < 4) return false
-    const lastFourRSI = rsiSeries.slice(-4) // gives 3 day-over-day transitions
-    let crossedUp = false
+    if (rsiSeries.length < 4) return empty
+    const lastFourRSI = rsiSeries.slice(-4) // 3 day-over-day transitions
+    let rsiCrossedUp = false
     for (let i = 1; i < lastFourRSI.length; i++) {
-      if (lastFourRSI[i - 1] < 30 && lastFourRSI[i] >= 30) { crossedUp = true; break }
+      if (lastFourRSI[i - 1] < 30 && lastFourRSI[i] >= 30) { rsiCrossedUp = true; break }
     }
-    if (!crossedUp) return false
 
-    // 2. Current price above the 50-day SMA.
-    const sma50         = calculateSMA(closes, 50)
-    const currentPrice  = closes[closes.length - 1]
-    if (sma50 == null || currentPrice <= sma50) return false
+    const sma50        = calculateSMA(closes, 50)
+    const currentPrice = closes[closes.length - 1]
+    const aboveSMA50    = sma50 != null && currentPrice > sma50
 
-    // 3. Today's volume >= 110% of the trailing 20-day average (today excluded).
-    const priorVolumes = volumes.slice(-21, -1)
-    if (priorVolumes.length < 20) return false
-    const avgVolume20 = priorVolumes.reduce((sum, v) => sum + v, 0) / priorVolumes.length
-    const todayVolume = volumes[volumes.length - 1]
-    if (todayVolume < avgVolume20 * 1.10) return false
+    const priorVolumes = volumes.slice(-21, -1) // 20 days before today
+    const avgVolume20  = priorVolumes.length === 20 ? priorVolumes.reduce((sum, v) => sum + v, 0) / 20 : null
+    const todayVolume  = volumes[volumes.length - 1]
+    const volumeSpike   = avgVolume20 != null && todayVolume >= avgVolume20 * 1.10
 
-    return true
+    return {
+      rsiCrossedUp, aboveSMA50, volumeSpike,
+      signal: rsiCrossedUp && aboveSMA50 && volumeSpike,
+      rsi: rsiSeries[rsiSeries.length - 1], sma50, currentPrice, avgVolume20, todayVolume,
+    }
   } catch (err) {
-    console.error(`[TechnicalTriggerModule] evaluateBuySignal failed for ${ticker}:`, err)
-    return false
+    console.error(`[TechnicalTriggerModule] evaluateTechnicalSignal failed for ${ticker}:`, err)
+    return empty
   }
+}
+
+/**
+ * returns true only if all 3 hold: 14-day rsi crossed 30 from below within
+ * the last 3 days, price above 50-day sma, and volume >= 110% of the
+ * trailing 20-day average.
+ */
+export async function evaluateBuySignal(ticker) {
+  const result = await evaluateTechnicalSignal(ticker)
+  return result.signal
 }

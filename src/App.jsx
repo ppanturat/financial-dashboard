@@ -173,6 +173,7 @@ export default function App() {
           onRemoveTicker={symbol =>
             confirm('Remove Asset', `Remove ${symbol}?`, () => removeTicker(activeFolderId, symbol))}
           onHamburger={() => setSidebarOpen(o => !o)}
+          social={social}
           search={{
             query: search.query, results: search.results, open: search.open,
             selectedIndex: search.selectedIndex,

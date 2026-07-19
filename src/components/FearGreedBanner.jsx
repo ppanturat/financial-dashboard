@@ -2,38 +2,28 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 
 const SEVERITY_MSG = {
-  danger:      { label: 'Extreme Greed', accent: '#22c55e', message: 'Markets are exhibiting extreme greed. Elevated valuations increase drawdown risk.' },
-  warning:     { label: 'Greed',         accent: '#84cc16', message: 'Investor sentiment has tilted greedy. Exercise selective discipline on new entries.' },
-  neutral:     { label: 'Neutral',       accent: '#eab308', message: 'Markets are in a balanced sentiment regime. Fundamentals should drive positioning.' },
-  caution:     { label: 'Fear',          accent: '#f97316', message: 'Elevated fear is creating selective mispricing. Disciplined accumulation may be warranted.' },
-  opportunity: { label: 'Extreme Fear',  accent: '#ef4444', message: 'Extreme fear historically precedes recoveries. High-quality assets may be on deep discount.' },
+  danger:            { accent: '#22c55e', message: 'Markets are exhibiting extreme greed. Elevated valuations increase drawdown risk.' },
+  warning:           { accent: '#84cc16', message: 'Investor sentiment has tilted greedy. Exercise selective discipline on new entries.' },
+  'neutral-bullish': { accent: '#eab308', message: 'Sentiment is balanced with a mild bullish tilt. Fundamentals should still drive positioning.' },
+  'neutral-bearish': { accent: '#eab308', message: 'Sentiment is balanced with a mild bearish tilt. Fundamentals should still drive positioning.' },
+  caution:           { accent: '#f97316', message: 'Elevated fear is creating selective mispricing. Disciplined accumulation may be warranted.' },
+  opportunity:       { accent: '#ef4444', message: 'Extreme fear historically precedes recoveries. High-quality assets may be on deep discount.' },
 }
 
-function zoneLabel(score) {
-  if (score <= 20) return 'Extreme Fear'
-  if (score <= 40) return 'Fear'
-  if (score <= 60) return 'Neutral'
-  if (score <= 80) return 'Greed'
-  return 'Extreme Greed'
-}
-
-// ── Simple, reliable semicircle gauge ──────────────────────────────────────
-// A single continuous stroked arc (using a gradient) is far more robust
-// than hand-built donut wedge paths — no gaps, no seams, no angle bugs.
+// single continuous stroked arc (gradient) — no gaps/seams vs hand-built wedges
 const W = 200, H = 110
 const CX = W / 2, CY = 100, R = 80
 const STROKE = 16
 
-// Standard semicircle path, left (180°) to right (0°), drawn over the top
+// semicircle path, left (180deg) to right (0deg), drawn over the top
 const ARC_PATH = `M ${CX - R} ${CY} A ${R} ${R} 0 0 1 ${CX + R} ${CY}`
 
 function needleAngleDeg(score) {
-  // score 0   → 180° (pointing left)
-  // score 100 → 0°   (pointing right)
+  // score 0 -> 180deg (left), score 100 -> 0deg (right)
   return 180 - (Math.min(Math.max(score, 0), 100) / 100) * 180
 }
 
-function Gauge({ score, accent }) {
+function Gauge({ score, accent, label }) {
   const angle = needleAngleDeg(score)
   const rad = (angle * Math.PI) / 180
   const needleLen = R - STROKE / 2 - 4
@@ -76,7 +66,7 @@ function Gauge({ score, accent }) {
 
       <div style={{ textAlign: 'center', marginTop: 2 }}>
         <div style={{ fontSize: 25, fontWeight: 800, fontFamily: "var(--font-body),monospace", color: accent, lineHeight: 1 }}>{score}</div>
-        <div style={{ fontSize: 17, fontWeight: 700, color: accent, letterSpacing: '.05em', marginTop: 3 }}>{zoneLabel(score)}</div>
+        <div style={{ fontSize: 17, fontWeight: 700, color: accent, letterSpacing: '.05em', marginTop: 3 }}>{label}</div>
       </div>
     </div>
   )
@@ -126,8 +116,9 @@ export function FearGreedBanner() {
 
   if (!data || data.error) return null
 
-  const severity  = data.severity ?? 'neutral'
-  const cfg       = SEVERITY_MSG[severity] ?? SEVERITY_MSG.neutral
+  const severity  = data.severity ?? 'neutral-bullish'
+  const cfg       = SEVERITY_MSG[severity] ?? SEVERITY_MSG['neutral-bullish']
+  const label     = data.label ?? 'Neutral'
   const score     = Math.round(data.fear_greed_score ?? 50)
   const devSign   = (data.dma_deviation ?? 0) >= 0 ? '+' : ''
   const deviation = data.dma_deviation != null ? `${devSign}${(data.dma_deviation * 100).toFixed(1)}%` : '—'
@@ -147,7 +138,7 @@ export function FearGreedBanner() {
       flexWrap: 'wrap',
       boxSizing: 'border-box',
     }}>
-      <Gauge score={score} accent={cfg.accent} />
+      <Gauge score={score} accent={cfg.accent} label={label} />
 
       <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
@@ -155,7 +146,7 @@ export function FearGreedBanner() {
             Market Sentiment
           </div>
           <div style={{ fontSize: 26, fontWeight: 800, color: cfg.accent, marginTop: 2, fontFamily: "var(--font-body),sans-serif" }}>
-            {cfg.label}
+            {label}
           </div>
         </div>
 

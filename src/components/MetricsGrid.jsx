@@ -1,20 +1,11 @@
-/**
- * MetricsGrid.jsx
- *
- * Improvements:
- * - Font sizes bumped to WCAG-readable levels (labels 12px min, values 22px+)
- * - Tooltip redesigned: larger text, visual scale bar, closes on outside click
- * - Info button larger and easier to tap (24px touch target)
- * - Tooltip flips direction when near screen edges
- */
 import { useState, useEffect, useRef } from 'react'
 import { METRIC_DEFS } from '../lib/constants'
 import { fmt, getMetricColor } from '../lib/formatters'
 
-// ── Scale bar for tooltip ─────────────────────────────────────────────────────
+// scale bar for tooltip
 function ScaleBar({ scale }) {
   if (!scale) return null
-  // Simple visual: parse the scale string for segments
+  // parse the scale string into segments
   const segments = scale.split('·').map(s => s.trim()).filter(Boolean)
   return (
     <div style={{ marginTop: 10 }}>
@@ -35,7 +26,7 @@ function ScaleBar({ scale }) {
   )
 }
 
-// ── Single metric card ────────────────────────────────────────────────────────
+// single metric card
 function MetricCard({ def, value, isEtf, loading, tooltipOpen, onToggleTip, cardRef }) {
   const color = isEtf ? '' : getMetricColor(value, def.colorType)
 
@@ -120,12 +111,13 @@ function MetricCard({ def, value, isEtf, loading, tooltipOpen, onToggleTip, card
   )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// main
 export function MetricsGrid({ metrics, isEtf, loading }) {
   const [tooltipOpen, setTooltipOpen] = useState(null)
+  const [expanded, setExpanded]       = useState(false)
   const gridRef = useRef(null)
 
-  // Close tooltip on outside click
+  // close tooltip on outside click
   useEffect(() => {
     if (!tooltipOpen) return
     const fn = e => {
@@ -138,6 +130,22 @@ export function MetricsGrid({ metrics, isEtf, loading }) {
   }, [tooltipOpen])
 
   const toggleTip = key => setTooltipOpen(p => p === key ? null : key)
+
+  const primaryDefs = METRIC_DEFS.filter(d => d.primary)
+  const extraDefs   = METRIC_DEFS.filter(d => !d.primary)
+  const categories  = [...new Set(extraDefs.map(d => d.category))]
+
+  const renderCard = def => (
+    <MetricCard
+      key={def.key}
+      def={def}
+      value={metrics?.[def.key]}
+      isEtf={isEtf}
+      loading={loading}
+      tooltipOpen={tooltipOpen}
+      onToggleTip={toggleTip}
+    />
+  )
 
   return (
     <>
@@ -162,18 +170,45 @@ export function MetricsGrid({ metrics, isEtf, loading }) {
         className="metrics-grid"
         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}
       >
-        {METRIC_DEFS.map(def => (
-          <MetricCard
-            key={def.key}
-            def={def}
-            value={metrics?.[def.key]}
-            isEtf={isEtf}
-            loading={loading}
-            tooltipOpen={tooltipOpen}
-            onToggleTip={toggleTip}
-          />
-        ))}
+        {primaryDefs.map(renderCard)}
       </div>
+
+      {!isEtf && (
+        <>
+          {expanded && (
+            <div style={{ marginTop: 18 }}>
+              {categories.map(cat => (
+                <div key={cat} style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                    {cat}
+                  </div>
+                  <div
+                    className="metrics-grid"
+                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}
+                  >
+                    {extraDefs.filter(d => d.category === cat).map(renderCard)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={() => setExpanded(p => !p)}
+            style={{
+              marginTop: 14, padding: '9px 16px', borderRadius: 9, cursor: 'pointer',
+              background: 'var(--surface-2)', border: '1px solid var(--border-md)',
+              color: 'var(--text)', fontSize: 13, fontWeight: 600,
+              fontFamily: "var(--font-body), sans-serif", display: 'inline-flex',
+              alignItems: 'center', gap: 6, transition: 'all .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'transparent' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-md)' }}
+          >
+            {expanded ? '▲ Show fewer metrics' : `▼ Show all ${METRIC_DEFS.length} metrics`}
+          </button>
+        </>
+      )}
     </>
   )
 }

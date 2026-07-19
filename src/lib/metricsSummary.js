@@ -1,3 +1,6 @@
+// shared verdict color keyword -> hex (matches CSS vars in variables.css)
+export const VERDICT_HEX = { green: '#15803d', yellow: '#92400e', red: '#b91c1c', neutral: '#6b6a65' }
+
 function scoreWarChest(v) {
   if (v == null) return null
   if (v >= 3)   return { score: 95, label: 'Exceptional', color: 'green', note: 'Cash reserves dwarf total debt — near-zero financial distress risk.' }
@@ -59,8 +62,8 @@ function scoreRevenueYoY(v) {
   return            { score: 8,  label: 'Collapsing',   color: 'red',   note: `${pct.toFixed(1)}% YoY — severe revenue contraction. Business model under serious threat.` }
 }
 
-// Weighted scoring: FCF and Gross Margin are most predictive for long-term health
-// Balance sheet carries less weight when FCF is exceptional (company can service debt easily)
+// FCF and gross margin are most predictive for long-term health; balance sheet
+// carries less weight when FCF is exceptional (company can service debt easily)
 function computeWeightedScore(warChest, fcf, margin, pe, growth) {
   const weights = {
     warChest: 0.15,  // less weight — strong FCF can offset leverage
@@ -83,7 +86,7 @@ function computeWeightedScore(warChest, fcf, margin, pe, growth) {
   return Math.round(weightedSum / totalWeight)
 }
 
-// Builds a rich, paragraph-style verdict from scores
+// builds a paragraph-style verdict from scores
 function buildVerdict(score, scores) {
   const greens   = scores.filter(s => s?.color === 'green').length
   const available = scores.filter(Boolean).length
@@ -95,7 +98,7 @@ function buildVerdict(score, scores) {
 
   const [warChest, fcf, margin, pe, growth] = scores
 
-  // Build contextual phrases from available data
+  // build contextual phrases from available data
   const parts = []
 
   if (margin?.color === 'green') parts.push(`With a ${margin.note.split('—')[0].trim().toLowerCase()}, the business demonstrates strong pricing power`)
@@ -122,8 +125,8 @@ function buildVerdict(score, scores) {
     narrative = parts.join('. ') + '.'
   }
 
-  // Score-aligned verdict thresholds — same scale used everywhere
-  // A red balance sheet alone shouldn't kill a company with world-class FCF/margin/growth
+  // score-aligned verdict thresholds, same scale used everywhere — a red balance
+  // sheet alone shouldn't kill a company with world-class FCF/margin/growth
   const criticalRedFlags = [warChest?.color === 'red', fcf?.color === 'red', margin?.color === 'red']
     .filter(Boolean).length
 

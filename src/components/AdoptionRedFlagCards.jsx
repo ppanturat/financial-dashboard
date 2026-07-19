@@ -1,15 +1,4 @@
-/**
- * AdoptionRedFlagCards.jsx
- *
- * FIX: Removed borderLeft entirely. It was rendering as a standalone coloured
- * line between cards in the flex content column because:
- *   1. The border renders OUTSIDE the background box
- *   2. When gap spacing separates cards, the border of one card visually
- *      floats in the gap between it and the next card
- *
- * Solution: borderTop accent only. The card always has a solid background
- * so there is nothing to bleed between siblings.
- */
+// border-top accent only — border-left floats visibly in flex gaps between cards
 const SEVERITY = {
   danger:  { color: '#dc2626', bg: '#fef2f2', border: '#fca5a5', icon: '🚨', badgeLabel: 'Critical Flag' },
   warning: { color: '#ea580c', bg: '#fff7ed', border: '#fdba74', icon: '⚠️',  badgeLabel: 'Warning'       },
@@ -24,14 +13,12 @@ function AlertCard({ severity, title, text, children }) {
     <div style={{
       background:   cfg.bg,
       border:       `1px solid ${cfg.border}`,
-      // FIX: borderTop only — never borderLeft
       borderTop:    `3px solid ${cfg.color}`,
       borderRadius: 8,
       padding:      '14px 16px',
       display:      'flex',
       flexDirection:'column',
       gap:          10,
-      // Explicit box-sizing ensures the background always fills the full box
       boxSizing:    'border-box',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -85,7 +72,7 @@ export function TerminalRedFlagCard({ result }) {
 export function AssessmentModulesAB({ adoption, redFlag }) {
   if (!adoption && !redFlag) return null
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10, alignItems: 'start' }}>
       {adoption && <AdoptionCheckCard result={adoption} />}
       {redFlag   && <TerminalRedFlagCard result={redFlag} />}
     </div>

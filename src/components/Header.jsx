@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { SearchBar } from './SearchBar'
+import { InvestorSearchBar } from './InvestorSearchBar'
 
-const CLEAN_TABS = new Set(['social', 'intelligence', 'profile'])
+const CLEAN_TABS = new Set(['social', 'intelligence'])
 
-export function Header({ activeTab, folderName, tickers, activeTicker, onSelectTicker, onRemoveTicker, onHamburger, search, hideSearch }) {
+export function Header({ activeTab, folderName, tickers, activeTicker, onSelectTicker, onRemoveTicker, onHamburger, search, social, hideSearch }) {
   const [dropOpen, setDropOpen] = useState(false)
   const isClean = CLEAN_TABS.has(activeTab) || hideSearch
 
@@ -53,7 +54,7 @@ export function Header({ activeTab, folderName, tickers, activeTicker, onSelectT
         ) : null}
       </div>
 
-      {!isClean && <SearchBar {...search} />}
+      {activeTab === 'social' ? <InvestorSearchBar social={social} /> : !isClean && <SearchBar {...search} />}
     </header>
   )
 }

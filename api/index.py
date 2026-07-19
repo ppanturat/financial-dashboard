@@ -286,14 +286,10 @@ def get_etf_holdings(ticker: str):
 
 @app.get("/api/technicals/{ticker}")
 def get_technicals(ticker: str):
-    """
-    Raw daily close price + volume history, used by the frontend's
-    TechnicalTriggerModule (RSI / SMA / volume breakout signal).
-    Returns the last 50 trading days, oldest first.
-    """
+    """raw daily close + volume history for the TechnicalTriggerModule (RSI/SMA/volume). last 50 trading days, oldest first."""
     try:
         stock = yf.Ticker(ticker)
-        # Fetch a wider window than needed so holidays/gaps still leave >= 50 rows.
+        # wider window than needed so holidays/gaps still leave >= 50 rows
         hist = stock.history(period="4mo", interval="1d")
         hist = hist.dropna(subset=['Close', 'Volume']).tail(50)
 
@@ -394,10 +390,10 @@ def get_macro_data():
             severity = "warning"
         elif score >= 50:
             label    = "Neutral-Bullish"
-            severity = "neutral"
+            severity = "neutral-bullish"
         elif score >= 35:
             label    = "Neutral-Bearish"
-            severity = "neutral"
+            severity = "neutral-bearish"
         else:
             label    = "Fear"
             severity = "caution"

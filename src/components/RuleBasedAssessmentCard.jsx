@@ -1,4 +1,6 @@
-// ─── Stock quantitative assessment engine ───────────────────────────────────
+// quantitative assessment engine
+
+import { generateMetricsSummary, VERDICT_HEX } from '../lib/metricsSummary'
 
 function runFundamentalSweep(metrics = {}) {
   const sweep = []
@@ -12,7 +14,7 @@ function runFundamentalSweep(metrics = {}) {
 
   if (wcr == null && fcf == null && gm == null && pe == null && rev == null) return null
 
-  // 1. Balance Sheet Liquidity (War Chest Ratio)
+  // 1. balance sheet liquidity (war chest ratio)
   if (wcr != null) {
     if (wcr >= 2) { 
       bullCount++;
@@ -31,7 +33,7 @@ function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  // 2. Free Cash Flow Architecture
+  // 2. free cash flow architecture
   if (fcf != null) {
     const b = fcf / 1e9
     if (fcf > 5e9) { 
@@ -51,7 +53,7 @@ function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  // 3. Unit Economics & Margins
+  // 3. unit economics & margins
   if (gm != null) {
     const pct = (gm * 100).toFixed(1)
     if (gm > 0.6) { 
@@ -71,7 +73,7 @@ function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  // 4. Valuation Multiples (Forward P/E)
+  // 4. valuation multiples (forward P/E)
   if (pe != null && pe > 0) {
     if (pe < 15) { 
       bullCount++;
@@ -90,7 +92,7 @@ function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  // 5. Growth Velocity (Revenue YoY)
+  // 5. growth velocity (revenue YoY)
   if (rev != null) {
     const pct = (rev * 100).toFixed(1)
     if (rev > 0.25) { 
@@ -110,25 +112,11 @@ function runFundamentalSweep(metrics = {}) {
     }
   }
 
-  const fcfWeight = fcf != null ? (fcf > 5e9 ? 2 : fcf > 0 ? 1 : fcf > -1e9 ? -1 : -2) : 0
-  const gmWeight  = gm != null ? (gm > 0.6 ? 2 : gm > 0.3 ? 1 : gm > 0.1 ? -1 : -2) : 0
-  const wcrWeight = wcr != null ? (wcr >= 2 ? 2 : wcr >= 1 ? 1 : wcr >= 0.5 ? -1 : -2) : 0
-  const peWeight  = (pe != null && pe > 0) ? (pe < 15 ? 2 : pe < 30 ? 1 : pe < 50 ? -1 : -2) : 0
-  const revWeight = rev != null ? (rev > 0.25 ? 2 : rev > 0.08 ? 1 : rev >= 0 ? 0 : -2) : 0
+  const summary = generateMetricsSummary(metrics)
+  const score = summary?.score ?? 50
+  const verdict = summary?.verdict?.label ?? 'Mixed but Stable'
+  const verdictColor = VERDICT_HEX[summary?.verdict?.color] ?? VERDICT_HEX.neutral
 
-  const weightedNet = (fcfWeight * 1.5) + (gmWeight * 1.5) + wcrWeight + peWeight + revWeight
-  const weightedMax = 13.0
-  const rawScore = Math.round(50 + (weightedNet / weightedMax) * 45)
-  const score = Math.min(97, Math.max(10, rawScore))
-
-  let verdict, verdictColor
-  if (score >= 80)      { verdict = 'Strong Buy';    verdictColor = '#16a34a' }
-  else if (score >= 68) { verdict = 'Bullish';       verdictColor = '#22c55e' }
-  else if (score >= 52) { verdict = 'Neutral';       verdictColor = '#ca8a04' }
-  else if (score >= 38) { verdict = 'Caution';       verdictColor = '#ea580c' }
-  else                  { verdict = 'Risk Elevated'; verdictColor = '#dc2626' }
-
-  // Dynamic Bear vs. Bull Probability Synthesis
   let probabilityText
   if (flagCount > 0) {
     probabilityText = `Terminal Red Flag detected. The Bear case heavily outweighs Bull probabilities due to acute structural constraints. Strict capital protection is advised.`
@@ -142,44 +130,38 @@ function runFundamentalSweep(metrics = {}) {
     probabilityText = `Bear and Bull probabilities are evenly matched. The asset presents a strictly neutral risk/reward profile requiring patient observation.`
   }
 
-  const closers = {
-    'Strong Buy':    'The quantitative rules confirm an elite fundamental asset exhibiting high capital velocity, robust structural protection, and zero systemic flags.',
-    'Bullish':       'The core quantitative metrics support a constructive growth outlook, though position sizes should account for standard baseline market risks.',
-    'Neutral':       'Genuine core strengths are actively offset by explicit valuation or cash burn constraints, justifying a highly patient, non-directional accumulation approach.',
-    'Caution':       'Risk indicators are multiplying across structural lines. Capital preservation dictates waiting for a deeper valuation discount or an explicit operational catalyst.',
-    'Risk Elevated': 'Systemic financial stressors are compounding simultaneously. The mathematical risk of sudden capital impairment heavily outweighs technical upside under current constraints.',
-  }
+  const closer = summary?.verdict?.text ?? 'Not enough metrics are available to form a meaningful assessment for this ticker.'
 
-  return { sweep, probabilityText, verdict, score, verdictColor, closer: closers[verdict] }
+  return { sweep, probabilityText, verdict, score, verdictColor, closer }
 }
 
-// ─── ETF analysis engine ──────────────────────────────────────────────────────
+// ETF analysis engine
 
 const KNOWN_ETF_PROFILES = {
-  // Broad market
+  // broad market
   VOO:  { name: 'Vanguard S&P 500', expense: 0.0003, category: 'broad', benchmark: 'S&P 500', style: 'Passive Blend', totalHoldings: 505 },
   SPY:  { name: 'SPDR S&P 500',     expense: 0.0009, category: 'broad', benchmark: 'S&P 500', style: 'Passive Blend', totalHoldings: 505 },
   IVV:  { name: 'iShares Core S&P 500', expense: 0.0003, category: 'broad', benchmark: 'S&P 500', style: 'Passive Blend', totalHoldings: 505 },
   VTI:  { name: 'Vanguard Total Market', expense: 0.0003, category: 'broad', benchmark: 'Total US Market', style: 'Passive Blend', totalHoldings: 3750 },
   SCHB: { name: 'Schwab US Broad Market', expense: 0.0003, category: 'broad', benchmark: 'Total US Market', style: 'Passive Blend', totalHoldings: 2500 },
-  // Growth / Tech
+  // growth / tech
   QQQ:  { name: 'Invesco QQQ (Nasdaq-100)', expense: 0.0020, category: 'growth', benchmark: 'Nasdaq-100', style: 'Passive Growth', totalHoldings: 101 },
   VGT:  { name: 'Vanguard IT Sector',       expense: 0.0010, category: 'growth', benchmark: 'MSCI US IMI IT', style: 'Passive Growth', totalHoldings: 320 },
   XLK:  { name: 'SPDR Technology Select',   expense: 0.0013, category: 'growth', benchmark: 'S&P 500 Tech', style: 'Passive Growth', totalHoldings: 65 },
   ARKK: { name: 'ARK Innovation',           expense: 0.0075, category: 'growth', benchmark: 'None', style: 'Active Growth', totalHoldings: 35 },
   SOXX: { name: 'iShares Semiconductor',    expense: 0.0035, category: 'growth', benchmark: 'ICE Semiconductor', style: 'Passive Growth', totalHoldings: 30 },
   SMH:  { name: 'VanEck Semiconductor',     expense: 0.0035, category: 'growth', benchmark: 'MVIS Semiconductor', style: 'Passive Growth', totalHoldings: 25 },
-  // Dividend / Income
+  // dividend / income
   VYM:  { name: 'Vanguard High Dividend Yield', expense: 0.0006, category: 'dividend', benchmark: 'FTSE High Dividend', style: 'Passive Income', totalHoldings: 450 },
   SCHD: { name: 'Schwab US Dividend Equity',    expense: 0.0006, category: 'dividend', benchmark: 'Dow Jones 100 Div', style: 'Passive Income', totalHoldings: 100 },
   DVY:  { name: 'iShares Select Dividend',      expense: 0.0038, category: 'dividend', benchmark: 'Dow Jones Select Div', style: 'Passive Income', totalHoldings: 100 },
   VIG:  { name: 'Vanguard Dividend Appreciation', expense: 0.0006, category: 'dividend', benchmark: 'S&P US Div Growers', style: 'Passive Income', totalHoldings: 315 },
-  // International
+  // international
   VEA:  { name: 'Vanguard Developed Markets', expense: 0.0005, category: 'intl', benchmark: 'FTSE Developed ex-US', style: 'Passive Intl', totalHoldings: 4000 },
   VWO:  { name: 'Vanguard Emerging Markets',  expense: 0.0008, category: 'intl', benchmark: 'FTSE Emerging',       style: 'Passive Intl', totalHoldings: 5000 },
   EEM:  { name: 'iShares MSCI Emerging Mkts', expense: 0.0070, category: 'intl', benchmark: 'MSCI Emerging',       style: 'Passive Intl', totalHoldings: 1200 },
   IEFA: { name: 'iShares Core MSCI EAFE',     expense: 0.0007, category: 'intl', benchmark: 'MSCI EAFE',           style: 'Passive Intl', totalHoldings: 3000 },
-  // Bonds
+  // bonds
   BND:  { name: 'Vanguard Total Bond Market', expense: 0.0003, category: 'bond', benchmark: 'Bloomberg US Agg', style: 'Passive Fixed Income', totalHoldings: 10000 },
   AGG:  { name: 'iShares Core US Aggregate',  expense: 0.0003, category: 'bond', benchmark: 'Bloomberg US Agg', style: 'Passive Fixed Income', totalHoldings: 10000 },
   TLT:  { name: 'iShares 20+ Year Treasury',  expense: 0.0015, category: 'bond', benchmark: '20+ Yr Treasury',  style: 'Passive Fixed Income', totalHoldings: 40 },
@@ -289,7 +271,7 @@ function analyseEtf(ticker, holdings) {
   return { category, meta, profile, expense, expenseRating, expenseColor, expenseNote, concentrationRating, concentrationColor, concentrationNote, breadthNote, risks, top1Weight, top10Weight, holdingCount: trueHoldingCount }
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// sub-components
 
 function EtfFullWidthMetric({ label, value, valueColor, description, borderColor }) {
   return (
@@ -390,7 +372,7 @@ function EtfHoldingsBreakdown({ holdings }) {
   )
 }
 
-// ─── Main ETF card ────────────────────────────────────────────────────────────
+// main ETF card
 
 function EtfAnalysisCard({ ticker, etfHoldings }) {
   const hasHoldings = etfHoldings?.length > 0
@@ -488,7 +470,7 @@ function EtfAnalysisCard({ ticker, etfHoldings }) {
   )
 }
 
-// ─── Stock assessment card ─────────────────────────────────
+// stock assessment card
 
 export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, loading }) {
   if (loading) return null
@@ -563,7 +545,7 @@ export function RuleBasedAssessmentCard({ ticker, metrics, isEtf, etfHoldings, l
         borderTop: '1px solid var(--border)',
         fontSize: 14.5, lineHeight: 1.65, color: 'var(--text)'
       }}>
-        <strong style={{ color: verdictColor }}>Final Verdict:</strong> {closer}
+        <strong style={{ color: '#000' }}>Final Verdict:</strong> {closer}
       </div>
 
     </div>

@@ -10,7 +10,6 @@ This project is a personal side project, **not a financial product**, and nothin
 
 - **Not financial advice.** Prices, metrics, charts, and assessment cards are for informational and educational purposes only. Nothing here is a recommendation to buy, sell, or hold any security. Always do your own research and consult a licensed financial advisor before making investment decisions.
 - **We don't generate market data — we just fetch it.** All prices, fundamentals, dividends, and news are pulled live from third-party sources (primarily Yahoo Finance via the `yfinance` library). This app has no control over that data's accuracy, completeness, or timeliness. Data can be delayed, incomplete, or wrong — verify anything important against your broker or an official source before acting on it.
-- **AI-generated content can be wrong.** The AI-assisted analysis is generated automatically and may misinterpret data or produce inaccurate summaries. Treat it as a starting point for your own research, not a conclusion.
 - **No warranty.** This software is provided "as is" (see [LICENSE](./LICENSE)) with no guarantee of uptime, correctness, or fitness for any particular purpose. Use at your own risk.
 
 ---
@@ -45,7 +44,7 @@ Research individual stocks and ETFs.
 
 Metrics are not shown for ETFs — the tile area will display "N/A" in that case.
 
-**Assessment cards:** Below the metrics, a rule-based written assessment summarises whether the numbers lean bullish or bearish. An AI scan below that offers a more detailed take. The AI result is cached, so the first load for any ticker may take a moment; subsequent loads are instant. As noted above, treat both as informational only, not investment advice.
+**Assessment cards:** Below the metrics, a rule-based written assessment summarises whether the numbers lean bullish or bearish, alongside a metrics summary score and a technical trigger check (RSI/SMA/volume). Treat these as informational only, not investment advice.
 
 **ETFs:** Opening an ETF replaces the metrics section with a breakdown of the fund's top holdings.
 
@@ -107,7 +106,7 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-Add any backend-specific secrets (e.g. keys used by the AI scan feature) to a `.env` file read by the FastAPI app — see `requirements.txt` / `api/index.py` for what's required.
+Add any backend-specific secrets to a `.env` file read by the FastAPI app — see `requirements.txt` / `api/index.py` for what's required.
 
 ### Install and start the frontend
 

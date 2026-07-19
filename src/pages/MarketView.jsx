@@ -8,7 +8,8 @@ import { RuleBasedAssessmentCard } from '../components/RuleBasedAssessmentCard'
 import { EmptyState } from '../components/EmptyState'
 import { StockNewsFeed } from '../components/StockNewsFeed'
 import { ValuationBadge } from '../components/ValuationBadge'
-import { AdoptionCheckCard, TerminalRedFlagCard } from '../components/AdoptionRedFlagCards'
+import { AssessmentModulesAB } from '../components/AdoptionRedFlagCards'
+import { TechnicalSignalCard } from '../components/TechnicalSignalCard'
 import { runAdoptionCheck, runTerminalRedFlagSweep } from '../lib/assessmentEngine'
 
 export function MarketView({ activeTicker, foldersLoading }) {
@@ -80,9 +81,9 @@ export function MarketView({ activeTicker, foldersLoading }) {
       />
 
       {!isEtf && <ValuationBadge metrics={stock.metrics} />}
+      {!isEtf && <TechnicalSignalCard ticker={activeTicker} isEtf={isEtf} />}
 
-      {adoptionResult && <AdoptionCheckCard result={adoptionResult} />}
-      {redFlagResult  && <TerminalRedFlagCard result={redFlagResult} />}
+      <AssessmentModulesAB adoption={adoptionResult} redFlag={redFlagResult} />
 
       <RuleBasedAssessmentCard
         ticker={activeTicker}
