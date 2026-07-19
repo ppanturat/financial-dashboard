@@ -37,6 +37,7 @@ export function useAuth() {
   // undefined = still resolving, null = no active session, object = authenticated
   const [session, setSession] = useState(undefined)
   const [loading, setLoading] = useState(true)
+  const [passwordRecovery, setPasswordRecovery] = useState(false)
 
   useEffect(() => {
     let loadingDone = false
@@ -64,6 +65,10 @@ export function useAuth() {
         clearTimeout(timeout)
         setSession(s ?? null)
         markLoaded()
+
+        if (event === 'PASSWORD_RECOVERY') {
+          setPasswordRecovery(true)
+        }
 
         if (
           s?.user &&
@@ -152,6 +157,21 @@ export function useAuth() {
     }
   }
 
+  // ── resetPassword ──────────────────────────────────────────────────────────
+  const resetPassword = async (email) => {
+    try {
+      const result = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      })
+      if (result && typeof result === 'object' && ('data' in result || 'error' in result)) {
+        return result
+      }
+      return { data: null, error: { message: 'Could not send reset email. Please try again.' } }
+    } catch (err) {
+      return { data: null, error: { message: err?.message || 'Network error. Please check your connection and try again.' } }
+    }
+  }
+
   // ── signOut ────────────────────────────────────────────────────────────────
   const signOut = async () => {
     try {
@@ -162,5 +182,19 @@ export function useAuth() {
     }
   }
 
-  return { session, loading, signIn, signUp, signOut }
+  // ── updatePassword ─────────────────────────────────────────────────────────
+  const updatePassword = async (newPassword) => {
+    try {
+      const result = await supabase.auth.updateUser({ password: newPassword })
+      if (result && typeof result === 'object' && ('data' in result || 'error' in result)) {
+        if (!result.error) setPasswordRecovery(false)
+        return result
+      }
+      return { data: null, error: { message: 'Could not update password. Please try again.' } }
+    } catch (err) {
+      return { data: null, error: { message: err?.message || 'Network error. Please check your connection and try again.' } }
+    }
+  }
+
+  return { session, loading, signIn, signUp, signOut, resetPassword, passwordRecovery, updatePassword }
 }

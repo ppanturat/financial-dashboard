@@ -20,6 +20,7 @@ function AlertCard({ severity, title, text, children }) {
       flexDirection:'column',
       gap:          10,
       boxSizing:    'border-box',
+      height:       '100%',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ fontSize: 16, lineHeight: 1 }}>{cfg.icon}</span>
@@ -72,7 +73,7 @@ export function TerminalRedFlagCard({ result }) {
 export function AssessmentModulesAB({ adoption, redFlag }) {
   if (!adoption && !redFlag) return null
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10, alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10, alignItems: 'stretch' }}>
       {adoption && <AdoptionCheckCard result={adoption} />}
       {redFlag   && <TerminalRedFlagCard result={redFlag} />}
     </div>

@@ -114,7 +114,7 @@ function MetricCard({ def, value, isEtf, loading, tooltipOpen, onToggleTip, card
 // main
 export function MetricsGrid({ metrics, isEtf, loading }) {
   const [tooltipOpen, setTooltipOpen] = useState(null)
-  const [expanded, setExpanded]       = useState(false)
+  const [category, setCategory]       = useState('Key')
   const gridRef = useRef(null)
 
   // close tooltip on outside click
@@ -131,21 +131,8 @@ export function MetricsGrid({ metrics, isEtf, loading }) {
 
   const toggleTip = key => setTooltipOpen(p => p === key ? null : key)
 
-  const primaryDefs = METRIC_DEFS.filter(d => d.primary)
-  const extraDefs   = METRIC_DEFS.filter(d => !d.primary)
-  const categories  = [...new Set(extraDefs.map(d => d.category))]
-
-  const renderCard = def => (
-    <MetricCard
-      key={def.key}
-      def={def}
-      value={metrics?.[def.key]}
-      isEtf={isEtf}
-      loading={loading}
-      tooltipOpen={tooltipOpen}
-      onToggleTip={toggleTip}
-    />
-  )
+  const categories = ['Key', ...new Set(METRIC_DEFS.map(d => d.category))]
+  const visibleDefs = category === 'Key' ? METRIC_DEFS.filter(d => d.primary) : METRIC_DEFS.filter(d => d.category === category)
 
   return (
     <>
@@ -165,50 +152,44 @@ export function MetricsGrid({ metrics, isEtf, loading }) {
         )}
       </div>
 
+      {!isEtf && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+          {categories.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              style={{
+                padding: '7px 16px', borderRadius: 999, cursor: 'pointer',
+                border: `1px solid ${category === cat ? 'transparent' : 'var(--border-md)'}`,
+                background: category === cat ? 'var(--accent)' : 'var(--surface-2)',
+                color: category === cat ? '#fff' : 'var(--text)',
+                fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif",
+                transition: 'all .15s', whiteSpace: 'nowrap',
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div
         ref={gridRef}
         className="metrics-grid"
         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}
       >
-        {primaryDefs.map(renderCard)}
+        {visibleDefs.map(def => (
+          <MetricCard
+            key={def.key}
+            def={def}
+            value={metrics?.[def.key]}
+            isEtf={isEtf}
+            loading={loading}
+            tooltipOpen={tooltipOpen}
+            onToggleTip={toggleTip}
+          />
+        ))}
       </div>
-
-      {!isEtf && (
-        <>
-          {expanded && (
-            <div style={{ marginTop: 18 }}>
-              {categories.map(cat => (
-                <div key={cat} style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-                    {cat}
-                  </div>
-                  <div
-                    className="metrics-grid"
-                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}
-                  >
-                    {extraDefs.filter(d => d.category === cat).map(renderCard)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <button
-            onClick={() => setExpanded(p => !p)}
-            style={{
-              marginTop: 14, padding: '9px 16px', borderRadius: 9, cursor: 'pointer',
-              background: 'var(--surface-2)', border: '1px solid var(--border-md)',
-              color: 'var(--text)', fontSize: 13, fontWeight: 600,
-              fontFamily: "var(--font-body), sans-serif", display: 'inline-flex',
-              alignItems: 'center', gap: 6, transition: 'all .15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent)'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'transparent' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--surface-2)'; e.currentTarget.style.color = 'var(--text)'; e.currentTarget.style.borderColor = 'var(--border-md)' }}
-          >
-            {expanded ? '▲ Show fewer metrics' : `▼ Show all ${METRIC_DEFS.length} metrics`}
-          </button>
-        </>
-      )}
     </>
   )
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const inputStyle = {
   display: 'block',
@@ -95,7 +95,7 @@ function ErrorBanner({ message }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export function AuthPage({ onSignIn, onSignUp }) {
+export function AuthPage({ onSignIn, onSignUp, onResetPassword }) {
   const [view, setView] = useState('login')
 
   // Login state
@@ -110,8 +110,19 @@ export function AuthPage({ onSignIn, onSignUp }) {
   const [regPassword, setRegPassword] = useState('')
   const [regErrors, setRegErrors]     = useState({})
 
+  // Forgot-password state
+  const [resetEmail, setResetEmail]   = useState('')
+  const [resetError, setResetError]   = useState('')
+  const [resendIn, setResendIn]       = useState(0)
+
   const [loading, setLoading]     = useState(false)
   const [sentEmail, setSentEmail] = useState('')
+
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const id = setInterval(() => setResendIn(s => s - 1), 1000)
+    return () => clearInterval(id)
+  }, [resendIn])
 
   const handleToggleView = () => {
     setView(v => v === 'login' ? 'register' : 'login')
@@ -212,7 +223,42 @@ export function AuthPage({ onSignIn, onSignUp }) {
     }
   }
 
-  // ── Check email confirmation screen ────────────────────────────────────────
+  // ── forgot-password submit ──────────────────────────────────────────────────
+  const handleResetSubmit = async (e) => {
+    e.preventDefault()
+    if (!resetEmail.trim()) { setResetError('Email is required'); return }
+    setResetError('')
+    setLoading(true)
+    try {
+      const result = await onResetPassword(resetEmail.trim())
+      const error  = result?.error ?? null
+      if (error) {
+        setResetError(error.message || 'Could not send reset email. Please try again.')
+      } else {
+        setSentEmail(resetEmail.trim())
+        setView('reset_sent')
+        setResendIn(60)
+      }
+    } catch (err) {
+      console.error('[AuthPage] unexpected reset-password error:', err)
+      setResetError('An unexpected error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResend = async () => {
+    if (resendIn > 0 || loading) return
+    setLoading(true)
+    try {
+      await onResetPassword(sentEmail)
+      setResendIn(60)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ── check-email confirmation screen ─────────────────────────────────────────
   if (view === 'check_email') return (
     <div className="auth-wrap">
       <div className="auth-card">
@@ -231,7 +277,77 @@ export function AuthPage({ onSignIn, onSignUp }) {
     </div>
   )
 
-  // ── Main auth card ──────────────────────────────────────────────────────────
+  // ── forgot-password form ─────────────────────────────────────────────────────
+  if (view === 'forgot') return (
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-logo">◈</div>
+        <h2>Reset your password</h2>
+        <p className="auth-sub">Enter your email and we'll send you a reset link</p>
+
+        <form
+          className="auth-form"
+          onSubmit={handleResetSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+          noValidate
+        >
+          <ErrorBanner message={resetError} />
+          <Field>
+            <input
+              type="email"
+              placeholder="Email address"
+              autoComplete="email"
+              value={resetEmail}
+              onChange={e => setResetEmail(e.target.value)}
+              style={{ ...inputStyle, borderColor: resetError ? '#fca5a5' : undefined }}
+              onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+              onBlur={e  => e.target.style.borderColor = resetError ? '#fca5a5' : 'var(--border-md)'}
+              required
+            />
+          </Field>
+          <button className="btn-primary" type="submit" disabled={loading} style={{ marginTop: 4 }}>
+            {loading ? 'Sending…' : 'Send reset link'}
+          </button>
+        </form>
+
+        <button className="btn-text" onClick={() => { setView('login'); setResetError('') }} type="button">
+          Back to sign in
+        </button>
+      </div>
+    </div>
+  )
+
+  // ── reset-link-sent screen with resend countdown ────────────────────────────
+  if (view === 'reset_sent') return (
+    <div className="auth-wrap">
+      <div className="auth-card">
+        <div className="auth-logo">◈</div>
+        <h2>Check your email</h2>
+        <p className="auth-sub">
+          Reset link sent to <strong>{sentEmail}</strong>
+        </p>
+        <p style={{ fontSize: 13, color: 'var(--muted)', margin: '8px 0 16px', textAlign: 'center', lineHeight: 1.5 }}>
+          Click the link in the email to set a new password. Didn't get it? Check spam, or resend below.
+        </p>
+
+        <button
+          className="btn-primary"
+          type="button"
+          onClick={handleResend}
+          disabled={resendIn > 0 || loading}
+          style={{ marginBottom: 10 }}
+        >
+          {loading ? 'Sending…' : resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend email'}
+        </button>
+
+        <button className="btn-text" onClick={() => setView('login')} type="button">
+          Back to sign in
+        </button>
+      </div>
+    </div>
+  )
+
+  // ── main auth card ──────────────────────────────────────────────────────────
   return (
     <div className="auth-wrap">
       <div className="auth-card">
@@ -276,6 +392,14 @@ export function AuthPage({ onSignIn, onSignUp }) {
                 onBlur={e   => e.target.style.borderColor = loginErrors.password ? '#fca5a5' : 'var(--border-md)'}
               />
             </Field>
+
+            <button
+              type="button"
+              onClick={() => { setView('forgot'); setResetEmail(loginEmail); setResetError('') }}
+              style={{ background: 'none', border: 'none', padding: 0, alignSelf: 'flex-end', color: 'var(--muted)', fontSize: 12, cursor: 'pointer', marginTop: -6 }}
+            >
+              Forgot password?
+            </button>
 
             <button
               className="btn-primary"

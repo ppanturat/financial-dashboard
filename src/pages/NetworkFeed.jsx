@@ -1,8 +1,4 @@
-/**
- * NetworkFeed.jsx
- * Social activity feed — shows buy/sell/hold activity from people you follow.
- * Data: useSocial → feed (public portfolio_folders) + feedHoldings.
- */
+// social activity feed — buy/sell/portfolio activity from people you follow
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
 
@@ -45,13 +41,8 @@ function timeAgo(raw) {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-/**
- * Build activity items.
- * We infer "buy" vs "sell" from amount:
- *   - amount > 0  → BUY  (they hold shares)
- *   - amount == 0 → SOLD (fully exited, show as sell)
- * Folder-level items show as "opened portfolio".
- */
+// infers buy vs sell from amount: >0 = buy (still held), 0 = sold (fully exited).
+// folder-level items show as "opened portfolio".
 function buildActivityItems(followedUsers, feed, feedHoldings, livePrices) {
   const items = []
 
@@ -139,10 +130,6 @@ function TradeCard({ item }) {
               <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700 }}>{item.shares.toFixed(4)}</span>
             </div>
           )}
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Avg Cost</span>
-            <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700 }}>{fmtUSD(item.avgCost)}</span>
-          </div>
           {isBuy && item.value > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Position Value</span>
@@ -150,12 +137,18 @@ function TradeCard({ item }) {
             </div>
           )}
           {isBuy && item.shares > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>P&amp;L</span>
-              <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700, color: isPnlPos ? '#16a34a' : '#dc2626' }}>
-                {isPnlPos ? '+' : ''}{fmtUSD(item.pnl)} ({isPnlPos ? '+' : ''}{item.pnlPct.toFixed(2)}%)
-              </span>
-            </div>
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>Live Price</span>
+                <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700 }}>{fmtUSD(item.livePrice)}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }}>P&amp;L</span>
+                <span style={{ fontFamily: "var(--font-body),monospace", fontSize: 12, fontWeight: 700, color: isPnlPos ? '#16a34a' : '#dc2626' }}>
+                  {isPnlPos ? '+' : ''}{fmtUSD(item.pnl)} ({isPnlPos ? '+' : ''}{item.pnlPct.toFixed(2)}%)
+                </span>
+              </div>
+            </>
           )}
         </div>
 
@@ -165,10 +158,10 @@ function TradeCard({ item }) {
         </div>
       </div>
 
-      {/* Live price badge */}
+      {/* price at time of trade */}
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700 }}>{fmtUSD(item.livePrice)}</div>
-        <div style={{ fontSize: 10, color: 'var(--faint)', marginTop: 2 }}>live</div>
+        <div style={{ fontFamily: "var(--font-body),monospace", fontSize: 13, fontWeight: 700 }}>{fmtUSD(item.avgCost)}</div>
+        <div style={{ fontSize: 10, color: 'var(--faint)', marginTop: 2 }}>{isBuy ? 'bought at' : 'sold at'}</div>
       </div>
     </div>
   )

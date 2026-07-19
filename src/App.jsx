@@ -8,6 +8,7 @@ import { useModal } from './hooks/useModal'
 import { useSocial } from './hooks/useSocial'
 
 import { AuthPage } from './pages/AuthPage'
+import { SetNewPasswordPage } from './pages/SetNewPasswordPage'
 import { MarketView } from './pages/MarketView'
 import { PortfolioView } from './pages/PortfolioView'
 import { SocialView } from './pages/SocialView'
@@ -20,7 +21,7 @@ import { ConfirmModal } from './components/ConfirmModal'
 import './App.css'
 
 export default function App() {
-  const { session, loading: authLoading, signIn, signUp, signOut } = useAuth()
+  const { session, loading: authLoading, signIn, signUp, signOut, resetPassword, passwordRecovery, updatePassword } = useAuth()
 
   const {
     folders, loading: foldersLoading,
@@ -87,7 +88,8 @@ export default function App() {
       <span style={{ opacity: 0.4, fontSize: 16 }}>Loading…</span>
     </div>
   )
-  if (!session) return <AuthPage onSignIn={signIn} onSignUp={signUp} />
+  if (!session) return <AuthPage onSignIn={signIn} onSignUp={signUp} onResetPassword={resetPassword} />
+  if (passwordRecovery) return <SetNewPasswordPage onUpdatePassword={updatePassword} onSignOut={signOut} />
 
   // Which folder list + active ID to show in the sidebar
   const isMarket        = activeTab === 'market'

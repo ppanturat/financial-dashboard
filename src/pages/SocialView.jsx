@@ -373,38 +373,26 @@ function UserDetailPanel({ user, feed, feedHoldings }) {
                     <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--faint)', fontFamily: "var(--font-body), monospace" }}>{fHoldings.length} holding{fHoldings.length !== 1 ? 's' : ''}</span>
                   </div>
                   {fHoldings.length > 0 ? (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 480 }}>
-                        <thead>
-                          <tr>
-                            {['Ticker','Shares','Avg Cost','Current','Value','P&L','%'].map(h => (
-                              <th key={h} style={{ fontSize: 10, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.06em', padding: '8px 12px', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {fHoldings.map((h, i) => {
-                            const price  = prices[h.ticker]?.price
-                            const shares = parseFloat(h.amount||0)
-                            const cost   = parseFloat(h.buy_price||0)
-                            const value  = price != null ? price * shares : cost * shares
-                            const pnl    = price != null ? (price - cost) * shares : null
-                            const pnlPct = price != null && cost > 0 ? ((price - cost) / cost) * 100 : null
-                            const isPos  = pnl >= 0
-                            return (
-                              <tr key={h.id} style={{ borderBottom: i < fHoldings.length-1 ? '1px solid var(--border)' : 'none' }}>
-                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700 }}>{h.ticker}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, color: 'var(--muted)' }}>{shares.toFixed(4)}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, color: 'var(--muted)' }}>{fmtCurr(cost, currency, thbRate)}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12 }}>{loading ? '…' : price != null ? fmtCurr(price, currency, thbRate) : '—'}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700 }}>{fmtCurr(value, currency, thbRate)}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 600, color: pnl==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>{pnl==null?'—':`${isPos?'+':''}${fmtCurr(Math.abs(pnl),currency,thbRate)}`}</td>
-                                <td style={{ padding: '9px 12px', fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 600, color: pnlPct==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>{pnlPct==null?'—':`${isPos?'+':''}${pnlPct.toFixed(2)}%`}</td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                    <div>
+                      {fHoldings.map((h, i) => {
+                        const price  = prices[h.ticker]?.price
+                        const shares = parseFloat(h.amount||0)
+                        const cost   = parseFloat(h.buy_price||0)
+                        const value  = price != null ? price * shares : cost * shares
+                        const pnl    = price != null ? (price - cost) * shares : null
+                        const pnlPct = price != null && cost > 0 ? ((price - cost) / cost) * 100 : null
+                        const isPos  = pnl >= 0
+                        return (
+                          <div key={h.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 14px', padding: '10px 14px', borderBottom: i < fHoldings.length-1 ? '1px solid var(--border)' : 'none' }}>
+                            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700, minWidth: 46 }}>{h.ticker}</span>
+                            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, color: 'var(--muted)' }}>{shares.toFixed(4)} sh @ {fmtCurr(cost, currency, thbRate)}</span>
+                            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700, marginLeft: 'auto' }}>{fmtCurr(value, currency, thbRate)}</span>
+                            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 600, color: pnl==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>
+                              {pnl==null?'—':`${isPos?'+':''}${fmtCurr(Math.abs(pnl),currency,thbRate)} (${isPos?'+':''}${pnlPct.toFixed(2)}%)`}
+                            </span>
+                          </div>
+                        )
+                      })}
                     </div>
                   ) : (
                     <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No holdings</div>
@@ -516,11 +504,11 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
       <Card>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           <Avatar name={displayName} avatarUrl={avatarUrl} size={56} />
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: '1 1 160px', minWidth: 160 }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
             <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, color: 'var(--faint)', marginTop: 2 }}>@{username}</div>
             {/* following/followers/portfolios stats open a list on click */}
-            <div style={{ display: 'flex', gap: 18, marginTop: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px 16px', marginTop: 10, maxWidth: 220 }}>
               <button onClick={() => setListModal('following')} style={{ ...statTileStyle, cursor: 'pointer' }}>
                 <span style={statValueStyle}>{myFollowing}</span>
                 <span style={statLabelStyle}>Following</span>

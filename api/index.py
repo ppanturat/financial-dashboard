@@ -54,9 +54,18 @@ def sf(val, decimals=4):
 
 
 # ── Helper: parse news items from yfinance ───────────────────────────────────
+def _clean_text(raw: str) -> str:
+    """strips HTML tags/entities from yahoo's raw title/summary text and collapses whitespace"""
+    if not raw:
+        return ""
+    text = BeautifulSoup(raw, "html.parser").get_text(separator=" ")
+    text = html.unescape(text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 def _parse_news(raw_news: list) -> list:
     """
-    yfinance news items are dicts. Structure varies by version but typically:
+    yfinance news items are dicts. structure varies by version but typically:
       { "title": str, "publisher": str, "link": str, "providerPublishTime": int,
         "type": str, "thumbnail": {...}, "relatedTickers": [...] }
     """
@@ -97,11 +106,11 @@ def _parse_news(raw_news: list) -> list:
         )
 
         items.append({
-            "title": title,
+            "title": _clean_text(title),
             "source": provider,
             "publishedAt": pub_time,
             "url": url,
-            "summary": summary,
+            "summary": _clean_text(summary),
         })
 
     return items[:15]

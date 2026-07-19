@@ -32,6 +32,72 @@ function fmtK(val, symb) {
   return symb + val.toFixed(0)
 }
 
+const ROW_BTN_STYLE = {
+  padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+  background: 'var(--surface-2)', border: '1px solid var(--border-md)',
+  color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif",
+}
+
+function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false)
+  const pnlColor = h.profitLoss >= 0 ? 'var(--green)' : 'var(--red)'
+
+  return (
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12, padding: '13px 4px', background: 'none', border: 'none', cursor: 'pointer',
+          textAlign: 'left', font: 'inherit', color: 'inherit',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexShrink: 0 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: color }} />
+          <span className="font-mono font-bold" style={{ whiteSpace: 'nowrap' }}>{h.ticker}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, minWidth: 0, overflow: 'hidden' }}>
+          <span className="font-mono" style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
+            {fmt(h.currentValue, currency, thbRate)}
+          </span>
+          <span className="font-mono" style={{ fontWeight: 600, fontSize: 12, color: pnlColor, whiteSpace: 'nowrap' }}>
+            {h.profitLoss >= 0 ? '+' : '-'}{fmt(Math.abs(h.profitLoss), currency, thbRate)}
+          </span>
+          <span style={{ fontSize: 11, color: 'var(--faint)', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div style={{ padding: '2px 4px 14px', display: 'grid', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Shares</div>
+              <div className="font-mono" style={{ fontSize: 13, color: 'var(--muted)' }}>{parseFloat(h.amount).toLocaleString(undefined, { maximumFractionDigits: 6 })}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Avg Cost</div>
+              <div className="font-mono" style={{ fontSize: 13 }}>{fmt(h.buy_price, currency, thbRate)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Live Price</div>
+              <div className="font-mono" style={{ fontSize: 13 }}>{fmt(h.livePrice, currency, thbRate)}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.05em' }}>P&amp;L %</div>
+              <div className="font-mono" style={{ fontSize: 13, color: pnlColor }}>{h.profitLossPct >= 0 ? '+' : ''}{h.profitLossPct.toFixed(2)}%</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="trade-btn buy" onClick={onTrade}>⇄ Trade</button>
+            <button onClick={onEdit} title="Edit" style={ROW_BTN_STYLE}>✎ Edit</button>
+            <button onClick={onDelete} title="Remove" style={ROW_BTN_STYLE}>✕ Remove</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function PieLegend({ data }) {
   return (
     <div className="pie-legend">
@@ -288,7 +354,7 @@ export function PortfolioView({
 
   const handleOpenModal = (holding = null) => { setEditingObj(holding); setModalOpen(true) }
   const handleDelete = (id, ticker) => openConfirmModal('Delete Holding', `Remove ${ticker} from this folder?`, () => removeHolding(id))
-  const handleOpenTrade = (holding, side) => { setTradeObj({ holding, side }); setTradeModalOpen(true) }
+  const handleOpenTrade = (holding) => { setTradeObj({ holding }); setTradeModalOpen(true) }
 
   if (!activePortfolioId) return <EmptyState loading={loadingHoldings} />
   if (loadingHoldings) return <div className="chart-empty">Loading portfolio data...</div>
@@ -377,99 +443,38 @@ export function PortfolioView({
           )}
         </div>
 
-        {/* ── Holdings Table — now includes Value column ── */}
+        {/* holdings list — click a row to expand shares/cost/live price/actions */}
         <div className="chart-card port-table-container">
           <h3 className="desc-title">Your Assets</h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table className="port-table" style={{ minWidth: 560 }}>
-              <thead>
-                <tr>
-                  <th>Asset</th>
-                  <th>Shares</th>
-                  <th>Avg Cost</th>
-                  <th>Live Price</th>
-                  {/* FIX: Added Value column */}
-                  <th>Value</th>
-                  <th>P&amp;L</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pieDataWithPct.map((h, idx) => (
-                  <tr key={h.id}>
-                    {/* Asset */}
-                    <td>
-                      <span className="port-ticker-dot" style={{ background: COLORS[idx % COLORS.length] }} />
-                      <span className="font-mono font-bold">{h.ticker}</span>
-                    </td>
-
-                    {/* Shares */}
-                    <td className="num" style={{ color: 'var(--muted)', fontSize: 12 }}>
-                      {parseFloat(h.amount).toLocaleString(undefined, { maximumFractionDigits: 6 })}
-                    </td>
-
-                    {/* Avg Cost */}
-                    <td className="num">{fmt(h.buy_price, currency, thbRate)}</td>
-
-                    {/* Live Price */}
-                    <td className="num">{fmt(h.livePrice, currency, thbRate)}</td>
-
-                    {/* Value (shares × live price) — NEW */}
-                    <td className="num" style={{ fontWeight: 700 }}>
-                      {fmt(h.currentValue, currency, thbRate)}
-                    </td>
-
-                    {/* P&L */}
-                    <td className="num" style={{ color: h.profitLoss >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                      {h.profitLoss >= 0 ? '+' : '-'}{fmt(Math.abs(h.profitLoss), currency, thbRate)}
-                      <span className="pnl-pct"> ({h.profitLossPct >= 0 ? '+' : ''}{h.profitLossPct.toFixed(2)}%)</span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="port-actions">
-                      <button
-                        className="trade-btn buy"
-                        title={`Buy more ${h.ticker}`}
-                        onClick={() => handleOpenTrade(h, 'buy')}
-                      >↑ Buy</button>
-                      <button
-                        className="trade-btn sell"
-                        title={`Sell ${h.ticker}`}
-                        onClick={() => handleOpenTrade(h, 'sell')}
-                      >↓ Sell</button>
-                      <button onClick={() => handleOpenModal(h)} title="Edit">✎</button>
-                      <button onClick={() => handleDelete(h.id, h.ticker)} title="Remove">✕</button>
-                    </td>
-                  </tr>
-                ))}
-                {pieDataWithPct.length === 0 && (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>
-                      No holdings yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-
-              {/* Totals footer row */}
-              {pieDataWithPct.length > 0 && (
-                <tfoot>
-                  <tr style={{ borderTop: '2px solid var(--border-md)' }}>
-                    <td style={{ padding: '10px 8px', fontSize: 12, fontWeight: 700, color: 'var(--text)' }} colSpan={4}>
-                      Total
-                    </td>
-                    <td className="num" style={{ fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>
-                      {fmt(totalPortfolioValue, currency, thbRate)}
-                    </td>
-                    <td className="num" style={{ fontWeight: 700, color: totalPnL >= 0 ? 'var(--green)' : 'var(--red)' }}>
-                      {totalPnL >= 0 ? '+' : '-'}{fmt(Math.abs(totalPnL), currency, thbRate)}
-                      <span className="pnl-pct"> ({totalPnLPct >= 0 ? '+' : ''}{Math.abs(totalPnLPct).toFixed(2)}%)</span>
-                    </td>
-                    <td />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+          <div style={{ display: 'grid' }}>
+            {pieDataWithPct.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>No holdings yet.</div>
+            )}
+            {pieDataWithPct.map((h, idx) => (
+              <AssetRow
+                key={h.id}
+                holding={h}
+                color={COLORS[idx % COLORS.length]}
+                currency={currency}
+                thbRate={thbRate}
+                onTrade={() => handleOpenTrade(h)}
+                onEdit={() => handleOpenModal(h)}
+                onDelete={() => handleDelete(h.id, h.ticker)}
+              />
+            ))}
+            {pieDataWithPct.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 4px 4px', borderTop: '2px solid var(--border-md)', marginTop: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Total</span>
+                <div style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
+                  <span style={{ fontFamily: "var(--font-body), monospace", fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>
+                    {fmt(totalPortfolioValue, currency, thbRate)}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-body), monospace", fontWeight: 700, fontSize: 13, color: totalPnL >= 0 ? 'var(--green)' : 'var(--red)' }}>
+                    {totalPnL >= 0 ? '+' : '-'}{fmt(Math.abs(totalPnL), currency, thbRate)} ({totalPnLPct >= 0 ? '+' : ''}{Math.abs(totalPnLPct).toFixed(2)}%)
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
