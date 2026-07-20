@@ -62,7 +62,7 @@ function scoreRevenueYoY(v) {
   return            { score: 8,  label: 'Collapsing',   color: 'red',   note: `${pct.toFixed(1)}% YoY — severe revenue contraction. Business model under serious threat.` }
 }
 
-// FCF and gross margin are most predictive for long-term health; balance sheet
+// fcf and gross margin are most predictive for long-term health; balance sheet
 // carries less weight when FCF is exceptional (company can service debt easily)
 function computeWeightedScore(warChest, fcf, margin, pe, growth) {
   const weights = {

@@ -1,12 +1,7 @@
 /**
- * StockNewsFeed.jsx
- * ─────────────────────────────────────────────────────────────────────────────
- * Stock-specific news feed displayed beneath the stock chart.
- * Shows: Headline, Credible Source, Timestamp, and the pre-written 2-3 sentence
- * summary provided by yfinance — no AI summarisation required.
- *
- * Usage:
- *   <StockNewsFeed ticker="AAPL" />
+ * stock-specific news feed displayed beneath the stock chart. shows headline,
+ * source, timestamp, and the summary provided by yfinance.
+ * usage: <StockNewsFeed ticker="AAPL" />
  */
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../lib/api'
@@ -190,7 +185,7 @@ export function StockNewsFeed({ ticker }) {
     return () => ctrl.abort()
   }, [ticker])
 
-  // Fetch news with proper cleanup/abort on ticker change — textbook effect usage.
+  // fetch news with cleanup/abort on ticker change
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { const cleanup = load(); return cleanup }, [load])
 

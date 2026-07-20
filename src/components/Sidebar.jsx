@@ -90,7 +90,7 @@ export function Sidebar({
   const [isImporting, setIsImporting]           = useState(false)
   const newRef = useRef(null)
 
-  // Resets in-progress folder editor/import UI whenever the active tab changes.
+  // resets in-progress folder editor/import UI whenever the active tab changes
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setImportMode(false); setImportStep(1)

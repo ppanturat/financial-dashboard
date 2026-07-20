@@ -71,7 +71,7 @@ export function usePortfolio(session) {
     setLoadingHoldings(false)
   }, [session, activePortfolioId])
 
-  // Loads holdings for the active portfolio folder — legitimate fetch-on-
+  // loads holdings for the active portfolio folder — fetch-on-
   // dependency-change pattern (loadHoldings itself sets state on completion).
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -164,14 +164,14 @@ export function usePortfolio(session) {
   }
 
   const togglePortfolioPrivacy = async (folderId, isPublic) => {
-    // Optimistic update
+    // optimistic update
     setPortfolioFolders(f => f.map(x => x.id === folderId ? { ...x, is_public: isPublic } : x))
     const { error } = await supabase
       .from('portfolio_folders')
       .update({ is_public: isPublic })
       .eq('id', folderId)
     if (error) {
-      // Revert on failure
+      // revert on failure
       console.error('togglePortfolioPrivacy failed:', error)
       setPortfolioFolders(f => f.map(x => x.id === folderId ? { ...x, is_public: !isPublic } : x))
       alert('Could not update portfolio visibility: ' + error.message)

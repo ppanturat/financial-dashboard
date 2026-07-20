@@ -34,7 +34,7 @@ export function useSocial(session) {
     setRequests(reqs || [])
     setSentRequests(sent || [])
 
-    // If profile row is missing, synthesise one from auth metadata so UI never shows fallbacks
+    // if profile row is missing, synthesise one from auth metadata
     if (!me && session.user) {
       const meta = session.user.user_metadata || {}
       setProfile({ id: session.user.id, name: meta.name || '', username: meta.username || '', avatar_url: null })
@@ -54,7 +54,7 @@ export function useSocial(session) {
       setFeed(publicFolders)
       setFollowedUsers(followingProfiles || [])
 
-      // Fetch holdings for every public folder
+      // fetch holdings for every public folder
       if (publicFolders.length) {
         const folderIds = publicFolders.map(f => f.id)
         const { data: holdings } = await supabase
@@ -127,7 +127,7 @@ export function useSocial(session) {
       .single()
 
     if (error) {
-      // Surface the failure instead of silently pretending it worked —
+      // surface the failure instead of silently pretending it worked,
       // previously this used .upsert() with no error check, so a failed
       // write would still show the new name in the UI (optimistic state)
       // while the database kept the old value.

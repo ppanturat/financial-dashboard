@@ -63,21 +63,7 @@
   border-color: #bbf7d0 !important;
   background: #f0fdf4 !important;
 }
-.trade-btn.sell {
-  color: #b91c1c !important;
-  border-color: #fecaca !important;
-  background: #fef2f2 !important;
-}
 .trade-btn.buy:hover  { background: #dcfce7 !important; }
-.trade-btn.sell:hover { background: #fee2e2 !important; }
-
-/* Port actions: accommodate the extra buttons */
-.port-actions {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  white-space: nowrap;
-}
 
 @media (max-width: 540px) {
   .trade-btn { padding: 3px 5px !important; font-size: 10px !important; }

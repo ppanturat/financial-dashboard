@@ -139,7 +139,7 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         hist = stock.history(period=period_map.get(timeframe, "1mo"), interval=interval_map.get(timeframe, "1d"))
         chart_data = []
         if not hist.empty:
-            # FIX: Drop NaN prices to prevent 500 JSON serialization errors
+            # drop NaN prices to avoid JSON serialization errors
             hist = hist.dropna(subset=['Close'])
             chart_data = [{"timestamp": d.isoformat(), "price": round(float(r['Close']), 2)} for d, r in hist.iterrows()]
 
@@ -198,7 +198,7 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         }
     except Exception as e:
         print(f"Error fetching data for {ticker}: {e}")
-        # Safe fallback prevents CORS errors on crash
+        # safe fallback so the frontend still gets a valid response on crash
         return {
             "quoteType": "EQUITY",
             "sector": None,
@@ -239,7 +239,6 @@ def get_bulk_prices(tickers: str):
             if not price:
                 hist = stock.history(period="2d", interval="1d")
                 if not hist.empty:
-                    # FIX: drop NaN here as well
                     hist = hist.dropna(subset=['Close'])
                     if not hist.empty:
                         price = float(hist['Close'].iloc[-1])

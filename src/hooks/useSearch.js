@@ -7,7 +7,7 @@ export function useSearch() {
   const [open, setOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
 
-  // Debounced ticker search as the user types.
+  // debounced ticker search as the user types
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!query.trim()) { setResults([]); return }

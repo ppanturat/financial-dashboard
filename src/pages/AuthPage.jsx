@@ -62,14 +62,14 @@ function PasswordField({ value, onChange, placeholder, autoComplete, error, onFo
         aria-label={show ? 'Hide password' : 'Show password'}
       >
         {show ? (
-          // Eye-off SVG
+          // eye-off icon
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
             <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
             <line x1="1" y1="1" x2="23" y2="23"/>
           </svg>
         ) : (
-          // Eye SVG
+          // eye icon
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
             <circle cx="12" cy="12" r="3"/>
@@ -98,19 +98,19 @@ function ErrorBanner({ message }) {
 export function AuthPage({ onSignIn, onSignUp, onResetPassword }) {
   const [view, setView] = useState('login')
 
-  // Login state
+  // login state
   const [loginEmail, setLoginEmail]       = useState('')
   const [loginPassword, setLoginPassword] = useState('')
   const [loginErrors, setLoginErrors]     = useState({})
 
-  // Register state
+  // register state
   const [regName, setRegName]         = useState('')
   const [regUsername, setRegUsername] = useState('')
   const [regEmail, setRegEmail]       = useState('')
   const [regPassword, setRegPassword] = useState('')
   const [regErrors, setRegErrors]     = useState({})
 
-  // Forgot-password state
+  // forgot-password state
   const [resetEmail, setResetEmail]   = useState('')
   const [resetError, setResetError]   = useState('')
   const [resendIn, setResendIn]       = useState(0)
@@ -130,10 +130,7 @@ export function AuthPage({ onSignIn, onSignUp, onResetPassword }) {
     setRegErrors({})
   }
 
-  // ── Login submit ────────────────────────────────────────────────────────────
-  // FIX: Wrapped in try/catch. Previously any thrown exception (network error,
-  // CORS, timeout) left the button stuck on "Signing in…" forever because
-  // setLoading(false) was never reached.
+  // wrapped in try/finally so the button never gets stuck on "Signing in..."
   const handleLoginSubmit = async (e) => {
     e.preventDefault()
     setLoginErrors({})
@@ -142,8 +139,6 @@ export function AuthPage({ onSignIn, onSignUp, onResetPassword }) {
     try {
       const result = await onSignIn(loginEmail, loginPassword)
 
-      // onSignIn (useAuth.signIn) now always returns {data, error} — never throws.
-      // But guard here too in case of unexpected shapes.
       const error = result?.error ?? null
 
       if (error) {
@@ -160,26 +155,20 @@ export function AuthPage({ onSignIn, onSignUp, onResetPassword }) {
           setLoginErrors({ general: error.message || 'Sign in failed. Please try again.' })
         }
       }
-      // On success: onAuthStateChange fires → session updates → App re-renders →
-      // AuthPage unmounts. setLoading(false) below may run on unmounted component
-      // but React 18 handles this gracefully (no-op, no warning).
+      // on success, onAuthStateChange fires and App re-renders past this page
     } catch (err) {
-      // Truly unexpected throw (should not happen now that useAuth wraps everything,
-      // but kept as ultimate safety net)
+      // shouldn't happen since useAuth wraps everything, kept as a safety net
       console.error('[AuthPage] unexpected sign-in error:', err)
       setLoginErrors({ general: 'An unexpected error occurred. Please try again.' })
     } finally {
-      // FIX: Use finally so setLoading(false) ALWAYS runs, even if an error is
-      // thrown mid-way. This prevents the button from being stuck indefinitely.
       setLoading(false)
     }
   }
 
-  // ── Register submit ─────────────────────────────────────────────────────────
   const handleRegisterSubmit = async (e) => {
     e.preventDefault()
 
-    // Client-side validation first (no network call needed)
+    // client-side validation first, no network call needed
     const errs = {}
     if (!regName.trim())         errs.name = 'Display name is required'
     if (!regUsername.trim())     errs.username = 'Username is required'

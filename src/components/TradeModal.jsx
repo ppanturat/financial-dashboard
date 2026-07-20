@@ -1,8 +1,7 @@
 /**
- * TradeModal.jsx
- * Buy / Sell modal for existing holdings in PortfolioView.
- * Buy  → adds shares to amount, recalculates weighted avg cost
- * Sell → subtracts shares, keeps avg cost unchanged
+ * buy/sell modal for existing holdings in PortfolioView.
+ * buy adds shares and recalculates weighted avg cost; sell subtracts shares
+ * and keeps avg cost unchanged.
  */
 import { useState, useEffect } from 'react'
 
@@ -16,7 +15,7 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
   const [price, setPrice]     = useState('')
   const [error, setError]     = useState('')
 
-  // Resets the trade form each time the modal opens.
+  // resets the trade form each time the modal opens
   useEffect(() => {
     if (isOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -41,7 +40,7 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
   const tradePrice     = parseFloat(price)  || 0
   const totalTrade     = tradeShares * tradePrice
 
-  // Preview calculations
+  // preview calculations
   let newShares = existingShares, newAvg = existingAvg
   if (side === 'buy' && tradeShares > 0 && tradePrice > 0) {
     newShares = existingShares + tradeShares
@@ -57,7 +56,7 @@ export function TradeModal({ isOpen, holding, livePrice, onClose, onSave }) {
     if (side === 'buy' && (!tradePrice || tradePrice <= 0)) { setError('Enter a valid price.'); return }
     if (side === 'sell' && tradeShares > existingShares) { setError(`Cannot sell more than ${existingShares.toFixed(4)} shares.`); return }
 
-    // Call saveHolding(id, ticker, newAmount, newAvgCost)
+    // calls saveHolding(id, ticker, newAmount, newAvgCost)
     const finalShares = Math.max(0, newShares)
     const finalAvg    = side === 'sell' ? existingAvg : newAvg
     onSave(holding.id, holding.ticker, finalShares, finalAvg)

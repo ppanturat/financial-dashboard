@@ -115,9 +115,6 @@
 
   /* portfolio mobile: already handled by 900px breakpoint above */
   .port-table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .port-table { min-width: 520px; }
-  .port-table th, .port-table td { padding: 10px 12px; font-size: 12px; }
-  .port-table .pnl-pct { display: none; }
   .portfolio-header { flex-direction: column; align-items: flex-start; }
   .port-header-actions { width: 100%; justify-content: space-between; }
 }
@@ -166,24 +163,14 @@
 /* chart subtitle */
 .chart-sub { font-size: 12px; color: var(--muted); margin: -4px 0 12px; padding: 0 16px; }
 
-/* portfolio table */
+/* portfolio table container */
 .port-table-container { overflow-x: auto; padding: 0; }
 .port-table-container .desc-title { padding: 16px 20px; border-bottom: 1px solid var(--border); margin: 0; }
-.port-table { width: 100%; border-collapse: collapse; text-align: left; }
-.port-table th { font-size: 11px; text-transform: uppercase; color: var(--faint); padding: 12px 20px; border-bottom: 1px solid var(--border); font-weight: 600; letter-spacing: .04em; }
-.port-table td { padding: 14px 20px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text); vertical-align: middle; }
-.port-table tr:last-child td { border-bottom: none; }
-.port-table td.num { font-family: var(--font-body), monospace; font-variant-numeric: tabular-nums; font-size: 13px; }
-.port-ticker-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; vertical-align: middle; }
-.pnl-pct { font-size: 11px; opacity: .75; }
 
 .font-mono { font-family: var(--font-body), monospace; }
 .font-bold { font-weight: 700; }
 .text-green { color: var(--green); }
 .text-red { color: var(--red); }
-.port-actions { white-space: nowrap; }
-.port-actions button { background: none; border: none; font-size: 14px; color: var(--muted); cursor: pointer; padding: 4px 6px; transition: color 0.15s; }
-.port-actions button:hover { color: var(--text); }
 
 /* ── holding modal (popup) ──────────────────────── */
 .hmodal-overlay {

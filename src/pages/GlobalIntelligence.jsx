@@ -1,10 +1,8 @@
 /**
- * GlobalIntelligence.jsx — "News Feed" tab
- * ─────────────────────────────────────────────────────────────────────────────
- * Ranked news sections:
- *   Section 1 — Market Headlines (Reuters, AP, Bloomberg, WSJ, FT)
- *   Section 2 — Analyst & Opinion (CNBC, MarketWatch, Barron's, Motley Fool, Seeking Alpha…)
- *   Section 3 — Community & Other
+ * "news feed" tab — ranked news sections:
+ *   1. market headlines (Reuters, AP, Bloomberg, WSJ, FT)
+ *   2. analyst & opinion (CNBC, MarketWatch, Barron's, Motley Fool, Seeking Alpha...)
+ *   3. community & other
  */
 import { useEffect, useState, useCallback } from 'react'
 import { api } from '../lib/api'
@@ -173,11 +171,11 @@ export function GlobalIntelligence() {
     return () => ctrl.abort()
   }, [])
 
-  // Fetch news with cleanup/abort — textbook effect usage.
+  // fetch news with cleanup/abort
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { const cleanup = load(); return cleanup }, [load])
 
-  // Split into tiers — tier 1 (trusted) always first
+  // split into tiers, tier 1 (trusted) always first
   const withSource = news.map(n => ({ ...n, _src: resolveSource(n.source, n.url), _tier: getSourceTier(resolveSource(n.source, n.url)) }))
   const tier1 = withSource.filter(n => n._tier === 1)
   const tier2 = withSource.filter(n => n._tier === 2)

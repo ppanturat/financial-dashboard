@@ -38,7 +38,7 @@ export default function App() {
     saveHolding, removeHolding,
   } = usePortfolio(session)
 
-  // Fallback in case hook doesn't expose togglePortfolioPrivacy yet
+  // fallback in case the hook doesn't expose togglePortfolioPrivacy yet
   const togglePortfolioPrivacy = _togglePrivacy ?? ((folderId, isPublic) => {
     supabase.from('portfolio_folders').update({ is_public: isPublic }).eq('id', folderId)
   })
@@ -56,7 +56,7 @@ export default function App() {
   const social    = useSocial(session)
   const searchRef = useRef(null)
 
-  // Auto-select first folder on load. Kept as an effect (not derived at
+  // auto-select first folder on load. kept as an effect (not derived at
   // render) because several handlers below read `activeFolderId` directly
   // and need it to hold a real id once folders finish loading, not just a
   // display-time fallback.
@@ -68,7 +68,7 @@ export default function App() {
     }
   }, [folders, foldersLoading])
 
-  // Close search dropdown on outside click
+  // close search dropdown on outside click
   useEffect(() => {
     const fn = e => { if (searchRef.current && !searchRef.current.contains(e.target)) search.close() }
     document.addEventListener('mousedown', fn)
@@ -91,18 +91,18 @@ export default function App() {
   if (!session) return <AuthPage onSignIn={signIn} onSignUp={signUp} onResetPassword={resetPassword} />
   if (passwordRecovery) return <SetNewPasswordPage onUpdatePassword={updatePassword} onSignOut={signOut} />
 
-  // Which folder list + active ID to show in the sidebar
+  // which folder list + active id to show in the sidebar
   const isMarket        = activeTab === 'market'
   const currentFolders  = isMarket ? folders : portfolioFolders
   const currentActiveId = isMarket ? activeFolderId : activePortfolioId
   const currentLoading  = isMarket ? foldersLoading : portfolioLoading
 
-  // Active folder for header title
+  // active folder for header title
   const activeFolder = isMarket
     ? folders.find(f => f.id === activeFolderId)
     : portfolioFolders.find(f => f.id === activePortfolioId)
 
-  // Tabs that show no folder name / ticker chips in the header
+  // tabs that show no folder name / ticker chips in the header
   const cleanHeaderTabs = new Set(['social', 'intelligence'])
 
   // ── Folder handlers ────────────────────────────────────────────────────────

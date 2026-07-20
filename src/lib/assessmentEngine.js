@@ -5,10 +5,8 @@
  * exports:
  *   runAdoptionCheck(metrics)        -> module A result or null
  *   runTerminalRedFlagSweep(metrics) -> module B result or null
- *   runBearBullMatrix(metrics)       -> module C result { bear, bull }
  *   runFundamentalSweep(metrics)     -> full 5-point sweep
- *   runFullAssessment(metrics)       -> all modules combined
- *   evaluateBuySignal(ticker)        -> module D (technical trigger), async boolean
+ *   evaluateBuySignal(ticker)        -> module C (technical trigger), async boolean
  */
 
 import { api } from './api'
@@ -175,156 +173,6 @@ export function runTerminalRedFlagSweep(metrics = {}) {
   }
 }
 
-// module C: bear vs. bull probability matrix
-
-/**
- * rule: bear case auto-triggers on high debt, margin compression, slowing
- * growth; bull case triggers on FCF expansion, high war chest ratio, gross
- * margin strength. bear case always renders first (neutrality).
- *
- * @param {object} metrics
- * @returns {{ bear: string, bull: string, netBias: 'bear'|'neutral'|'bull' }}
- */
-export function runBearBullMatrix(metrics = {}) {
-  const fcf   = metrics.fcf
-  const wcr   = metrics.war_chest_ratio
-  const gm    = metrics.gross_margin
-  const rev   = metrics.revenue_yoy
-  const de    = metrics.debt_to_equity
-  const om    = metrics.operating_margin
-  const pe    = metrics.forward_pe
-
-  // bear signals
-  const bearSignals = []
-  let bearScore = 0
-
-  if (de != null && de > 150) {
-    bearSignals.push(`aggressive debt-to-equity ratio of ${de.toFixed(0)}%`)
-    bearScore += 2
-  } else if (de != null && de > 80) {
-    bearSignals.push(`elevated leverage (D/E: ${de.toFixed(0)}%)`)
-    bearScore += 1
-  }
-
-  if (om != null && gm != null && (gm - om) > 0.30) {
-    bearSignals.push(`severe SG&A and operational overhead drag (gross-to-operating spread: ${fmtPct(gm - om)})`)
-    bearScore += 1
-  }
-
-  if (rev != null && rev < 0.05) {
-    bearSignals.push(rev < 0 ? `active revenue contraction of ${fmtPct(Math.abs(rev))}` : `near-stagnant revenue growth of ${fmtPct(rev)}`)
-    bearScore += rev < 0 ? 2 : 1
-  }
-
-  if (fcf != null && fcf < -2e9) {
-    bearSignals.push(`severe FCF burn of ${fmtDollars(Math.abs(fcf))} annually`)
-    bearScore += 2
-  } else if (fcf != null && fcf < 0) {
-    bearSignals.push(`negative free cash flow (${fmtDollars(fcf)})`)
-    bearScore += 1
-  }
-
-  if (pe != null && pe > 60) {
-    bearSignals.push(`hyper-extended forward P/E of ${pe.toFixed(1)}x embedding near-perfect execution`)
-    bearScore += 2
-  } else if (pe != null && pe > 40) {
-    bearSignals.push(`elevated forward P/E of ${pe.toFixed(1)}x with limited margin of safety`)
-    bearScore += 1
-  }
-
-  // bull signals
-  const bullSignals = []
-  let bullScore = 0
-
-  if (fcf != null && fcf > 5e9) {
-    bullSignals.push(`elite free cash flow engine generating ${fmtDollars(fcf)} annually`)
-    bullScore += 2
-  } else if (fcf != null && fcf > 0) {
-    bullSignals.push(`positive and self-sustaining free cash flow of ${fmtDollars(fcf)}`)
-    bullScore += 1
-  }
-
-  if (wcr != null && wcr >= 2) {
-    bullSignals.push(`fortress-grade war chest ratio of ${wcr === 999 ? '∞' : wcr.toFixed(2)}x (cash massively exceeds debt)`)
-    bullScore += 2
-  } else if (wcr != null && wcr >= 1) {
-    bullSignals.push(`healthy war chest ratio of ${wcr.toFixed(2)}x (cash covers full debt load)`)
-    bullScore += 1
-  }
-
-  if (gm != null && gm > 0.60) {
-    bullSignals.push(`exceptional gross margin of ${fmtPct(gm)} confirming dominant pricing power`)
-    bullScore += 2
-  } else if (gm != null && gm > 0.35) {
-    bullSignals.push(`solid gross margin of ${fmtPct(gm)} providing structural cost buffer`)
-    bullScore += 1
-  }
-
-  if (rev != null && rev > 0.20) {
-    bullSignals.push(`hypergrowth revenue expansion of ${fmtPct(rev)} YoY`)
-    bullScore += 2
-  } else if (rev != null && rev > 0.08) {
-    bullSignals.push(`healthy revenue growth of ${fmtPct(rev)} YoY`)
-    bullScore += 1
-  }
-
-  // compose bear paragraph
-  let bear
-  if (bearSignals.length === 0) {
-    bear = 'The bear case for this equity is currently structurally weak. '
-      + 'No dominant risk signals — high debt, margin compression, or growth deceleration — are present in the data. '
-      + 'Bears would need an external macro shock or a forward guidance miss to build a compelling negative thesis.'
-  } else {
-    const signalList = bearSignals.length === 1
-      ? bearSignals[0]
-      : bearSignals.slice(0, -1).join(', ') + ', and ' + bearSignals[bearSignals.length - 1]
-    bear = `The bear thesis centres on ${signalList}. `
-    if (bearScore >= 4) {
-      bear += 'These compounding risk factors create a structurally fragile investment profile. '
-        + 'Any simultaneous deterioration in macro conditions, credit markets, or sector sentiment could rapidly accelerate downside. '
-        + 'The mathematical risk of multiple compression or liquidity stress is elevated, and capital preservation should take priority over upside capture.'
-    } else if (bearScore >= 2) {
-      bear += 'While not yet at a terminal stress level, these structural headwinds demand active monitoring. '
-        + 'Bears would target any guidance cut or balance sheet deterioration as confirmation of an accelerating negative feedback loop.'
-    } else {
-      bear += 'This represents a moderate-conviction bear thesis — real but not dominant. '
-        + 'The identified risks constrain upside potential without yet constituting a structural collapse scenario.'
-    }
-  }
-
-  // compose bull paragraph
-  let bull
-  if (bullSignals.length === 0) {
-    bull = 'The bull case is currently lacking quantitative confirmation. '
-      + 'No strong FCF expansion, war chest accumulation, or gross margin leadership is visible in the data. '
-      + 'Bulls would need to rely primarily on future execution optionality or forward guidance upgrades to construct a positive thesis.'
-  } else {
-    const signalList = bullSignals.length === 1
-      ? bullSignals[0]
-      : bullSignals.slice(0, -1).join(', ') + ', and ' + bullSignals[bullSignals.length - 1]
-    bull = `The bull thesis is anchored by ${signalList}. `
-    if (bullScore >= 4) {
-      bull += 'These elite fundamental characteristics form a self-reinforcing flywheel: strong cash generation finances continued growth, '
-        + 'while pricing power insulates margins through macro cycles. '
-        + 'If execution continues at this level, the compounding effect of these structural advantages creates a powerful long-term return profile.'
-    } else if (bullScore >= 2) {
-      bull += 'These strengths create a constructive fundamental baseline. '
-        + 'Bulls would look for continued operational execution and margin expansion as catalysts for sustained multiple expansion.'
-    } else {
-      bull += 'This is a moderate-conviction bull thesis — a genuine positive signal exists, '
-        + 'but it requires corroborating evidence from operational execution before forming a high-conviction long position.'
-    }
-  }
-
-  // net bias
-  let netBias
-  if (bullScore > bearScore + 1)      netBias = 'bull'
-  else if (bearScore > bullScore + 1) netBias = 'bear'
-  else                                netBias = 'neutral'
-
-  return { bear, bull, netBias, bullScore, bearScore }
-}
-
 // full fundamental sweep
 
 /** runs all 5 core sweep checks (liquidity, FCF, margins, valuation, growth); null if no metrics available */
@@ -481,27 +329,8 @@ export function runFundamentalSweep(metrics = {}) {
   }
 }
 
-// master runner
 
-/**
- * runs all modules and returns a unified assessment object.
- * @param {object} metrics - raw metrics from /api/data
- */
-export function runFullAssessment(metrics = {}) {
-  const sweep    = runFundamentalSweep(metrics)
-  const adoption = runAdoptionCheck(metrics)
-  const redFlag  = runTerminalRedFlagSweep(metrics)
-  const bearBull = runBearBullMatrix(metrics)
-
-  return {
-    sweep,           // Module: fundamental 5-point sweep
-    adoption,        // Module A
-    redFlag,         // Module B
-    bearBull,        // Module C
-  }
-}
-
-// module D: technical trigger (RSI / SMA / volume breakout) — needs daily
+// module C: technical trigger (RSI / SMA / volume breakout) — needs daily
 // price/volume history, so it fetches its own data via GET /api/technicals/{ticker}
 
 /** simple moving average over the trailing `period` values */

@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ensureProfile — upserts a row in `profiles` for a newly signed-in user.
-// Never throws — called in background, never blocks auth flow.
-// ─────────────────────────────────────────────────────────────────────────────
+// upserts a row in `profiles` for a newly signed-in user; never throws, runs in the background
 async function ensureProfile(user) {
   if (!user) return
   try {
@@ -26,13 +23,11 @@ async function ensureProfile(user) {
       await supabase.from('profiles').update({ username }).eq('id', user.id)
     }
   } catch (err) {
-    // Non-critical background sync — log so failures aren't invisible,
-    // but never block the auth flow.
+    // non-critical background sync, log but don't block the auth flow
     console.warn('[ensureProfile] failed:', err)
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 export function useAuth() {
   // undefined = still resolving, null = no active session, object = authenticated
   const [session, setSession] = useState(undefined)
@@ -49,16 +44,13 @@ export function useAuth() {
       }
     }
 
-    // FIX: Reduced from 5 000 ms → 3 000 ms.
-    // Supabase fires INITIAL_SESSION within ~1 s when a session exists.
-    // 3 s is a safe upper bound for slow connections; 5 s was excessive.
+    // supabase fires INITIAL_SESSION within ~1s when a session exists; 3s covers slow connections
     const timeout = setTimeout(() => {
       setSession(null)
       markLoaded()
     }, 3000)
 
-    // FIX: Wrap onAuthStateChange in try/catch so a misconfigured Supabase
-    // URL (e.g. env vars missing) doesn't crash the whole app on mount.
+    // guards against a misconfigured supabase URL crashing the app on mount
     let subscription
     try {
       const { data } = supabase.auth.onAuthStateChange((event, s) => {
@@ -82,7 +74,7 @@ export function useAuth() {
       })
       subscription = data?.subscription
     } catch (err) {
-      // onAuthStateChange itself threw — treat as "no session"
+      // treat as "no session"
       console.warn('[useAuth] onAuthStateChange error:', err)
       clearTimeout(timeout)
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -96,32 +88,24 @@ export function useAuth() {
     }
   }, [])
 
-  // ── signIn ─────────────────────────────────────────────────────────────────
-  // FIX: Wrapped in try/catch. Previously any network error / CORS issue /
-  // thrown exception would leave the "Signing in…" button permanently disabled
-  // because setLoading(false) was never called in the calling component.
-  // We now return a normalised { data, error } object in ALL cases.
+  // always returns a normalised { data, error } object, never throws, so
+  // the caller's loading state is never left stuck on failure
   const signIn = async (email, password) => {
     try {
       const result = await supabase.auth.signInWithPassword({ email, password })
-      // Normalise: if result isn't a real {data,error} object (e.g. noop proxy
-      // returned the proxy itself), coerce into a safe shape.
       if (result && typeof result === 'object' && ('data' in result || 'error' in result)) {
         if (result.data?.user) ensureProfile(result.data.user)
         return result
       }
-      // Got something unexpected back — treat as auth failure
       return { data: null, error: { message: 'Sign in failed. Please try again.' } }
     } catch (err) {
       return { data: null, error: { message: err?.message || 'Network error. Please check your connection and try again.' } }
     }
   }
 
-  // ── signUp ─────────────────────────────────────────────────────────────────
-  // FIX: Same try/catch treatment.
   const signUp = async (email, password, name, username) => {
     try {
-      // Check username uniqueness first
+      // check username uniqueness first
       const { data: existing, error: checkError } = await supabase
         .from('profiles')
         .select('id')
@@ -129,7 +113,6 @@ export function useAuth() {
         .maybeSingle()
 
       if (checkError && checkError.message !== 'Supabase is not configured.') {
-        // A real DB error (not the noop error)
         return { data: null, error: { message: 'Could not verify username. Please try again.' } }
       }
 
@@ -177,7 +160,7 @@ export function useAuth() {
     try {
       await supabase.auth.signOut()
     } catch {
-      // Force local session clear even if signOut API call fails
+      // force local session clear even if the signOut call fails
       setSession(null)
     }
   }

@@ -633,10 +633,7 @@ body, html {
 /* Ticker chips */
 .chip-ticker  { font-size: var(--font-sm) !important; font-weight: 700; }
 
-/* Portfolio table */
-.port-table th, .port-table td { font-size: var(--font-sm) !important; }
-
-/* News feed */
+/* news feed */
 article a      { font-size: var(--font-base) !important; }
 article p      { font-size: var(--font-base) !important; }
 

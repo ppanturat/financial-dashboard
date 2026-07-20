@@ -41,6 +41,8 @@ const ROW_BTN_STYLE = {
 function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDelete }) {
   const [open, setOpen] = useState(false)
   const pnlColor = h.profitLoss >= 0 ? 'var(--green)' : 'var(--red)'
+  const colStyle = { display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end' }
+  const microLabel = { fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em' }
 
   return (
     <div style={{ borderBottom: '1px solid var(--border)' }}>
@@ -48,7 +50,7 @@ function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDel
         onClick={() => setOpen(o => !o)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          gap: 12, padding: '13px 4px', background: 'none', border: 'none', cursor: 'pointer',
+          gap: 16, padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer',
           textAlign: 'left', font: 'inherit', color: 'inherit',
         }}
       >
@@ -56,20 +58,26 @@ function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDel
           <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: color }} />
           <span className="font-mono font-bold" style={{ whiteSpace: 'nowrap' }}>{h.ticker}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, minWidth: 0, overflow: 'hidden' }}>
-          <span className="font-mono" style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
-            {fmt(h.currentValue, currency, thbRate)}
-          </span>
-          <span className="font-mono" style={{ fontWeight: 600, fontSize: 12, color: pnlColor, whiteSpace: 'nowrap' }}>
-            {h.profitLoss >= 0 ? '+' : '-'}{fmt(Math.abs(h.profitLoss), currency, thbRate)}
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, minWidth: 0 }}>
+          <div style={colStyle}>
+            <span style={microLabel}>Value</span>
+            <span className="font-mono" style={{ fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
+              {fmt(h.currentValue, currency, thbRate)}
+            </span>
+          </div>
+          <div style={colStyle}>
+            <span style={microLabel}>P&amp;L</span>
+            <span className="font-mono" style={{ fontWeight: 600, fontSize: 13, color: pnlColor, whiteSpace: 'nowrap' }}>
+              {h.profitLoss >= 0 ? '+' : '-'}{fmt(Math.abs(h.profitLoss), currency, thbRate)}
+            </span>
+          </div>
           <span style={{ fontSize: 11, color: 'var(--faint)', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
         </div>
       </button>
 
       {open && (
-        <div style={{ padding: '2px 4px 14px', display: 'grid', gap: 10 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+        <div style={{ padding: '2px 20px 18px', display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12 }}>
             <div>
               <div style={{ fontSize: 10, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Shares</div>
               <div className="font-mono" style={{ fontSize: 13, color: 'var(--muted)' }}>{parseFloat(h.amount).toLocaleString(undefined, { maximumFractionDigits: 6 })}</div>
@@ -262,7 +270,7 @@ function DividendChart({ holdings, defaultCurrency, thbRate }) {
   const [error, setError] = useState(null)
   const accentColor = '#d97706'
 
-  // Fetch dividend data whenever the holdings list changes.
+  // fetch dividend data whenever the holdings list changes
   useEffect(() => {
     if (!holdings.length) return
     const tickers = [...new Set(holdings.map(h => h.ticker.toUpperCase()))].join(',')
@@ -463,7 +471,7 @@ export function PortfolioView({
               />
             ))}
             {pieDataWithPct.length > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 4px 4px', borderTop: '2px solid var(--border-md)', marginTop: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px 18px', borderTop: '2px solid var(--border-md)', marginTop: 4 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Total</span>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'baseline' }}>
                   <span style={{ fontFamily: "var(--font-body), monospace", fontWeight: 800, fontSize: 13, color: 'var(--text)' }}>

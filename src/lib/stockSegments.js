@@ -1,6 +1,6 @@
-// Segment → color mapping
+// segment -> color mapping
 export const SEGMENT_COLORS = {
-  // Tech & Software
+  // tech & software
   TECH:        { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
   AI:          { bg: '#f5f3ff', text: '#6d28d9', border: '#ddd6fe' },
   CLOUD:       { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' },
@@ -9,7 +9,7 @@ export const SEGMENT_COLORS = {
   CYBER:       { bg: '#fdf2f8', text: '#9d174d', border: '#fbcfe8' },
   SAAS:        { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' },
   HARDWARE:    { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
-  // Media & Consumer
+  // media & consumer
   SOCIAL:      { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
   STREAMING:   { bg: '#fdf4ff', text: '#7e22ce', border: '#e9d5ff' },
   GAMING:      { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
@@ -17,24 +17,24 @@ export const SEGMENT_COLORS = {
   MEDIA:       { bg: '#fefce8', text: '#854d0e', border: '#fef08a' },
   ECOM:        { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
   RETAIL:      { bg: '#fef9c3', text: '#713f12', border: '#fef08a' },
-  // Finance
+  // finance
   BANKING:     { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe' },
   FINANCE:     { bg: '#eef2ff', text: '#4338ca', border: '#c7d2fe' },
   INSURANCE:   { bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd' },
   FINTECH:     { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
   PAYMENTS:    { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
-  // Health
+  // health
   HEALTH:      { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
   PHARMA:      { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' },
   BIOTECH:     { bg: '#f5f3ff', text: '#5b21b6', border: '#ddd6fe' },
   MEDTECH:     { bg: '#eff6ff', text: '#1d4ed8', border: '#bfdbfe' },
-  // Energy & Materials
+  // energy & materials
   ENERGY:      { bg: '#fff7ed', text: '#b45309', border: '#fde68a' },
   OIL:         { bg: '#fefce8', text: '#78350f', border: '#fef08a' },
   RENEWABLES:  { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
   MINING:      { bg: '#f5f5f4', text: '#44403c', border: '#d6d3d1' },
   MATERIALS:   { bg: '#fafaf9', text: '#57534e', border: '#e7e5e4' },
-  // Industry
+  // industry
   AUTO:        { bg: '#f0f9ff', text: '#0c4a6e', border: '#bae6fd' },
   EV:          { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' },
   AERO:        { bg: '#eff6ff', text: '#1e40af', border: '#bfdbfe' },
@@ -43,28 +43,28 @@ export const SEGMENT_COLORS = {
   LOGISTICS:   { bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd' },
   INFRA:       { bg: '#f8fafc', text: '#334155', border: '#cbd5e1' },
   TELECOM:     { bg: '#fdf4ff', text: '#86198f', border: '#f0abfc' },
-  // Real Estate & Utilities
+  // real estate & utilities
   REIT:        { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' },
   UTILITIES:   { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' },
-  // Fund types
+  // fund types
   ETF:         { bg: '#1e293b', text: '#f1f5f9', border: '#334155' },
   'INDEX ETF': { bg: '#0f172a', text: '#e2e8f0', border: '#1e293b' },
   DIVIDEND:    { bg: '#fdf4ff', text: '#7e22ce', border: '#e9d5ff' },
   BOND:        { bg: '#f1f5f9', text: '#334155', border: '#cbd5e1' },
-  // Market cap
+  // market cap
   'MEGA CAP':  { bg: '#111827', text: '#f9fafb', border: '#374151' },
   'LARGE CAP': { bg: '#1f2937', text: '#f3f4f6', border: '#4b5563' },
   'MID CAP':   { bg: '#374151', text: '#e5e7eb', border: '#6b7280' },
   'SMALL CAP': { bg: '#6b7280', text: '#fff',    border: '#9ca3af' },
-  // Special
+  // special
   DEFENSIVE:   { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' },
   GROWTH:      { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' },
   EQUITY:      { bg: '#f8fafc', text: '#475569', border: '#cbd5e1' },
 }
 
-// Comprehensive ticker → segments map (well-known global tickers)
+// ticker -> segments map (well-known global tickers)
 const SEGMENTS_MAP = {
-  // ── MEGA CAP TECH ──────────────────────────────
+  // ── mega cap tech ──────────────────────────────
   AAPL:  ['TECH','MEGA CAP'],
   MSFT:  ['TECH','AI','MEGA CAP'],
   NVDA:  ['AI','SEMIS','MEGA CAP'],
@@ -83,7 +83,7 @@ const SEGMENTS_MAP = {
   SNOW:  ['CLOUD','SAAS'],
   PLTR:  ['AI','SOFTWARE'],
   SHOP:  ['ECOM','SAAS'],
-  // ── SEMIS ─────────────────────────────────────
+  // ── semis ─────────────────────────────────────
   AMD:   ['SEMIS','AI'],
   INTC:  ['SEMIS','HARDWARE'],
   QCOM:  ['SEMIS','TELECOM'],
@@ -94,7 +94,7 @@ const SEGMENTS_MAP = {
   MRVL:  ['SEMIS','AI'],
   ARM:   ['SEMIS','AI'],
   ASML:  ['SEMIS'],
-  // ── CONSUMER TECH / MEDIA ─────────────────────
+  // ── consumer tech / media ─────────────────────
   NFLX:  ['STREAMING','MEDIA'],
   DIS:   ['MEDIA','STREAMING'],
   SPOT:  ['STREAMING','MEDIA'],
@@ -109,7 +109,7 @@ const SEGMENTS_MAP = {
   TTWO:  ['GAMING'],
   RBLX:  ['GAMING','SOCIAL'],
   UBSFY: ['GAMING'],
-  // ── ECOM / RETAIL ─────────────────────────────
+  // ── ecom / retail ─────────────────────────────
   TSLA:  ['EV','AUTO'],
   F:     ['AUTO'],
   GM:    ['AUTO'],
@@ -126,7 +126,7 @@ const SEGMENTS_MAP = {
   WMT:   ['RETAIL','ECOM'],
   TGT:   ['RETAIL'],
   COST:  ['RETAIL'],
-  // ── FINANCE ───────────────────────────────────
+  // ── finance ───────────────────────────────────
   JPM:   ['BANKING','FINANCE','MEGA CAP'],
   BAC:   ['BANKING','FINANCE'],
   WFC:   ['BANKING','FINANCE'],
@@ -144,7 +144,7 @@ const SEGMENTS_MAP = {
   AFRM:  ['FINTECH'],
   SOFI:  ['FINTECH','BANKING'],
   NU:    ['FINTECH','BANKING'],
-  // ── INSURANCE ─────────────────────────────────
+  // ── insurance ─────────────────────────────────
   BRK:   ['FINANCE','INSURANCE'],
   'BRK.B':['FINANCE','INSURANCE'],
   'BRK.A':['FINANCE','INSURANCE'],
@@ -153,7 +153,7 @@ const SEGMENTS_MAP = {
   AIG:   ['INSURANCE'],
   ALL:   ['INSURANCE'],
   CB:    ['INSURANCE'],
-  // ── HEALTH ────────────────────────────────────
+  // ── health ────────────────────────────────────
   JNJ:   ['HEALTH','PHARMA','DEFENSIVE'],
   UNH:   ['HEALTH','INSURANCE'],
   PFE:   ['PHARMA','HEALTH'],
@@ -174,7 +174,7 @@ const SEGMENTS_MAP = {
   CVS:   ['HEALTH','RETAIL'],
   HUM:   ['HEALTH','INSURANCE'],
   ELV:   ['HEALTH','INSURANCE'],
-  // ── ENERGY / OIL ──────────────────────────────
+  // ── energy / oil ──────────────────────────────
   XOM:   ['OIL','ENERGY'],
   CVX:   ['OIL','ENERGY'],
   COP:   ['OIL','ENERGY'],
@@ -190,21 +190,21 @@ const SEGMENTS_MAP = {
   FSLR:  ['RENEWABLES','ENERGY'],
   NEE:   ['UTILITIES','RENEWABLES'],
   PLUG:  ['RENEWABLES'],
-  // ── DEFENSE / AERO ────────────────────────────
+  // ── defense / aero ────────────────────────────
   LMT:   ['DEFENSE','AERO'],
   RTX:   ['DEFENSE','AERO'],
   NOC:   ['DEFENSE','AERO'],
   GD:    ['DEFENSE','AERO'],
   BA:    ['AERO'],
   AIR:   ['AERO'],
-  // ── TELECOM ───────────────────────────────────
+  // ── telecom ───────────────────────────────────
   T:     ['TELECOM'],
   VZ:    ['TELECOM'],
   TMUS:  ['TELECOM'],
   ERIC:  ['TELECOM','HARDWARE'],
   NOK:   ['TELECOM','HARDWARE'],
   ORAN:  ['TELECOM'],
-  // ── INDUSTRIAL ────────────────────────────────
+  // ── industrial ────────────────────────────────
   CAT:   ['INDUSTRIAL'],
   DE:    ['INDUSTRIAL'],
   HON:   ['INDUSTRIAL','AERO'],
@@ -215,20 +215,20 @@ const SEGMENTS_MAP = {
   PH:    ['INDUSTRIAL'],
   FDX:   ['LOGISTICS'],
   UPS:   ['LOGISTICS'],
-  // ── CYBER ─────────────────────────────────────
+  // ── cyber ─────────────────────────────────────
   CRWD:  ['CYBER','SOFTWARE'],
   PANW:  ['CYBER','SOFTWARE'],
   ZS:    ['CYBER','CLOUD'],
   FTNT:  ['CYBER','HARDWARE'],
   S:     ['CYBER'],
   OKTA:  ['CYBER','SAAS'],
-  // ── REAL ESTATE ───────────────────────────────
+  // ── real estate ───────────────────────────────
   SPG:   ['REIT'],
   PLD:   ['REIT','LOGISTICS'],
   AMT:   ['REIT','TELECOM'],
   EQIX:  ['REIT','CLOUD'],
   O:     ['REIT','DIVIDEND'],
-  // ── UTILITIES ─────────────────────────────────
+  // ── utilities ─────────────────────────────────
   DUK:   ['UTILITIES','DEFENSIVE'],
   SO:    ['UTILITIES','DEFENSIVE'],
   AEP:   ['UTILITIES'],
@@ -261,7 +261,7 @@ const SEGMENTS_MAP = {
   XLI:   ['ETF','INDUSTRIAL'],
   SOXX:  ['ETF','SEMIS'],
   SMH:   ['ETF','SEMIS'],
-  // ── CONSUMER STAPLES / DEFENSIVE ──────────────
+  // ── consumer staples / defensive ──────────────
   PG:    ['DEFENSIVE','RETAIL'],
   KO:    ['DEFENSIVE'],
   PEP:   ['DEFENSIVE'],
@@ -270,7 +270,7 @@ const SEGMENTS_MAP = {
   PM:    ['DEFENSIVE'],
   MO:    ['DEFENSIVE'],
   CL:    ['DEFENSIVE'],
-  // ── COMMODITIES / MATERIALS ───────────────────
+  // ── commodities / materials ───────────────────
   NEM:   ['MINING','MATERIALS'],
   FCX:   ['MINING','MATERIALS'],
   RIO:   ['MINING','MATERIALS'],

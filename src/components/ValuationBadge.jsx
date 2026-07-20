@@ -1,11 +1,4 @@
-/**
- * ValuationBadge.jsx
- * 
- * FIX: Replaced borderLeft with borderTop for the colour accent.
- * borderLeft on a flex child bleeds as a visible coloured line between cards
- * when the parent uses gap spacing, because the border renders outside the
- * card's background box. borderTop does not have this problem.
- */
+// border-top accent only — border-left bleeds as a visible line in flex gaps
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 
@@ -31,7 +24,7 @@ export function ValuationBadge({ ticker }) {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Fetch valuation with proper cleanup/abort on ticker change.
+  // fetch valuation with cleanup/abort on ticker change
   useEffect(() => {
     if (!ticker) return
     const ctrl = new AbortController()
@@ -57,7 +50,6 @@ export function ValuationBadge({ ticker }) {
     <div style={{
       background:   cfg.bg,
       border:       `1px solid ${cfg.border}`,
-      // FIX: borderTop accent only — never borderLeft
       borderTop:    `3px solid ${cfg.color}`,
       borderRadius: 8,
       padding:      '10px 14px',

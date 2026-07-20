@@ -1,7 +1,6 @@
 /**
- * api.js — centralised API client
- * All requests go through the single `get()` helper.
- * BASE auto-switches between local dev and production.
+ * api.js — centralised API client. all requests go through the single
+ * `get()` helper; BASE auto-switches between local dev and production.
  */
 
 const BASE = window.location.hostname === 'localhost'
