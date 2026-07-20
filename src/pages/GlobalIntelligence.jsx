@@ -237,7 +237,7 @@ export function GlobalIntelligence() {
             </div>
           )}
           <p style={{ fontSize: 11, color: 'var(--faint)', textAlign: 'center', marginTop: 8 }}>
-            Summaries written by source publishers via yfinance · No AI generation · Not financial advice
+            Summaries written by source publishers via yfinance · Not financial advice
           </p>
         </>
       )}

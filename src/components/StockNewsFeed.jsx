@@ -219,7 +219,7 @@ export function StockNewsFeed({ ticker }) {
         )}
       </div>
       <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--faint)' }}>
-        Pre-written summaries from source publishers — no AI involved.
+        Pre-written summaries from source publishers.
       </p>
 
       {/* Content */}
