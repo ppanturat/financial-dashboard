@@ -1,6 +1,6 @@
 # Stock Dashboard — Wiki
 
-Internal documentation for how this project is built, organized, and run. Written for anyone picking this codebase up cold — including future-you.
+Internal documentation for how this project is built, organized, and run. 
 
 For how to *use* the app, see the [main README](../README.md).
 
