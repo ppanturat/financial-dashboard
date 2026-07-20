@@ -2,6 +2,8 @@
 
 A personal finance web app for tracking stocks, managing investment portfolios, and following other investors. Built with **React (Vite)** on the frontend and a **FastAPI** backend that pulls market data from Yahoo Finance (`yfinance`).
 
+📖 **For architecture, file map, database schema, design system, and the full build history, see the [wiki](./docs/README.md).** This README covers how to use the app and how to run it locally.
+
 ---
 
 ## ⚠️ Disclaimer
@@ -18,7 +20,9 @@ This project is a personal side project, **not a financial product**, and nothin
 
 Open the app and click "Create Account". Registration requires a name, a username, an email address, and a password. After registering, check the inbox for a confirmation link before signing in.
 
-Once signed in, the app opens on the Market View. The sidebar on the left switches between Market, Portfolio, and Social.
+Forgot your password? Use the "Forgot password?" link on the sign-in form — a reset link is emailed to you, with a 60-second cooldown before it can be resent.
+
+Once signed in, the app opens on the Market View. The sidebar on the left switches between **Market**, **Portfolio**, and **Network**.
 
 ---
 
@@ -32,7 +36,7 @@ Research individual stocks and ETFs.
 
 **Price chart:** The chart shows price history for the selected ticker. The timeframe buttons (1W, 1M, 6M, 1Y) zoom in or out.
 
-**Key Metrics:** Below the chart, five tiles summarise the company's financial health. Each tile is colour-coded and has a "?" button that explains what the metric means and how to read it.
+**Key Metrics:** Below the chart, metrics are organised into a "Key" view (5 headline metrics) plus category pills — Financial Health, Profitability, Valuation, Growth, and Ownership & Sentiment. Click a pill to switch to that category; each metric has an "i" button explaining what it means and how to read it.
 
 | Metric | Meaning |
 |---|---|
@@ -44,7 +48,7 @@ Research individual stocks and ETFs.
 
 Metrics are not shown for ETFs — the tile area will display "N/A" in that case.
 
-**Assessment cards:** Below the metrics, a rule-based written assessment summarises whether the numbers lean bullish or bearish, alongside a metrics summary score and a technical trigger check (RSI/SMA/volume). Treat these as informational only, not investment advice.
+**Assessment cards:** Below the metrics — a rule-based Metrics Summary and Quantitative Assessment (both driven by the same underlying scoring, so they always agree), a Technical Trigger card (RSI/SMA/volume breakout check, each criterion with its own explanation), and side-by-side Adoption Reality Check / Terminal Red Flag cards where applicable. All of this is informational only, not investment advice.
 
 **ETFs:** Opening an ETF replaces the metrics section with a breakdown of the fund's top holdings.
 
@@ -60,32 +64,29 @@ Track holdings and see P&L.
 
 **Adding holdings:** Click "Add Holding" inside a portfolio. Enter the ticker, the number of shares or units held, and the price paid. The app fetches the current live price automatically and calculates the gain or loss.
 
+**Your Assets:** Each holding is a tappable row showing Asset / Value / P&L at a glance — tap it to expand Shares, Avg Cost, Live Price, and P&L%, plus a single **Trade** button (buy/sell is a toggle inside the trade modal), Edit, and Remove.
+
 **Importing from Market View:** A watchlist built in Market View can be imported directly into a new portfolio folder. The tickers are pre-populated with zero amounts to be filled in with actual positions.
 
-**Charts and breakdowns:** The portfolio view shows:
-- An allocation pie chart showing how concentrated the portfolio is
-- A simulated growth chart showing how portfolio value has moved over a selected time range (1D, 1W, 1M, 3M, 1Y)
-- Per-holding P&L and the overall total at the top
+**Charts and breakdowns:** The portfolio view shows an allocation pie chart, a simulated growth chart over a selected time range (1D/1W/1M/3M/1Y), and per-holding P&L with the overall total.
 
 **Currency:** Values can be displayed in USD or THB. The conversion rate is fetched live.
 
-**Privacy:** Each portfolio folder can be set to public or private. Public portfolios are visible to approved followers on the Social tab.
+**Privacy:** Each portfolio folder can be set to public or private, toggled from the Network tab (see below).
 
 ---
 
-## Social View
+## Network View
 
-Connect with other users and see their shared portfolios.
+Your profile, connections, and activity feed all live on one tab.
 
-**Finding people:** The Social tab lists other users on the platform, searchable by name or username.
+**Profile card (top):** Avatar, display name, username, an Edit Profile button, and four stats — Following, Followers, Portfolios, Public. Tap **Following** or **Followers** to see that list in a popup; tap **Portfolios** to see and toggle each portfolio's public/private visibility.
 
-**Following:** Click "Follow" on a profile to send a follow request. The request must be accepted before their public portfolios become visible. Pending requests can be withdrawn, and followed users can be unfollowed, at any time.
+**Finding people:** Use the search bar at the top of the page (same spot as the ticker search in Market View) to find other users by name or username and send a follow request.
 
-**Incoming requests:** Incoming follow requests appear in a "Pending Requests" section at the top of the Social tab. Accept or decline from there.
+**Incoming requests:** Pending follow requests appear near the top — accept or decline from there.
 
-**Feed:** Once following someone who has at least one public portfolio, their holdings appear in the feed. Allocation and tickers are visible, but not cost basis or P&L.
-
-**Profile:** Display name, username, and profile photo can all be edited from the top of the Social tab.
+**Feed:** Below your profile, the activity feed shows trades from people you follow — both the price they traded at and the current live price with live P&L.
 
 ---
 
@@ -106,8 +107,6 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-Add any backend-specific secrets to a `.env` file read by the FastAPI app — see `requirements.txt` / `api/index.py` for what's required.
-
 ### Install and start the frontend
 
 ```bash
@@ -124,37 +123,13 @@ uvicorn api.index:app --reload --port 8000
 
 The frontend expects the Python backend at `http://localhost:8000/api` in development. In production it proxies requests to `/api` on the same origin (see `vercel.json`).
 
-### Required Supabase tables
+### Database setup
 
-| Table | Purpose |
-|---|---|
-| `profiles` | Display name, username, avatar URL |
-| `folders` | Market watchlist folders |
-| `folder_tickers` | Tickers within each watchlist folder |
-| `portfolio_folders` | Portfolio folders with public/private flag |
-| `portfolio_holdings` | Individual holdings (ticker, amount, buy price) |
-| `follow_requests` | Follow relationships with pending/accepted status |
-| `global_metrics` | Cached financial metrics and AI scan results per ticker |
-
-Enable row-level security on all tables. The `portfolio_folders.is_public` flag controls what followers can see.
+Run `local.sql` in the Supabase SQL editor to create all tables, RLS policies, and indexes. Full schema documentation — including known issues and recommendations — is in the [wiki](./docs/03-database-schema.md).
 
 ### Backend endpoints
 
-The FastAPI backend (`api/index.py`) exposes:
-
-| Endpoint | Used for |
-|---|---|
-| `GET /api/search/{query}` | Ticker search |
-| `GET /api/data/{ticker}` | Price chart, metrics, description (accepts `timeframe`) |
-| `GET /api/dividends` | Dividend data (accepts `tickers`) |
-| `GET /api/bulk_prices` | Live prices for portfolio holdings (accepts `tickers`) |
-| `GET /api/bulk_sectors` | Sector lookup for a list of tickers |
-| `GET /api/etf-holdings/{ticker}` | ETF top holdings breakdown |
-| `GET /api/financials/{ticker}` | Income statement / balance sheet / cash flow data |
-| `GET /api/macro` | Macro market indicators |
-| `GET /api/news/{ticker}` | Ticker-specific news |
-| `GET /api/market-news` | General market news |
-| `GET /api/valuation/{ticker}` | Valuation context for a ticker |
+See the [API reference](./docs/06-api-reference.md) in the wiki for the full endpoint list.
 
 All market data is sourced from Yahoo Finance via `yfinance` — see the [Disclaimer](#️-disclaimer) above.
 

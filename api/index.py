@@ -1,8 +1,11 @@
 import os
 import json
+import html
+import re
 import requests
 import yfinance as yf
 import pandas as pd
+from bs4 import BeautifulSoup
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
