@@ -163,21 +163,28 @@ function PrivacyToggle({ isPublic, onClick }) {
 function UserRow({ user, right, sub }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      display: 'flex', flexDirection: 'column', gap: 8,
       padding: '10px 13px', borderRadius: 12,
       background: 'var(--surface-2)', border: '1px solid var(--border)',
     }}>
-      <Avatar name={user.name || user.username || '?'} avatarUrl={user.avatar_url} size={38} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {user.name || 'Investor'}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-          {user.username && <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, color: 'var(--faint)' }}>@{user.username}</span>}
-          {sub}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        <Avatar name={user.name || user.username || '?'} avatarUrl={user.avatar_url} size={38} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {user.name || 'Investor'}
+          </div>
+          {user.username && (
+            <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, color: 'var(--faint)', marginTop: 1 }}>@{user.username}</div>
+          )}
         </div>
       </div>
-      {right}
+
+      {(sub || right) && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{sub}</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{right}</div>
+        </div>
+      )}
     </div>
   )
 }
