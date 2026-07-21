@@ -22,4 +22,4 @@ For how to *use* the app, see the [main README](../README.md).
 | Backend | FastAPI (Python), stateless, no database driver — reads Yahoo Finance live on every request |
 | Database & Auth | Supabase (Postgres + built-in auth) |
 | Hosting | Vercel (frontend static build + Python serverless function for `/api/*`) |
-| Data source | Yahoo Finance via the `yfinance` Python library — no other market data provider, no AI/LLM APIs anywhere in the app |
+| Data source | Yahoo Finance via the `yfinance` Python library |
