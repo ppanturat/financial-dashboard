@@ -42,4 +42,4 @@ Originally the app had no self-service password reset at all. Added the full flo
 
 ## Known gaps at time of writing
 
-See [Database Schema § Known Issues](./03-database-schema.md#known-issues--recommendations) for the current outstanding items — the `global_metrics` RLS policy, `profiles.username` uniqueness, and the unused `follows` table.
+See [Database Schema § Resolved Issues](./03-database-schema.md#resolved-issues) for what those four fixes actually were — the `global_metrics` RLS policy, dead columns, `profiles.username` uniqueness, and the unused `follows` table.

@@ -125,7 +125,7 @@ The frontend expects the Python backend at `http://localhost:8000/api` in develo
 
 ### Database setup
 
-Run `local.sql` in the Supabase SQL editor to create all tables, RLS policies, and indexes. Full schema documentation — including known issues and recommendations — is in the [wiki](./docs/03-database-schema.md).
+Run `local.sql` in the Supabase SQL editor to create all tables, RLS policies, and indexes. Full schema documentation is in the [wiki](./docs/03-database-schema.md).
 
 ### Backend endpoints
 

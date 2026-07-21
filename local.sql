@@ -29,13 +29,11 @@ CREATE TABLE public.profiles (
 );
 
 -- 2. Global Metrics Table
+-- lightweight known-tickers lookup only — the metric/AI columns this table
+-- used to have are dead (nothing populates or reads them since the nightly
+-- engine.py job was removed; metrics are computed live by the backend now)
 CREATE TABLE public.global_metrics (
-    ticker varchar PRIMARY KEY,
-    revenue_yoy numeric NULL,
-    fcf numeric NULL,
-    war_chest_ratio numeric NULL,
-    last_updated timestamptz NULL,
-    ai_scan jsonb NULL
+    ticker varchar PRIMARY KEY
 );
 
 -- 3. Watchlist Folders Table
@@ -86,15 +84,6 @@ CREATE TABLE public.follow_requests (
     CONSTRAINT unique_requester_target UNIQUE (requester_user_id, target_user_id)
 );
 
--- 8. Fallback Follows Table
-CREATE TABLE public.follows (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    follower_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    followee_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    status text NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT NOW()
-);
-
 -- ============================================================================
 -- AUTOMATED AUTH SIGNUP ROUTING TRIGGER
 -- ============================================================================
@@ -129,7 +118,6 @@ ALTER TABLE public.portfolio_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.portfolio_folders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.portfolio_holdings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.follow_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.follows ENABLE ROW LEVEL SECURITY;
 
 -- Profiles Policies
 CREATE POLICY "Profiles are readable by authenticated users" 
@@ -145,8 +133,10 @@ CREATE POLICY "Global metrics are readable by authenticated users"
 CREATE POLICY "Users can initialize missing tickers into metrics" 
     ON public.global_metrics FOR INSERT TO authenticated WITH CHECK (true);
 
-CREATE POLICY "Users can modify metrics data records" 
-    ON public.global_metrics FOR UPDATE TO authenticated USING (true);
+-- no UPDATE policy: this table only holds a ticker PK now (see table def
+-- above), so there is nothing for a client to legitimately update. the old
+-- UPDATE policy allowed any authenticated user to overwrite any row in this
+-- shared/global table — removed as a real data-poisoning risk.
 
 -- Watchlist Folders Policies
 CREATE POLICY "Users have full control over own watchlist folders" 
@@ -204,12 +194,6 @@ CREATE POLICY "Involved parties can manage follow requests"
     USING (auth.uid() = requester_user_id OR auth.uid() = target_user_id)
     WITH CHECK (auth.uid() = requester_user_id OR auth.uid() = target_user_id);
 
--- Fallback Follows Connection Policies
-CREATE POLICY "Involved accounts can interact with follows table" 
-    ON public.follows FOR ALL TO authenticated 
-    USING (auth.uid() = follower_id OR auth.uid() = followee_id)
-    WITH CHECK (auth.uid() = follower_id OR auth.uid() = followee_id);
-
 -- ============================================================================
 -- PERFORMANCE OPTIMIZATION INDEXES
 -- ============================================================================
@@ -218,3 +202,10 @@ CREATE INDEX IF NOT EXISTS idx_portfolio_items_folder_id ON public.portfolio_ite
 CREATE INDEX IF NOT EXISTS idx_portfolio_folders_user_id ON public.portfolio_folders(user_id);
 CREATE INDEX IF NOT EXISTS idx_portfolio_holdings_folder_id ON public.portfolio_holdings(folder_id);
 CREATE INDEX IF NOT EXISTS idx_follow_requests_lookup ON public.follow_requests(requester_user_id, target_user_id, status);
+
+-- case-insensitive username uniqueness. previously only enforced in
+-- useAuth.js via a check-then-insert, which is a race condition — two
+-- simultaneous signups could both pass the check.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_username_unique
+    ON public.profiles (lower(username))
+    WHERE username IS NOT NULL AND username <> '';

@@ -1,6 +1,6 @@
 # Database Schema
 
-Postgres via Supabase. The full setup script is `local.sql` at the repo root — run it in the Supabase SQL editor to (re)create everything from scratch. It **drops and recreates every table**, so only run it against a fresh project or one you're okay wiping.
+Postgres via Supabase. The full setup script is `local.sql` at the repo root — run it in the Supabase SQL editor to (re)create everything from scratch. It **drops and recreates every table**, so only run it against a fresh project or one you're okay wiping. To apply schema changes to an *existing* database without losing data, use a targeted migration instead (see `schema_fixes_v2.sql` for the migration that brought an earlier deployment in line with what's documented here).
 
 ## Entity overview
 
@@ -9,15 +9,13 @@ auth.users (managed by Supabase)
    │
    └─ profiles (1:1, via trigger on signup)
        │
-       ├─ folders ─────────────┬─ portfolio_items      (market view watchlists)
-       │                       └─ (FK → global_metrics)
+       ├─ folders ─────────── portfolio_items      (market view watchlists)
        │
-       ├─ portfolio_folders ───┴─ portfolio_holdings    (actual investment portfolios)
+       ├─ portfolio_folders ─ portfolio_holdings    (actual investment portfolios)
        │
-       ├─ follow_requests      (who follows whom, pending/accepted)
-       └─ follows              (legacy table, see "known issues" below — not used by the app)
+       └─ follow_requests    (who follows whom, pending/accepted)
 
-global_metrics                 (ticker lookup table, see "known issues")
+global_metrics                (lightweight ticker lookup, see below)
 ```
 
 **Two separate "list of tickers" systems, on purpose:** `folders`/`portfolio_items` are Market View *watchlists* (just tickers, no position data). `portfolio_folders`/`portfolio_holdings` are actual *investment portfolios* (ticker + shares + buy price). They're intentionally separate features, not duplicated code.
@@ -31,7 +29,7 @@ One row per user, created automatically by the `handle_new_user()` trigger on `a
 | Column | Type | Notes |
 |---|---|---|
 | `id` | uuid, PK | same as `auth.users.id` |
-| `username` | text | **no uniqueness constraint at the DB level** — see known issues |
+| `username` | text | case-insensitive unique index — see RLS/indexes below |
 | `name` | text | |
 | `display_name` | text | |
 | `avatar_url` | text | |
@@ -47,7 +45,7 @@ Market View watchlists.
 | `folders` | `id` (uuid PK), `user_id` → `profiles`, `name` |
 | `portfolio_items` | `id` (uuid PK), `folder_id` → `folders`, `user_id` → `profiles`, `ticker`, unique on `(folder_id, ticker)` |
 
-`portfolio_items.ticker` also has an implicit dependency: the frontend upserts a bare `{ ticker }` row into `global_metrics` before inserting into `portfolio_items`, to satisfy a foreign key relationship that exists on some deployments (see `global_metrics` below).
+The frontend upserts a bare `{ ticker }` row into `global_metrics` before inserting into `portfolio_items` (see `useFolders.js`) — this predates the current schema and is kept as a defensive no-op in case any deployment still has a foreign key from `portfolio_items.ticker` to `global_metrics.ticker`.
 
 ### `portfolio_folders` + `portfolio_holdings`
 
@@ -62,18 +60,17 @@ Actual investment portfolios.
 
 ### `global_metrics`
 
-| Column | Type |
-|---|---|
-| `ticker` | varchar, PK |
-| `revenue_yoy`, `fcf`, `war_chest_ratio` | numeric |
-| `last_updated` | timestamptz |
-| `ai_scan` | jsonb |
+```sql
+CREATE TABLE public.global_metrics (
+    ticker varchar PRIMARY KEY
+);
+```
 
-**This table is effectively a leftover.** It used to be populated by a nightly GitHub Actions job (`engine.py`) that has since been deleted, and none of its metric/AI columns are read by the current frontend — metrics are computed live from the FastAPI backend instead. The only thing that still touches this table is a bare `{ ticker }` upsert from `useFolders.js`, purely to satisfy the FK from `portfolio_items.ticker`. See "known issues" below for what to do about it.
+Just a ticker lookup — nothing else. This table used to carry `revenue_yoy`/`fcf`/`war_chest_ratio`/`last_updated`/`ai_scan` columns, populated nightly by a since-deleted GitHub Actions job (`engine.py`). None of that data was read by the current frontend (metrics are computed live by the FastAPI backend instead), so the dead columns were dropped. The `SELECT`/`INSERT` policies remain open to all authenticated users since there's nothing left in this table worth restricting; there is deliberately **no UPDATE policy** (see RLS below).
 
 ### `follow_requests`
 
-The social graph the app actually uses.
+The social graph — the only follow table in the schema.
 
 | Column | Type |
 |---|---|
@@ -82,9 +79,7 @@ The social graph the app actually uses.
 | `status` | text, `'pending'` \| `'accepted'` |
 | unique on `(requester_user_id, target_user_id)` | prevents duplicate/spam requests |
 
-### `follows`
-
-A second, differently-shaped follow table (`follower_id`/`followee_id` instead of `requester_user_id`/`target_user_id`). **Not used anywhere in the current frontend** — every follow-related feature reads and writes `follow_requests` exclusively. Kept in the schema for now; see known issues.
+An earlier, differently-shaped `follows` table (`follower_id`/`followee_id`) existed alongside this one but was never used by any frontend feature — confirmed via a full-codebase grep before removing it.
 
 ## Row-Level Security (RLS)
 
@@ -94,16 +89,7 @@ Notable policies:
 
 - **`portfolio_folders`**: owners get full access; other authenticated users can `SELECT` a folder only if `is_public = true` AND there's an `accepted` row in `follow_requests` linking them to the owner.
 - **`portfolio_holdings`**: same pattern, checked via a join back to `portfolio_folders`.
-- **`global_metrics`**: `SELECT` is open to all authenticated users. `INSERT` is open with `WITH CHECK (true)` (no restriction on what values can be inserted). `UPDATE` is also open with `USING (true)` — see known issues, this is a real gap.
-
-## Known issues / recommendations
-
-These are documented here rather than silently fixed, since they involve either a live security decision or a data-model decision that's this project's to make:
-
-1. **`global_metrics` UPDATE policy is wide open** (`FOR UPDATE TO authenticated USING (true)`). Since this table is global (shared across all users, not scoped per-user), any authenticated user can currently overwrite any row — including tickers other users are looking at. Recommended fix: drop the UPDATE policy entirely (nothing in the current app needs to update this table from the client) and restrict INSERT to only allow bare placeholder rows.
-2. **`global_metrics`'s metric columns are dead weight.** Nothing populates `revenue_yoy`/`fcf`/`war_chest_ratio`/`ai_scan` anymore, and nothing reads them. Either drop the columns and keep the table as a lightweight "known tickers" lookup, or repurpose it if a caching layer comes back.
-3. **`profiles.username` has no DB-level uniqueness.** It's currently enforced only in application code (`useAuth.js` does a check-then-insert), which is a race condition — two simultaneous signups could both pass the check. Recommended fix: a case-insensitive unique index, e.g. `CREATE UNIQUE INDEX ON profiles (lower(username)) WHERE username IS NOT NULL AND username <> ''`.
-4. **`follows` table is unused.** Confirmed via a full-codebase grep — zero references anywhere in the frontend. Safe to drop once confirmed there's no external/future dependency on it.
+- **`global_metrics`**: `SELECT` and `INSERT` are open to all authenticated users. There is **no UPDATE policy** — an earlier version had `FOR UPDATE TO authenticated USING (true)`, which let any logged-in user overwrite any row in this shared/global table (including tickers other users were actively looking at). Since the table now only holds a ticker column with nothing else worth protecting, the simplest fix was removing the ability to update rows at all rather than trying to scope it.
 
 ## Indexes
 
@@ -113,4 +99,16 @@ idx_portfolio_items_folder_id    ON portfolio_items(folder_id)
 idx_portfolio_folders_user_id    ON portfolio_folders(user_id)
 idx_portfolio_holdings_folder_id ON portfolio_holdings(folder_id)
 idx_follow_requests_lookup       ON follow_requests(requester_user_id, target_user_id, status)
+idx_profiles_username_unique     ON profiles(lower(username)) WHERE username IS NOT NULL AND username <> ''
 ```
+
+The username index is case-insensitive and partial (excludes null/empty usernames) — it replaced an application-level check-then-insert in `useAuth.js` that was a race condition (two simultaneous signups could both pass the uniqueness check before either finished inserting).
+
+## Resolved issues
+
+Earlier drafts of this page listed four open issues against this schema. All four have since been applied to `local.sql` (and, for an already-provisioned database, via `schema_fixes_v2.sql`):
+
+1. ~~`global_metrics` UPDATE policy wide open~~ — policy removed.
+2. ~~`global_metrics` dead metric columns~~ — dropped, table is now ticker-only.
+3. ~~`profiles.username` no DB-level uniqueness~~ — case-insensitive unique index added.
+4. ~~`follows` table unused~~ — dropped.
