@@ -1,0 +1,924 @@
+diff --git a/src/components/Avatar.jsx b/src/components/Avatar.jsx
+new file mode 100644
+index 0000000..286bbfb
+--- /dev/null
++++ b/src/components/Avatar.jsx
+@@ -0,0 +1,17 @@
++export function Avatar({ name, avatarUrl, size = 40, style = {} }) {
++  const initials = (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
++  const hue = (name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
++  const fontSize = size > 50 ? 20 : size > 36 ? 15 : 12
++  if (avatarUrl) return (
++    <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, objectFit: 'cover', border: '2px solid var(--border-md)', ...style }} />
++  )
++  return (
++    <div style={{
++      width: size, height: size, borderRadius: '50%', flexShrink: 0,
++      background: `hsl(${hue}, 55%, 62%)`,
++      display: 'flex', alignItems: 'center', justifyContent: 'center',
++      color: '#fff', fontWeight: 700, fontSize, fontFamily: "var(--font-body), sans-serif",
++      userSelect: 'none', ...style,
++    }}>{initials}</div>
++  )
++}
+diff --git a/src/components/PriceRow.jsx b/src/components/PriceRow.jsx
+index b0cd4be..9ffc54e 100644
+--- a/src/components/PriceRow.jsx
++++ b/src/components/PriceRow.jsx
+@@ -1,8 +1,21 @@
++import { useState, useEffect } from 'react'
+ import { TIMEFRAMES } from '../lib/constants'
+-import { getStockSegments, getSegmentStyle } from '../lib/stockSegments'
++import { getStockSegments, getSegmentStyle, fetchFallbackSegment } from '../lib/stockSegments'
++import { api } from '../lib/api'
+ 
+ export function PriceRow({ ticker, isEtf, currentPrice, priceChange, timeframe, onTimeframeChange }) {
+-  const segments = getStockSegments(ticker, isEtf)
++  const baseSegments = getStockSegments(ticker, isEtf)
++  const [fallback, setFallback] = useState(null) // { ticker, tags } once the async lookup resolves
++
++  useEffect(() => {
++    let cancelled = false
++    fetchFallbackSegment(ticker, isEtf, api).then(tags => {
++      if (!cancelled && tags?.length) setFallback({ ticker, tags })
++    })
++    return () => { cancelled = true }
++  }, [ticker, isEtf])
++
++  const segments = fallback?.ticker === ticker ? fallback.tags : baseSegments
+ 
+   return (
+     <div className="price-row">
+diff --git a/src/lib/constants.js b/src/lib/constants.js
+index 1459ba6..f02b8ae 100644
+--- a/src/lib/constants.js
++++ b/src/lib/constants.js
+@@ -169,3 +169,5 @@ export const METRIC_DEFS = [
+ ]
+ 
+ export const TIMEFRAMES = ['1W', '1M', '6M', '1Y']
++
++export const CHART_COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488', '#db2777']
+diff --git a/src/lib/formatters.js b/src/lib/formatters.js
+index 99fbce9..b6e3895 100644
+--- a/src/lib/formatters.js
++++ b/src/lib/formatters.js
+@@ -48,3 +48,21 @@ export const cleanDescription = (raw = '') => {
+   const last = Math.max(s.lastIndexOf('.'), s.lastIndexOf('!'), s.lastIndexOf('?'))
+   return last !== -1 ? s.substring(0, last + 1).trim() : s
+ }
++
++// live USD->THB rate, used by the USD/THB currency toggle on portfolio-shaped views
++export async function fetchThbRate() {
++  try {
++    const res = await fetch('https://open.er-api.com/v6/latest/USD')
++    const data = await res.json()
++    return data.rates?.THB ?? 34.5
++  } catch { return 34.5 }
++}
++
++// formats a dollar amount in either USD or THB
++export function fmtCurrency(val, currency, thbRate) {
++  const num = parseFloat(val) || 0
++  if (currency === 'THB') {
++    return '฿' + (num * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
++  }
++  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
++}
+diff --git a/src/lib/stockSegments.js b/src/lib/stockSegments.js
+index eb51f18..782ea98 100644
+--- a/src/lib/stockSegments.js
++++ b/src/lib/stockSegments.js
+@@ -23,6 +23,8 @@ export const SEGMENT_COLORS = {
+   INSURANCE:   { bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd' },
+   FINTECH:     { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
+   PAYMENTS:    { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
++  COMMS:       { bg: '#fdf4ff', text: '#86198f', border: '#f0abfc' },
++  CONSUMER:    { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
+   // health
+   HEALTH:      { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
+   PHARMA:      { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' },
+@@ -46,6 +48,7 @@ export const SEGMENT_COLORS = {
+   // real estate & utilities
+   REIT:        { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' },
+   UTILITIES:   { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' },
++  'REAL ESTATE': { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' },
+   // fund types
+   ETF:         { bg: '#1e293b', text: '#f1f5f9', border: '#334155' },
+   'INDEX ETF': { bg: '#0f172a', text: '#e2e8f0', border: '#1e293b' },
+@@ -291,3 +294,56 @@ export function getStockSegments(ticker, isEtf = false) {
+ export function getSegmentStyle(segment) {
+   return SEGMENT_COLORS[segment] || SEGMENT_COLORS['EQUITY']
+ }
++
++// maps the backend's normalised sector (see normalise_sector in api/index.py)
++// to one of our tag names, for tickers not covered by SEGMENTS_MAP above
++const BACKEND_SECTOR_TAG = {
++  tech: 'TECH', comms: 'COMMS', consumer: 'CONSUMER', finance: 'FINANCE',
++  health: 'HEALTH', industrial: 'INDUSTRIAL', materials: 'MATERIALS',
++  realestate: 'REAL ESTATE', energy: 'ENERGY', utilities: 'UTILITIES',
++}
++
++const CACHE_PREFIX = 'sector_cache:'
++const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 days — sectors rarely change
++
++function readCache(ticker) {
++  try {
++    const raw = localStorage.getItem(CACHE_PREFIX + ticker)
++    if (!raw) return undefined
++    const { tags, ts } = JSON.parse(raw)
++    if (Date.now() - ts > CACHE_MAX_AGE_MS) return undefined
++    return tags
++  } catch { return undefined }
++}
++
++function writeCache(ticker, tags) {
++  try {
++    localStorage.setItem(CACHE_PREFIX + ticker, JSON.stringify({ tags, ts: Date.now() }))
++  } catch { /* storage full or unavailable, skip caching */ }
++}
++
++/**
++ * for a ticker not in SEGMENTS_MAP, fetches its real sector from the backend
++ * (yfinance's own classification, not a keyword guess) and caches the result
++ * in localStorage so it's fetched at most once per browser, not on every
++ * visit. returns null if the ticker is already in SEGMENTS_MAP (no fetch
++ * needed) or has no sector data available.
++ */
++export async function fetchFallbackSegment(ticker, isEtf, api) {
++  if (!ticker) return null
++  const up = ticker.toUpperCase()
++  if (SEGMENTS_MAP[up] || isEtf) return null
++
++  const cached = readCache(up)
++  if (cached !== undefined) return cached
++
++  try {
++    const result = await api.bulkSectors(up)
++    const sector = result?.[up]?.sector
++    const tags   = sector && BACKEND_SECTOR_TAG[sector] ? [BACKEND_SECTOR_TAG[sector]] : []
++    writeCache(up, tags)
++    return tags
++  } catch {
++    return []
++  }
++}
+diff --git a/src/pages/NetworkFeed.jsx b/src/pages/NetworkFeed.jsx
+index 4f577f7..e7f71f6 100644
+--- a/src/pages/NetworkFeed.jsx
++++ b/src/pages/NetworkFeed.jsx
+@@ -1,23 +1,7 @@
+ // social activity feed — buy/sell/portfolio activity from people you follow
+ import { useState, useEffect } from 'react'
+ import { api } from '../lib/api'
+-
+-function Avatar({ name, avatarUrl, size = 36 }) {
+-  const initials = (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+-  const hue = (name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
+-  if (avatarUrl) return (
+-    <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--border-md)' }} />
+-  )
+-  return (
+-    <div style={{
+-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+-      background: `hsl(${hue},55%,62%)`,
+-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+-      color: '#fff', fontWeight: 700, fontSize: size > 40 ? 16 : 13,
+-      fontFamily: "var(--font-body),sans-serif", userSelect: 'none',
+-    }}>{initials}</div>
+-  )
+-}
++import { Avatar } from '../components/Avatar'
+ 
+ function fmtUSD(val) {
+   const n = parseFloat(val) || 0
+@@ -106,7 +90,7 @@ function TradeCard({ item }) {
+       display: 'flex', alignItems: 'flex-start', gap: 12,
+       transition: 'box-shadow .15s',
+     }}>
+-      <Avatar name={item.user.name || item.user.username} avatarUrl={item.user.avatar_url} />
++      <Avatar name={item.user.name || item.user.username} avatarUrl={item.user.avatar_url} size={36} />
+       <div style={{ flex: 1, minWidth: 0 }}>
+         {/* Action headline */}
+         <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+@@ -174,7 +158,7 @@ function PortfolioCard({ item }) {
+       borderLeft: '3px solid var(--accent)', borderRadius: 12,
+       padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
+     }}>
+-      <Avatar name={item.user.name || item.user.username} avatarUrl={item.user.avatar_url} />
++      <Avatar name={item.user.name || item.user.username} avatarUrl={item.user.avatar_url} size={36} />
+       <div style={{ flex: 1, minWidth: 0 }}>
+         <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+           <strong style={{ fontWeight: 700 }}>{item.user.name || item.user.username}</strong>
+diff --git a/src/pages/PortfolioView.jsx b/src/pages/PortfolioView.jsx
+index 1451222..3315b3c 100644
+--- a/src/pages/PortfolioView.jsx
++++ b/src/pages/PortfolioView.jsx
+@@ -8,24 +8,8 @@ import { HoldingModal } from '../components/HoldingModal'
+ import { TradeModal } from '../components/TradeModal'
+ import { EmptyState } from '../components/EmptyState'
+ import { api } from '../lib/api'
+-
+-const COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488', '#db2777']
+-
+-async function fetchThbRate() {
+-  try {
+-    const res = await fetch('https://open.er-api.com/v6/latest/USD')
+-    const data = await res.json()
+-    return data.rates?.THB ?? 34.5
+-  } catch { return 34.5 }
+-}
+-
+-function fmt(val, currency, thbRate) {
+-  const num = parseFloat(val) || 0
+-  if (currency === 'THB') {
+-    return '฿' + (num * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+-  }
+-  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+-}
++import { fetchThbRate, fmtCurrency as fmt } from '../lib/formatters'
++import { CHART_COLORS as COLORS } from '../lib/constants'
+ 
+ function fmtK(val, symb) {
+   if (Math.abs(val) >= 1000) return symb + (val / 1000).toFixed(1) + 'k'
+@@ -38,7 +22,7 @@ const ROW_BTN_STYLE = {
+   color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif",
+ }
+ 
+-function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDelete }) {
++export function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDelete }) {
+   const [open, setOpen] = useState(false)
+   const pnlColor = h.profitLoss >= 0 ? 'var(--green)' : 'var(--red)'
+   const colStyle = { display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end' }
+@@ -95,18 +79,20 @@ function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDel
+               <div className="font-mono" style={{ fontSize: 13, color: pnlColor }}>{h.profitLossPct >= 0 ? '+' : ''}{h.profitLossPct.toFixed(2)}%</div>
+             </div>
+           </div>
+-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+-            <button className="trade-btn buy" onClick={onTrade}>⇄ Trade</button>
+-            <button onClick={onEdit} title="Edit" style={ROW_BTN_STYLE}>✎ Edit</button>
+-            <button onClick={onDelete} title="Remove" style={ROW_BTN_STYLE}>✕ Remove</button>
+-          </div>
++          {(onTrade || onEdit || onDelete) && (
++            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
++              {onTrade  && <button className="trade-btn buy" onClick={onTrade}>⇄ Trade</button>}
++              {onEdit   && <button onClick={onEdit} title="Edit" style={ROW_BTN_STYLE}>✎ Edit</button>}
++              {onDelete && <button onClick={onDelete} title="Remove" style={ROW_BTN_STYLE}>✕ Remove</button>}
++            </div>
++          )}
+         </div>
+       )}
+     </div>
+   )
+ }
+ 
+-function PieLegend({ data }) {
++export function PieLegend({ data }) {
+   return (
+     <div className="pie-legend">
+       {data.map((entry, i) => (
+@@ -195,7 +181,7 @@ function StatPill({ label, value, highlight }) {
+   )
+ }
+ 
+-function GrowthChart({ costBasis, currentValue, defaultCurrency, thbRate }) {
++export function GrowthChart({ costBasis, currentValue, defaultCurrency, thbRate }) {
+   const [range, setRange] = useState('1M')
+   const [currency, setCurrency] = useState(defaultCurrency || 'USD')
+   const symb = currency === 'THB' ? '฿' : '$'
+@@ -262,7 +248,7 @@ function GrowthChart({ costBasis, currentValue, defaultCurrency, thbRate }) {
+ 
+ const DIV_VIEWS = ['Monthly', 'By Stock']
+ 
+-function DividendChart({ holdings, defaultCurrency, thbRate }) {
++export function DividendChart({ holdings, defaultCurrency, thbRate }) {
+   const [view, setView] = useState('Monthly')
+   const [currency, setCurrency] = useState(defaultCurrency || 'USD')
+   const [divData, setDivData] = useState(null)
+diff --git a/src/pages/SocialView.jsx b/src/pages/SocialView.jsx
+index 8610455..fae1fa7 100644
+--- a/src/pages/SocialView.jsx
++++ b/src/pages/SocialView.jsx
+@@ -1,29 +1,11 @@
+-import { useState, useRef, useEffect, useCallback } from 'react'
++import { useState, useRef } from 'react'
+ import { supabase } from '../lib/supabaseClient'
+-import { api } from '../lib/api'
+-import { LineChart, Line, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+ import { NetworkFeed } from './NetworkFeed'
++import { UserPortfolioPage } from './UserPortfolioPage'
++import { Avatar } from '../components/Avatar'
+ 
+ // shared primitives
+ 
+-function Avatar({ name, avatarUrl, size = 40, style = {} }) {
+-  const initials = (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+-  const hue = (name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
+-  const fontSize = size > 50 ? 20 : size > 36 ? 15 : 12
+-  if (avatarUrl) return (
+-    <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, objectFit: 'cover', border: '2px solid var(--border-md)', ...style }} />
+-  )
+-  return (
+-    <div style={{
+-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+-      background: `hsl(${hue}, 55%, 62%)`,
+-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+-      color: '#fff', fontWeight: 700, fontSize, fontFamily: "var(--font-body), sans-serif",
+-      userSelect: 'none', ...style,
+-    }}>{initials}</div>
+-  )
+-}
+-
+ function Card({ children, style = {} }) {
+   return (
+     <div style={{
+@@ -160,11 +142,11 @@ function PrivacyToggle({ isPublic, onClick }) {
+ }
+ 
+ // user row
+-function UserRow({ user, right, sub }) {
++function UserRow({ user, right, sub, pinnedAction }) {
+   return (
+     <div style={{
+-      display: 'flex', flexDirection: 'column', gap: 8,
+-      padding: '10px 13px', borderRadius: 12,
++      position: 'relative', display: 'flex', flexDirection: 'column', gap: 8,
++      padding: pinnedAction ? '10px 13px 44px' : '10px 13px', borderRadius: 12,
+       background: 'var(--surface-2)', border: '1px solid var(--border)',
+     }}>
+       <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+@@ -185,277 +167,10 @@ function UserRow({ user, right, sub }) {
+           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{right}</div>
+         </div>
+       )}
+-    </div>
+-  )
+-}
+-
+-// user detail panel
+-const PIE_COLORS = ['#16a34a','#2563eb','#d97706','#dc2626','#7c3aed','#0891b2','#db2777','#65a30d']
+-
+-async function fetchThbRate() {
+-  try { const res = await fetch('https://open.er-api.com/v6/latest/USD'); const d = await res.json(); return d.rates?.THB ?? 34.5 }
+-  catch { return 34.5 }
+-}
+-
+-function fmtCurr(val, currency, thbRate) {
+-  const num = parseFloat(val) || 0
+-  if (currency === 'THB') return '฿' + (num * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+-  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+-}
+-
+-function UserDetailPanel({ user, feed, feedHoldings }) {
+-  const [prices, setPrices]       = useState({})
+-  const [charts, setCharts]       = useState({})
+-  const [loading, setLoading]     = useState(true)
+-  const [activeTab, setActiveTab] = useState('overview')
+-  const [currency, setCurrency]   = useState('USD')
+-  const [thbRate, setThbRate]     = useState(34.5)
+-
+-  const folders     = feed.filter(f => f.user_id === user.id)
+-  const allHoldings = feedHoldings.filter(h => folders.some(f => f.id === h.folder_id))
+-  const tickers     = [...new Set(allHoldings.map(h => h.ticker))]
+-  const tickersKey  = tickers.join(',')
+-
+-  const fetchPrices = useCallback(async () => {
+-    if (!tickers.length) { setLoading(false); return }
+-    setLoading(true)
+-    const results = {}, chartResults = {}
+-    await Promise.all(tickers.map(async ticker => {
+-      try {
+-        const data = await api.stockData(ticker, '1M')
+-        const arr  = data?.chart ?? []
+-        if (arr.length) {
+-          chartResults[ticker] = arr.map(d => ({ price: d.price, timestamp: d.timestamp }))
+-          const latest = arr[arr.length - 1]?.price ?? 0
+-          const first  = arr[0]?.price ?? latest
+-          results[ticker] = { price: latest, change: first ? ((latest - first) / first) * 100 : 0 }
+-        }
+-      } catch { results[ticker] = { price: null, change: null } }
+-    }))
+-    setPrices(results); setCharts(chartResults); setLoading(false)
+-    // eslint-disable-next-line react-hooks/exhaustive-deps
+-  }, [tickersKey])
+-
+-  // fetch-on-mount pattern, not the derived-state anti-pattern
+-  // eslint-disable-next-line react-hooks/set-state-in-effect
+-  useEffect(() => { fetchPrices() }, [fetchPrices])
+-  useEffect(() => { fetchThbRate().then(setThbRate) }, [])
+-
+-  const totalCost  = allHoldings.reduce((s, h) => s + (parseFloat(h.buy_price||0) * parseFloat(h.amount||0)), 0)
+-  const totalValue = allHoldings.reduce((s, h) => {
+-    const p = prices[h.ticker]?.price
+-    return s + (p != null ? p * parseFloat(h.amount||0) : parseFloat(h.buy_price||0) * parseFloat(h.amount||0))
+-  }, 0)
+-  const totalPnL    = totalValue - totalCost
+-  const totalPnLPct = totalCost > 0 ? (totalPnL / totalCost) * 100 : 0
+-  const pnlPos      = totalPnL >= 0
+-
+-  const tickerStats = tickers.map(ticker => {
+-    const hs       = allHoldings.filter(h => h.ticker === ticker)
+-    const shares   = hs.reduce((s, h) => s + parseFloat(h.amount||0), 0)
+-    const avgCost  = hs.reduce((s, h) => s + parseFloat(h.buy_price||0)*parseFloat(h.amount||0), 0) / (shares||1)
+-    const price    = prices[ticker]?.price
+-    const value    = price != null ? price * shares : avgCost * shares
+-    const cost     = avgCost * shares
+-    const pnl      = value - cost
+-    const pnlPct   = cost > 0 ? (pnl / cost) * 100 : 0
+-    const weight   = totalValue > 0 ? (value / totalValue) * 100 : 0
+-    return { ticker, shares, avgCost, currentPrice: price, value, cost, pnl, pnlPct, weight, sparkline: charts[ticker] }
+-  }).sort((a, b) => b.value - a.value)
+-
+-  const pieData  = tickerStats.map(t => ({ name: t.ticker, value: t.value }))
+-  const tabs     = ['overview', 'holdings', 'charts']
+-  const tabStyle = t => ({
+-    padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+-    fontFamily: "var(--font-body), sans-serif", border: 'none', transition: 'all .15s',
+-    background: activeTab === t ? 'var(--accent)' : 'var(--surface-2)',
+-    color: activeTab === t ? '#fff' : 'var(--muted)',
+-    outline: activeTab === t ? 'none' : '1px solid var(--border-md)',
+-  })
+-
+-  return (
+-    <div style={{ marginTop: 8, marginLeft: 16, background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+-      {/* Header */}
+-      <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+-        <div style={{ display: 'flex', gap: 6 }}>
+-          {tabs.map(t => <button key={t} style={tabStyle(t)} onClick={() => setActiveTab(t)}>{t.charAt(0).toUpperCase() + t.slice(1)}</button>)}
+-        </div>
+-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 12, alignItems: 'center' }}>
+-          <div style={{ display: 'flex', background: 'var(--surface-2)', borderRadius: 8, padding: 2, border: '1px solid var(--border-md)', gap: 2 }}>
+-            {['USD','THB'].map(c => (
+-              <button key={c} onClick={() => setCurrency(c)} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: "var(--font-body), monospace", transition: 'all .15s', background: currency === c ? 'var(--accent)' : 'transparent', color: currency === c ? '#fff' : 'var(--muted)' }}>{c}</button>
+-            ))}
+-          </div>
+-          {!loading && (
+-            <>
+-              <div style={{ textAlign: 'right' }}>
+-                <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Portfolio Value</div>
+-                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-body), monospace" }}>{fmtCurr(totalValue, currency, thbRate)}</div>
+-              </div>
+-              <div style={{ textAlign: 'right' }}>
+-                <div style={{ fontSize: 10, color: 'var(--faint)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>Total P&L</div>
+-                <div style={{ fontSize: 14, fontWeight: 700, fontFamily: "var(--font-body), monospace", color: pnlPos ? '#16a34a' : '#dc2626' }}>
+-                  {pnlPos ? '+' : ''}{fmtCurr(totalPnL, currency, thbRate)} ({pnlPos ? '+' : ''}{totalPnLPct.toFixed(2)}%)
+-                </div>
+-              </div>
+-            </>
+-          )}
+-          {loading && <span style={{ fontSize: 12, color: 'var(--faint)' }}>Loading…</span>}
+-        </div>
+-      </div>
+-
+-      <div style={{ padding: '14px 16px' }}>
+-        {/* OVERVIEW */}
+-        {activeTab === 'overview' && (
+-          <div style={{ display: 'grid', gap: 12 }}>
+-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+-              <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
+-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Allocation</div>
+-                {pieData.length > 0 ? (
+-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+-                    <PieChart width={90} height={90}>
+-                      <Pie data={pieData} cx={40} cy={40} innerRadius={22} outerRadius={40} paddingAngle={2} dataKey="value">
+-                        {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+-                      </Pie>
+-                    </PieChart>
+-                    <div style={{ display: 'grid', gap: 4 }}>
+-                      {tickerStats.slice(0, 5).map((t, i) => (
+-                        <div key={t.ticker} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+-                          <div style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, background: PIE_COLORS[i % PIE_COLORS.length] }} />
+-                          <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, fontWeight: 700, color: 'var(--text)', minWidth: 40 }}>{t.ticker}</span>
+-                          <span style={{ fontSize: 10, color: 'var(--faint)' }}>{t.weight.toFixed(1)}%</span>
+-                        </div>
+-                      ))}
+-                    </div>
+-                  </div>
+-                ) : <div style={{ fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No data</div>}
+-              </div>
+-              <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
+-                {[
+-                  { label: 'Holdings', value: allHoldings.length },
+-                  { label: 'Portfolios', value: folders.length },
+-                  { label: 'Cost Basis', value: fmtCurr(totalCost, currency, thbRate) },
+-                  { label: 'Unrealised P&L', value: `${pnlPos?'+':''}${totalPnLPct.toFixed(2)}%`, color: pnlPos ? '#16a34a' : '#dc2626' },
+-                ].map(({ label, value, color }) => (
+-                  <div key={label} style={{ background: 'var(--surface-2)', borderRadius: 10, padding: '8px 12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+-                    <span style={{ fontSize: 11, color: 'var(--faint)', fontWeight: 600 }}>{label}</span>
+-                    <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700, color: color || 'var(--text)' }}>{value}</span>
+-                  </div>
+-                ))}
+-              </div>
+-            </div>
+-            {!loading && tickerStats.length > 0 && (
+-              <div style={{ background: 'var(--surface-2)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
+-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>Position Summary</div>
+-                <div style={{ display: 'grid', gap: 6 }}>
+-                  {tickerStats.map((t, i) => (
+-                    <div key={t.ticker} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+-                      <div style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, background: PIE_COLORS[i % PIE_COLORS.length] }} />
+-                      <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700, color: 'var(--text)', minWidth: 52 }}>{t.ticker}</span>
+-                      <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+-                        <div style={{ height: '100%', width: `${Math.min(t.weight, 100)}%`, background: PIE_COLORS[i % PIE_COLORS.length], borderRadius: 4, transition: 'width .4s' }} />
+-                      </div>
+-                      <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, color: 'var(--faint)', minWidth: 38, textAlign: 'right' }}>{t.weight.toFixed(1)}%</span>
+-                      <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, fontWeight: 700, color: t.pnl >= 0 ? '#16a34a' : '#dc2626', minWidth: 60, textAlign: 'right' }}>
+-                        {t.pnl >= 0 ? '+' : ''}{t.pnlPct.toFixed(2)}%
+-                      </span>
+-                    </div>
+-                  ))}
+-                </div>
+-              </div>
+-            )}
+-          </div>
+-        )}
+ 
+-        {/* HOLDINGS */}
+-        {activeTab === 'holdings' && (
+-          <div style={{ display: 'grid', gap: 10 }}>
+-            {folders.map(folder => {
+-              const fHoldings = feedHoldings.filter(h => h.folder_id === folder.id)
+-              return (
+-                <div key={folder.id} style={{ background: 'var(--surface-2)', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)' }}>
+-                  <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+-                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>{folder.name}</span>
+-                    <Badge>Public</Badge>
+-                    <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--faint)', fontFamily: "var(--font-body), monospace" }}>{fHoldings.length} holding{fHoldings.length !== 1 ? 's' : ''}</span>
+-                  </div>
+-                  {fHoldings.length > 0 ? (
+-                    <div>
+-                      {fHoldings.map((h, i) => {
+-                        const price  = prices[h.ticker]?.price
+-                        const shares = parseFloat(h.amount||0)
+-                        const cost   = parseFloat(h.buy_price||0)
+-                        const value  = price != null ? price * shares : cost * shares
+-                        const pnl    = price != null ? (price - cost) * shares : null
+-                        const pnlPct = price != null && cost > 0 ? ((price - cost) / cost) * 100 : null
+-                        const isPos  = pnl >= 0
+-                        return (
+-                          <div key={h.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 14px', padding: '10px 14px', borderBottom: i < fHoldings.length-1 ? '1px solid var(--border)' : 'none' }}>
+-                            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700, minWidth: 46 }}>{h.ticker}</span>
+-                            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 11, color: 'var(--muted)' }}>{shares.toFixed(4)} sh @ {fmtCurr(cost, currency, thbRate)}</span>
+-                            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 700, marginLeft: 'auto' }}>{fmtCurr(value, currency, thbRate)}</span>
+-                            <span style={{ fontFamily: "var(--font-body), monospace", fontSize: 12, fontWeight: 600, color: pnl==null?'var(--faint)':isPos?'#16a34a':'#dc2626' }}>
+-                              {pnl==null?'—':`${isPos?'+':''}${fmtCurr(Math.abs(pnl),currency,thbRate)} (${isPos?'+':''}${pnlPct.toFixed(2)}%)`}
+-                            </span>
+-                          </div>
+-                        )
+-                      })}
+-                    </div>
+-                  ) : (
+-                    <div style={{ padding: '10px 14px', fontSize: 12, color: 'var(--faint)', fontStyle: 'italic' }}>No holdings</div>
+-                  )}
+-                </div>
+-              )
+-            })}
+-          </div>
+-        )}
+-
+-        {/* CHARTS */}
+-        {activeTab === 'charts' && (
+-          <div>
+-            {loading ? (
+-              <div style={{ fontSize: 13, color: 'var(--faint)', textAlign: 'center', padding: '16px 0' }}>Loading charts…</div>
+-            ) : tickerStats.length === 0 ? (
+-              <div style={{ fontSize: 13, color: 'var(--faint)', textAlign: 'center', padding: '16px 0', fontStyle: 'italic' }}>No holdings</div>
+-            ) : (
+-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+-                {tickerStats.map((t, i) => {
+-                  const isPos  = t.pnl >= 0
+-                  const color  = PIE_COLORS[i % PIE_COLORS.length]
+-                  return (
+-                    <div key={t.ticker} style={{ background: 'var(--surface-2)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
+-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 6 }}>
+-                        <div>
+-                          <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 13, fontWeight: 700 }}>{t.ticker}</div>
+-                          <div style={{ fontSize: 10, color: 'var(--faint)', marginTop: 1 }}>{t.shares.toFixed(4)} shares</div>
+-                        </div>
+-                        <div style={{ textAlign: 'right' }}>
+-                          <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 13, fontWeight: 700 }}>{t.currentPrice != null ? fmtCurr(t.currentPrice, currency, thbRate) : '—'}</div>
+-                          <div style={{ fontFamily: "var(--font-body), monospace", fontSize: 10, fontWeight: 700, color: isPos ? '#16a34a' : '#dc2626' }}>{t.pnlPct != null ? `${isPos?'+':''}${t.pnlPct.toFixed(2)}%` : '—'}</div>
+-                        </div>
+-                      </div>
+-                      {t.sparkline?.length > 1 ? (
+-                        <ResponsiveContainer width="100%" height={60}>
+-                          <LineChart data={t.sparkline} margin={{ top: 2, right: 2, left: 0, bottom: 2 }}>
+-                            <Line type="monotone" dataKey="price" stroke={color} strokeWidth={1.5} dot={false} />
+-                            <Tooltip contentStyle={{ background: '#111', border: 'none', borderRadius: 6, padding: '4px 8px', fontSize: 11 }} itemStyle={{ color, fontFamily: "var(--font-body), monospace" }} formatter={v => [fmtCurr(v, currency, thbRate), '']} labelFormatter={() => ''} />
+-                          </LineChart>
+-                        </ResponsiveContainer>
+-                      ) : (
+-                        <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: 'var(--faint)', fontStyle: 'italic' }}>No chart data</div>
+-                      )}
+-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
+-                        <span style={{ fontSize: 10, color: 'var(--faint)' }}>Value: <span style={{ fontFamily: "var(--font-body), monospace", color: 'var(--text)', fontWeight: 700 }}>{fmtCurr(t.value, currency, thbRate)}</span></span>
+-                        <span style={{ fontSize: 10, color: isPos ? '#16a34a' : '#dc2626', fontFamily: "var(--font-body), monospace", fontWeight: 700 }}>{t.pnl != null ? `${isPos?'+':''}${fmtCurr(Math.abs(t.pnl),currency,thbRate)}` : '—'}</span>
+-                      </div>
+-                    </div>
+-                  )
+-                })}
+-              </div>
+-            )}
+-          </div>
+-        )}
+-      </div>
++      {pinnedAction && (
++        <div style={{ position: 'absolute', bottom: 10, right: 13 }}>{pinnedAction}</div>
++      )}
+     </div>
+   )
+ }
+@@ -486,7 +201,7 @@ function ListModal({ title, count, onClose, children }) {
+ 
+ export function SocialView({ social, portfolioFolders, session, togglePortfolioPrivacy }) {
+   const [editing, setEditing]           = useState(false)
+-  const [expandedUser, setExpandedUser] = useState(null)
++  const [viewingUser, setViewingUser]   = useState(null)
+   const [listModal, setListModal]       = useState(null) // 'following' | 'followers' | 'portfolios' | null
+ 
+   const profile     = social.profile
+@@ -504,6 +219,17 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
+   const statValueStyle = { fontSize: 14, fontWeight: 800, color: 'var(--text)', fontFamily: "var(--font-body), monospace" }
+   const statLabelStyle = { fontSize: 10, color: 'var(--faint)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }
+ 
++  if (viewingUser) {
++    return (
++      <UserPortfolioPage
++        user={viewingUser}
++        feed={social.feed || []}
++        feedHoldings={social.feedHoldings || []}
++        onBack={() => setViewingUser(null)}
++      />
++    )
++  }
++
+   return (
+     <div style={{ display: 'grid', gap: 14, width: '100%', alignContent: 'start' }}>
+ 
+@@ -581,43 +307,37 @@ export function SocialView({ social, portfolioFolders, session, togglePortfolioP
+             <p style={{ fontSize: 13, color: 'var(--faint)', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>Not following anyone yet — search below to find investors.</p>
+           ) : social.followedUsers.map(u => {
+             const pubFolders = social.feed?.filter(f => f.user_id === u.id) || []
+-            const isExpanded = expandedUser === u.id
+             const followsBack = social.followers?.some(f => f.id === u.id)
+             return (
+-              <div key={u.id}>
+-                <UserRow user={u}
+-                  sub={
+-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+-                      {pubFolders.length > 0 && <Badge>{pubFolders.length} public portfolio{pubFolders.length > 1 ? 's' : ''}</Badge>}
+-                      {followsBack && <Badge color="#7c3aed" bg="#f5f3ff" border="#ddd6fe">Mutual</Badge>}
+-                    </div>
+-                  }
+-                  right={
+-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+-                      {pubFolders.length > 0 && (
+-                        <button
+-                          onClick={() => setExpandedUser(isExpanded ? null : u.id)}
+-                          style={{
+-                            padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
+-                            background: isExpanded ? 'var(--accent)' : 'var(--surface-2)',
+-                            border: isExpanded ? 'none' : '1px solid var(--border-md)',
+-                            color: isExpanded ? '#fff' : 'var(--text)',
+-                            fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif",
+-                            transition: 'all .15s', display: 'flex', alignItems: 'center', gap: 5,
+-                          }}
+-                        >
+-                          {isExpanded ? '▲' : '▼'} {isExpanded ? 'Collapse' : 'View Details'}
+-                        </button>
+-                      )}
+-                      <button onClick={() => social.unfollow(u.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", transition: 'all .15s' }}
+-                        onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
+-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
+-                      >Unfollow</button>
+-                    </div>
+-                  }
+-                />
+-                {isExpanded && <UserDetailPanel user={u} feed={social.feed || []} feedHoldings={social.feedHoldings || []} />}
+-              </div>
++              <UserRow key={u.id} user={u}
++                sub={
++                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
++                    {pubFolders.length > 0 && <Badge>{pubFolders.length} public portfolio{pubFolders.length > 1 ? 's' : ''}</Badge>}
++                    {followsBack && <Badge color="#7c3aed" bg="#f5f3ff" border="#ddd6fe">Mutual</Badge>}
++                  </div>
++                }
++                right={
++                  pubFolders.length > 0 && (
++                    <button
++                      onClick={() => { setViewingUser(u); setListModal(null) }}
++                      style={{
++                        padding: '6px 12px', borderRadius: 8, cursor: 'pointer',
++                        background: 'var(--surface-2)', border: '1px solid var(--border-md)',
++                        color: 'var(--text)', fontSize: 12, fontWeight: 600,
++                        fontFamily: "var(--font-body), sans-serif", transition: 'all .15s',
++                      }}
++                    >
++                      View Portfolio →
++                    </button>
++                  )
++                }
++                pinnedAction={
++                  <button onClick={() => social.unfollow(u.id)} style={{ padding: '6px 12px', borderRadius: 8, cursor: 'pointer', background: 'var(--surface)', border: '1px solid var(--border-md)', color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", transition: 'all .15s' }}
++                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626' }}
++                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-md)'; e.currentTarget.style.color = 'var(--muted)' }}
++                  >Unfollow</button>
++                }
++              />
+             )
+           })}
+         </ListModal>
+diff --git a/src/pages/UserPortfolioPage.jsx b/src/pages/UserPortfolioPage.jsx
+new file mode 100644
+index 0000000..0f4897f
+--- /dev/null
++++ b/src/pages/UserPortfolioPage.jsx
+@@ -0,0 +1,138 @@
++import { useState, useEffect, useCallback } from 'react'
++import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ChartTooltip } from 'recharts'
++import { api } from '../lib/api'
++import { fetchThbRate, fmtCurrency as fmt } from '../lib/formatters'
++import { CHART_COLORS as COLORS } from '../lib/constants'
++import { Avatar } from '../components/Avatar'
++import { AssetRow, PieLegend, GrowthChart, DividendChart } from './PortfolioView'
++
++export function UserPortfolioPage({ user, feed, feedHoldings, onBack }) {
++  const [livePrices, setLivePrices] = useState({})
++  const [loading, setLoading]       = useState(true)
++  const [currency, setCurrency]     = useState('USD')
++  const [thbRate, setThbRate]       = useState(34.5)
++
++  const folders  = feed.filter(f => f.user_id === user.id)
++  const holdings = feedHoldings.filter(h => folders.some(f => f.id === h.folder_id))
++  const tickersKey = [...new Set(holdings.map(h => h.ticker))].join(',')
++
++  const fetchPrices = useCallback(async () => {
++    if (!tickersKey) { setLoading(false); return }
++    setLoading(true)
++    try {
++      const data = await api.bulkPrices(tickersKey)
++      setLivePrices(data)
++    } finally {
++      setLoading(false)
++    }
++  }, [tickersKey])
++
++  // eslint-disable-next-line react-hooks/set-state-in-effect
++  useEffect(() => { fetchPrices() }, [fetchPrices])
++  useEffect(() => { fetchThbRate().then(setThbRate) }, [])
++
++  const pieData = holdings.map(h => {
++    const amount    = parseFloat(h.amount)    || 0
++    const buyPrice  = parseFloat(h.buy_price) || 0
++    const raw       = livePrices?.[h.ticker] ?? livePrices?.[h.ticker?.toUpperCase()] ?? livePrices?.[h.ticker?.toLowerCase()]
++    const livePrice = raw !== undefined ? parseFloat(raw) : buyPrice
++    const currentValue = amount * livePrice
++    const costBasis    = amount * buyPrice
++    const profitLoss   = currentValue - costBasis
++    const profitLossPct = costBasis > 0 ? (profitLoss / costBasis) * 100 : 0
++    return { ...h, currentValue, livePrice, profitLoss, profitLossPct, costBasis }
++  }).sort((a, b) => b.currentValue - a.currentValue)
++
++  const totalValue     = pieData.reduce((sum, h) => sum + h.currentValue, 0)
++  const totalCostBasis = pieData.reduce((sum, h) => sum + h.costBasis, 0)
++  const totalPnL        = totalValue - totalCostBasis
++  const totalPnLPct     = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0
++
++  const pieDataWithPct = pieData.map(h => ({
++    ...h,
++    pct: totalValue > 0 ? (h.currentValue / totalValue) * 100 : 0,
++  }))
++
++  return (
++    <>
++      <div className="portfolio-header">
++        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
++          <button onClick={onBack} style={{ padding: '8px 14px', borderRadius: 10, cursor: 'pointer', background: 'var(--surface-2)', border: '1px solid var(--border-md)', color: 'var(--text)', fontSize: 13, fontWeight: 600, fontFamily: "var(--font-body), sans-serif", flexShrink: 0 }}>
++            ← Back
++          </button>
++          <Avatar name={user.name || user.username} avatarUrl={user.avatar_url} size={40} />
++          <div style={{ minWidth: 0 }}>
++            <h2 className="port-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name || 'Investor'}</h2>
++            <div className="port-balance-row">
++              <span className="price-value">{fmt(totalValue, currency, thbRate)}</span>
++              <span className={`price-delta ${totalPnL >= 0 ? 'up' : 'down'}`}>
++                {totalPnL >= 0 ? '▲' : '▼'} {fmt(Math.abs(totalPnL), currency, thbRate)} ({totalPnLPct >= 0 ? '+' : ''}{Math.abs(totalPnLPct).toFixed(2)}%)
++              </span>
++            </div>
++          </div>
++        </div>
++        <div className="port-header-actions">
++          <div className="currency-toggle">
++            <button className={currency === 'USD' ? 'active' : ''} onClick={() => setCurrency('USD')}>USD</button>
++            <button className={currency === 'THB' ? 'active' : ''} onClick={() => setCurrency('THB')}>THB</button>
++          </div>
++        </div>
++      </div>
++
++      <div className="portfolio-grid">
++        <div className="chart-card port-chart">
++          <h3 className="desc-title">Asset Allocation</h3>
++          {pieDataWithPct.length > 0 ? (
++            <>
++              <ResponsiveContainer width="100%" height={200}>
++                <PieChart>
++                  <Pie data={pieDataWithPct} dataKey="currentValue" nameKey="ticker"
++                    cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2}>
++                    {pieDataWithPct.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
++                  </Pie>
++                  <ChartTooltip
++                    formatter={(v, name) => [fmt(v, currency, thbRate), name]}
++                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border-md)', borderRadius: 8, fontSize: 12 }}
++                  />
++                </PieChart>
++              </ResponsiveContainer>
++              <PieLegend data={pieDataWithPct} />
++            </>
++          ) : (
++            <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--muted)', fontSize: 13 }}>
++              {loading ? 'Loading…' : 'No public holdings.'}
++            </div>
++          )}
++        </div>
++
++        <div className="chart-card port-table-container">
++          <h3 className="desc-title">Holdings</h3>
++          {folders.map(folder => {
++            const folderHoldings = pieDataWithPct.filter(h => h.folder_id === folder.id)
++            if (!folderHoldings.length) return null
++            return (
++              <div key={folder.id}>
++                {folders.length > 1 && (
++                  <div style={{ padding: '10px 20px 4px', fontSize: 11, fontWeight: 700, color: 'var(--faint)', textTransform: 'uppercase', letterSpacing: '.05em' }}>
++                    {folder.name}
++                  </div>
++                )}
++                {folderHoldings.map(h => (
++                  <AssetRow key={h.id} holding={h} color={COLORS[pieDataWithPct.indexOf(h) % COLORS.length]} currency={currency} thbRate={thbRate} />
++                ))}
++              </div>
++            )
++          })}
++          {pieDataWithPct.length === 0 && (
++            <div style={{ textAlign: 'center', padding: '20px', color: 'var(--muted)' }}>
++              {loading ? 'Loading…' : 'No public holdings.'}
++            </div>
++          )}
++        </div>
++      </div>
++
++      <GrowthChart costBasis={totalCostBasis} currentValue={totalValue} defaultCurrency={currency} thbRate={thbRate} />
++      <DividendChart holdings={holdings} defaultCurrency={currency} thbRate={thbRate} />
++    </>
++  )
++}
+diff --git a/src/styles/new-features.css b/src/styles/new-features.css
+index 50a1fe7..717224f 100644
+--- a/src/styles/new-features.css
++++ b/src/styles/new-features.css
+@@ -3,14 +3,11 @@
+    Only adds new things; restores originals for everything else
+    ========================================================================== */
+ 
+-/* ── FIX: Collapse expand button clipped by overflow:hidden ──
+-   The sidebar has overflow-x:hidden which clips the absolute-positioned
+-   expand button. Fix: render it fixed, outside the sidebar's stacking context.
+-   We show/hide it via JS state (collapsed class on sidebar) ── */
+-
+-/* Hide the absolute version's clipping issue by zeroing it out */
++/* the sidebar has overflow-x:hidden which clips the absolute-positioned
++   expand button — rendered fixed instead, outside the sidebar's stacking
++   context, shown/hidden via the collapsed class on the sidebar */
+ .sidebar-expand-btn {
+-  /* Remove absolute positioning that gets clipped */
++  /* fixed instead of absolute so overflow:hidden cannot clip it */
+   position: fixed !important;
+   left: calc(var(--sidebar-w-collapsed) - 1px);
+   top: 19px;
+@@ -23,7 +20,7 @@
+   color: rgba(255,255,255,0.6) !important;
+   font-size: 10px;
+   cursor: pointer;
+-  /* Hidden by default in expanded state */
++  /* hidden by default, shown only when collapsed */
+   display: none;
+   align-items: center;
+   justify-content: center;
+@@ -36,16 +33,11 @@
+   color: #fff !important;
+ }
+ 
+-/* Only show when sidebar is collapsed */
++/* only show when sidebar is collapsed */
+ .sidebar.collapsed .sidebar-expand-btn {
+   display: flex !important;
+ }
+ 
+-/* On mobile the sidebar is off-canvas, no expand btn needed */
+-@media (max-width: 768px) {
+-  .sidebar-expand-btn { display: none !important; }
+-}
+-
+ /* ── Portfolio: Buy/Sell buttons ── */
+ .trade-btn {
+   font-size: 11px !important;

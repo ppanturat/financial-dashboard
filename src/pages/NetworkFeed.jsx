@@ -1,23 +1,7 @@
 // social activity feed — buy/sell/portfolio activity from people you follow
 import { useState, useEffect } from 'react'
 import { api } from '../lib/api'
-
-function Avatar({ name, avatarUrl, size = 36 }) {
-  const initials = (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
-  const hue = (name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 360
-  if (avatarUrl) return (
-    <img src={avatarUrl} alt={name} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid var(--border-md)' }} />
-  )
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: `hsl(${hue},55%,62%)`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: '#fff', fontWeight: 700, fontSize: size > 40 ? 16 : 13,
-      fontFamily: "var(--font-body),sans-serif", userSelect: 'none',
-    }}>{initials}</div>
-  )
-}
+import { Avatar } from '../components/Avatar'
 
 function fmtUSD(val) {
   const n = parseFloat(val) || 0
@@ -106,7 +90,7 @@ function TradeCard({ item }) {
       display: 'flex', alignItems: 'flex-start', gap: 12,
       transition: 'box-shadow .15s',
     }}>
-      <Avatar name={item.user.name || item.user.username} avatarUrl={item.user.avatar_url} />
+      <Avatar name={item.user.name || item.user.username} avatarUrl={item.user.avatar_url} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Action headline */}
         <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
@@ -174,7 +158,7 @@ function PortfolioCard({ item }) {
       borderLeft: '3px solid var(--accent)', borderRadius: 12,
       padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12,
     }}>
-      <Avatar name={item.user.name || item.user.username} avatarUrl={item.user.avatar_url} />
+      <Avatar name={item.user.name || item.user.username} avatarUrl={item.user.avatar_url} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
           <strong style={{ fontWeight: 700 }}>{item.user.name || item.user.username}</strong>

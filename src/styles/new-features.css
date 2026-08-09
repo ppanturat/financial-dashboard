@@ -3,14 +3,11 @@
    Only adds new things; restores originals for everything else
    ========================================================================== */
 
-/* ── FIX: Collapse expand button clipped by overflow:hidden ──
-   The sidebar has overflow-x:hidden which clips the absolute-positioned
-   expand button. Fix: render it fixed, outside the sidebar's stacking context.
-   We show/hide it via JS state (collapsed class on sidebar) ── */
-
-/* Hide the absolute version's clipping issue by zeroing it out */
+/* the sidebar has overflow-x:hidden which clips the absolute-positioned
+   expand button — rendered fixed instead, outside the sidebar's stacking
+   context, shown/hidden via the collapsed class on the sidebar */
 .sidebar-expand-btn {
-  /* Remove absolute positioning that gets clipped */
+  /* fixed instead of absolute so overflow:hidden cannot clip it */
   position: fixed !important;
   left: calc(var(--sidebar-w-collapsed) - 1px);
   top: 19px;
@@ -23,7 +20,7 @@
   color: rgba(255,255,255,0.6) !important;
   font-size: 10px;
   cursor: pointer;
-  /* Hidden by default in expanded state */
+  /* hidden by default, shown only when collapsed */
   display: none;
   align-items: center;
   justify-content: center;
@@ -36,14 +33,9 @@
   color: #fff !important;
 }
 
-/* Only show when sidebar is collapsed */
+/* only show when sidebar is collapsed */
 .sidebar.collapsed .sidebar-expand-btn {
   display: flex !important;
-}
-
-/* On mobile the sidebar is off-canvas, no expand btn needed */
-@media (max-width: 768px) {
-  .sidebar-expand-btn { display: none !important; }
 }
 
 /* ── Portfolio: Buy/Sell buttons ── */

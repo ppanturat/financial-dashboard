@@ -48,3 +48,21 @@ export const cleanDescription = (raw = '') => {
   const last = Math.max(s.lastIndexOf('.'), s.lastIndexOf('!'), s.lastIndexOf('?'))
   return last !== -1 ? s.substring(0, last + 1).trim() : s
 }
+
+// live USD->THB rate, used by the USD/THB currency toggle on portfolio-shaped views
+export async function fetchThbRate() {
+  try {
+    const res = await fetch('https://open.er-api.com/v6/latest/USD')
+    const data = await res.json()
+    return data.rates?.THB ?? 34.5
+  } catch { return 34.5 }
+}
+
+// formats a dollar amount in either USD or THB
+export function fmtCurrency(val, currency, thbRate) {
+  const num = parseFloat(val) || 0
+  if (currency === 'THB') {
+    return '฿' + (num * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}

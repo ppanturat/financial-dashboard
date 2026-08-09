@@ -169,3 +169,5 @@ export const METRIC_DEFS = [
 ]
 
 export const TIMEFRAMES = ['1W', '1M', '6M', '1Y']
+
+export const CHART_COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488', '#db2777']

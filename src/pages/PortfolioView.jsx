@@ -8,24 +8,8 @@ import { HoldingModal } from '../components/HoldingModal'
 import { TradeModal } from '../components/TradeModal'
 import { EmptyState } from '../components/EmptyState'
 import { api } from '../lib/api'
-
-const COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#0891b2', '#0d9488', '#db2777']
-
-async function fetchThbRate() {
-  try {
-    const res = await fetch('https://open.er-api.com/v6/latest/USD')
-    const data = await res.json()
-    return data.rates?.THB ?? 34.5
-  } catch { return 34.5 }
-}
-
-function fmt(val, currency, thbRate) {
-  const num = parseFloat(val) || 0
-  if (currency === 'THB') {
-    return '฿' + (num * thbRate).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  }
-  return '$' + num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+import { fetchThbRate, fmtCurrency as fmt } from '../lib/formatters'
+import { CHART_COLORS as COLORS } from '../lib/constants'
 
 function fmtK(val, symb) {
   if (Math.abs(val) >= 1000) return symb + (val / 1000).toFixed(1) + 'k'
@@ -38,7 +22,7 @@ const ROW_BTN_STYLE = {
   color: 'var(--muted)', fontSize: 12, fontWeight: 600, fontFamily: "var(--font-body), sans-serif",
 }
 
-function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDelete }) {
+export function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDelete }) {
   const [open, setOpen] = useState(false)
   const pnlColor = h.profitLoss >= 0 ? 'var(--green)' : 'var(--red)'
   const colStyle = { display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-end' }
@@ -95,18 +79,20 @@ function AssetRow({ holding: h, color, currency, thbRate, onTrade, onEdit, onDel
               <div className="font-mono" style={{ fontSize: 13, color: pnlColor }}>{h.profitLossPct >= 0 ? '+' : ''}{h.profitLossPct.toFixed(2)}%</div>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="trade-btn buy" onClick={onTrade}>⇄ Trade</button>
-            <button onClick={onEdit} title="Edit" style={ROW_BTN_STYLE}>✎ Edit</button>
-            <button onClick={onDelete} title="Remove" style={ROW_BTN_STYLE}>✕ Remove</button>
-          </div>
+          {(onTrade || onEdit || onDelete) && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {onTrade  && <button className="trade-btn buy" onClick={onTrade}>⇄ Trade</button>}
+              {onEdit   && <button onClick={onEdit} title="Edit" style={ROW_BTN_STYLE}>✎ Edit</button>}
+              {onDelete && <button onClick={onDelete} title="Remove" style={ROW_BTN_STYLE}>✕ Remove</button>}
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function PieLegend({ data }) {
+export function PieLegend({ data }) {
   return (
     <div className="pie-legend">
       {data.map((entry, i) => (
@@ -195,7 +181,7 @@ function StatPill({ label, value, highlight }) {
   )
 }
 
-function GrowthChart({ costBasis, currentValue, defaultCurrency, thbRate }) {
+export function GrowthChart({ costBasis, currentValue, defaultCurrency, thbRate }) {
   const [range, setRange] = useState('1M')
   const [currency, setCurrency] = useState(defaultCurrency || 'USD')
   const symb = currency === 'THB' ? '฿' : '$'
@@ -262,7 +248,7 @@ function GrowthChart({ costBasis, currentValue, defaultCurrency, thbRate }) {
 
 const DIV_VIEWS = ['Monthly', 'By Stock']
 
-function DividendChart({ holdings, defaultCurrency, thbRate }) {
+export function DividendChart({ holdings, defaultCurrency, thbRate }) {
   const [view, setView] = useState('Monthly')
   const [currency, setCurrency] = useState(defaultCurrency || 'USD')
   const [divData, setDivData] = useState(null)

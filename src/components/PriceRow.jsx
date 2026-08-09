@@ -1,8 +1,21 @@
+import { useState, useEffect } from 'react'
 import { TIMEFRAMES } from '../lib/constants'
-import { getStockSegments, getSegmentStyle } from '../lib/stockSegments'
+import { getStockSegments, getSegmentStyle, fetchFallbackSegment } from '../lib/stockSegments'
+import { api } from '../lib/api'
 
 export function PriceRow({ ticker, isEtf, currentPrice, priceChange, timeframe, onTimeframeChange }) {
-  const segments = getStockSegments(ticker, isEtf)
+  const baseSegments = getStockSegments(ticker, isEtf)
+  const [fallback, setFallback] = useState(null) // { ticker, tags } once the async lookup resolves
+
+  useEffect(() => {
+    let cancelled = false
+    fetchFallbackSegment(ticker, isEtf, api).then(tags => {
+      if (!cancelled && tags?.length) setFallback({ ticker, tags })
+    })
+    return () => { cancelled = true }
+  }, [ticker, isEtf])
+
+  const segments = fallback?.ticker === ticker ? fallback.tags : baseSegments
 
   return (
     <div className="price-row">

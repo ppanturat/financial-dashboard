@@ -23,6 +23,8 @@ export const SEGMENT_COLORS = {
   INSURANCE:   { bg: '#f0f9ff', text: '#0369a1', border: '#bae6fd' },
   FINTECH:     { bg: '#ecfdf5', text: '#047857', border: '#a7f3d0' },
   PAYMENTS:    { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' },
+  COMMS:       { bg: '#fdf4ff', text: '#86198f', border: '#f0abfc' },
+  CONSUMER:    { bg: '#fff7ed', text: '#c2410c', border: '#fed7aa' },
   // health
   HEALTH:      { bg: '#f0fdf4', text: '#15803d', border: '#bbf7d0' },
   PHARMA:      { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' },
@@ -46,6 +48,7 @@ export const SEGMENT_COLORS = {
   // real estate & utilities
   REIT:        { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' },
   UTILITIES:   { bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' },
+  'REAL ESTATE': { bg: '#fef2f2', text: '#991b1b', border: '#fecaca' },
   // fund types
   ETF:         { bg: '#1e293b', text: '#f1f5f9', border: '#334155' },
   'INDEX ETF': { bg: '#0f172a', text: '#e2e8f0', border: '#1e293b' },
@@ -290,4 +293,57 @@ export function getStockSegments(ticker, isEtf = false) {
 
 export function getSegmentStyle(segment) {
   return SEGMENT_COLORS[segment] || SEGMENT_COLORS['EQUITY']
+}
+
+// maps the backend's normalised sector (see normalise_sector in api/index.py)
+// to one of our tag names, for tickers not covered by SEGMENTS_MAP above
+const BACKEND_SECTOR_TAG = {
+  tech: 'TECH', comms: 'COMMS', consumer: 'CONSUMER', finance: 'FINANCE',
+  health: 'HEALTH', industrial: 'INDUSTRIAL', materials: 'MATERIALS',
+  realestate: 'REAL ESTATE', energy: 'ENERGY', utilities: 'UTILITIES',
+}
+
+const CACHE_PREFIX = 'sector_cache:'
+const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 days — sectors rarely change
+
+function readCache(ticker) {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + ticker)
+    if (!raw) return undefined
+    const { tags, ts } = JSON.parse(raw)
+    if (Date.now() - ts > CACHE_MAX_AGE_MS) return undefined
+    return tags
+  } catch { return undefined }
+}
+
+function writeCache(ticker, tags) {
+  try {
+    localStorage.setItem(CACHE_PREFIX + ticker, JSON.stringify({ tags, ts: Date.now() }))
+  } catch { /* storage full or unavailable, skip caching */ }
+}
+
+/**
+ * for a ticker not in SEGMENTS_MAP, fetches its real sector from the backend
+ * (yfinance's own classification, not a keyword guess) and caches the result
+ * in localStorage so it's fetched at most once per browser, not on every
+ * visit. returns null if the ticker is already in SEGMENTS_MAP (no fetch
+ * needed) or has no sector data available.
+ */
+export async function fetchFallbackSegment(ticker, isEtf, api) {
+  if (!ticker) return null
+  const up = ticker.toUpperCase()
+  if (SEGMENTS_MAP[up] || isEtf) return null
+
+  const cached = readCache(up)
+  if (cached !== undefined) return cached
+
+  try {
+    const result = await api.bulkSectors(up)
+    const sector = result?.[up]?.sector
+    const tags   = sector && BACKEND_SECTOR_TAG[sector] ? [BACKEND_SECTOR_TAG[sector]] : []
+    writeCache(up, tags)
+    return tags
+  } catch {
+    return []
+  }
 }
