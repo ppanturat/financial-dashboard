@@ -10,6 +10,7 @@ import { StockNewsFeed } from '../components/StockNewsFeed'
 import { ValuationBadge } from '../components/ValuationBadge'
 import { AssessmentModulesAB } from '../components/AdoptionRedFlagCards'
 import { TechnicalSignalCard } from '../components/TechnicalSignalCard'
+import { QuantModelsCards } from '../components/QuantModelsCards'
 import { runAdoptionCheck, runTerminalRedFlagSweep } from '../lib/assessmentEngine'
 
 export function MarketView({ activeTicker, foldersLoading }) {
@@ -84,6 +85,16 @@ export function MarketView({ activeTicker, foldersLoading }) {
       {!isEtf && <TechnicalSignalCard ticker={activeTicker} isEtf={isEtf} />}
 
       <AssessmentModulesAB adoption={adoptionResult} redFlag={redFlagResult} />
+
+      {/* Altman Z / Piotroski F / Beneish M — standalone, not blended into
+          the 0-100 weighted score above (see assessmentEngine.js) */}
+      <QuantModelsCards
+        altmanInputs={stock.altmanInputs}
+        piotroskiInputs={stock.piotroskiInputs}
+        beneishInputs={stock.beneishInputs}
+        isEtf={isEtf}
+        loading={stock.loadingData}
+      />
 
       <RuleBasedAssessmentCard
         ticker={activeTicker}

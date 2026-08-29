@@ -50,7 +50,14 @@ Metrics are not shown for ETFs — the tile area will display "N/A" in that case
 
 **Assessment cards:** Below the metrics — a rule-based Metrics Summary and Quantitative Assessment (both driven by the same underlying scoring, so they always agree), a Technical Trigger card (RSI/SMA/volume breakout check, each criterion with its own explanation), and side-by-side Adoption Reality Check / Terminal Red Flag cards where applicable. All of this is informational only, not investment advice.
 
-**ETFs:** Opening an ETF replaces the metrics section with a breakdown of the fund's top holdings.
+**Quant Models:** Three established academic composite models, each shown as its own card:
+- **Altman Z-Score** — bankruptcy/distress risk from a single period's balance sheet and income statement (Safe / Grey / Distress zones).
+- **Piotroski F-Score** — a 9-point year-over-year fundamental-strength checklist (profitability, leverage, liquidity, efficiency), scored 0–9.
+- **Beneish M-Score** — an 8-variable, year-over-year earnings-manipulation probability screen.
+
+These are kept as standalone cards rather than folded into the 0–100 Metrics Summary/Quantitative Assessment score above — they're categorical composite models with their own fixed academic coefficients, not continuous metrics on the same scale, and blending them in would distort both. Each requires two annual reporting periods of balance sheet/income statement/cash flow data (Piotroski and Beneish) or one (Altman); if yfinance doesn't expose the required line items for a given ticker, that card simply doesn't render rather than showing a partial or estimated result.
+
+**ETFs:** Opening an ETF replaces the metrics section with a breakdown of the fund's top holdings. Quant Model cards are not shown for ETFs (same reasoning as Key Metrics — the underlying financial-statement line items don't apply to a fund).
 
 **Company Profile:** A collapsible section at the bottom shows a plain-language description of the business.
 

@@ -119,6 +119,196 @@ def _parse_news(raw_news: list) -> list:
     return items[:15]
 
 
+# ── Helpers: two-period financial statement extraction ───────────────────────
+# yfinance's balance_sheet / financials / cashflow are DataFrames with one
+# column per fiscal period, most-recent first. Row labels vary slightly by
+# ticker/version, so `row()` tries several candidate labels in order.
+
+def _row(df, *names):
+    """Return the row (Series across periods) for the first matching label, or None."""
+    if df is None or df.empty:
+        return None
+    for name in names:
+        if name in df.index:
+            return df.loc[name]
+    return None
+
+
+def _val(series, idx):
+    """Safe value extraction at column index idx (0 = most recent period)."""
+    if series is None:
+        return None
+    try:
+        if idx >= len(series):
+            return None
+        v = series.iloc[idx]
+        if v is None or (isinstance(v, float) and v != v):
+            return None
+        return float(v)
+    except Exception:
+        return None
+
+
+def _build_quant_model_inputs(stock, info):
+    """
+    Pulls the two most recent annual periods from balance_sheet / financials /
+    cashflow and assembles the raw inputs needed for the Altman Z, Piotroski F,
+    and Beneish M models. Returns (altman_inputs, piotroski_inputs, beneish_inputs),
+    each either a fully-populated dict or None if required data is unavailable —
+    never a partial/broken calculation.
+    """
+    try:
+        bs = stock.balance_sheet
+        fin = stock.financials
+        cf = stock.cashflow
+    except Exception:
+        bs = fin = cf = None
+
+    altman_inputs = None
+    piotroski_inputs = None
+    beneish_inputs = None
+
+    has_current_period = bs is not None and not bs.empty and fin is not None and not fin.empty
+    has_two_periods = (
+        has_current_period
+        and len(bs.columns) >= 2
+        and len(fin.columns) >= 2
+    )
+
+    total_assets_row      = _row(bs, 'Total Assets')
+    total_liab_row        = _row(bs, 'Total Liabilities Net Minority Interest', 'Total Liab')
+    retained_earnings_row = _row(bs, 'Retained Earnings')
+    current_assets_row    = _row(bs, 'Current Assets')
+    current_liab_row      = _row(bs, 'Current Liabilities')
+    ebit_row               = _row(fin, 'EBIT')
+    revenue_row            = _row(fin, 'Total Revenue')
+    net_income_row         = _row(fin, 'Net Income')
+    ocf_row                = _row(cf, 'Operating Cash Flow', 'Total Cash From Operating Activities')
+    ltd_row                = _row(bs, 'Long Term Debt')
+    shares_row             = _row(bs, 'Share Issued', 'Ordinary Shares Number') or _row(fin, 'Basic Average Shares', 'Diluted Average Shares')
+    gross_profit_row       = _row(fin, 'Gross Profit')
+    recv_row                = _row(bs, 'Receivables', 'Accounts Receivable', 'Net Receivables')
+    cogs_row                = _row(fin, 'Cost Of Revenue', 'Reconciled Cost Of Revenue')
+    ppe_row                 = _row(bs, 'Net PPE', 'Gross PPE')
+    sec_row                 = _row(bs, 'Other Short Term Investments', 'Investments And Advances')
+    dep_row                 = _row(cf, 'Depreciation And Amortization', 'Depreciation Amortization Depletion', 'Depreciation')
+    sga_row                 = _row(fin, 'Selling General And Administration')
+    debt_row                = _row(bs, 'Total Debt')
+
+    # ── Altman Z inputs (current period only) ──
+    if has_current_period:
+        ta0 = _val(total_assets_row, 0)
+        tl0 = _val(total_liab_row, 0)
+        re0 = _val(retained_earnings_row, 0)
+        ca0 = _val(current_assets_row, 0)
+        cl0 = _val(current_liab_row, 0)
+        ebit0 = _val(ebit_row, 0)
+        rev0 = _val(revenue_row, 0)
+        mcap = info.get('marketCap')
+
+        required = [ta0, tl0, re0, ca0, cl0, ebit0, rev0, mcap]
+        if all(x is not None for x in required) and ta0 != 0 and tl0 != 0:
+            altman_inputs = {
+                "total_assets":      sf(ta0, 0),
+                "total_liabilities": sf(tl0, 0),
+                "retained_earnings": sf(re0, 0),
+                "working_capital":   sf(ca0 - cl0, 0),
+                "ebit":              sf(ebit0, 0),
+                "market_cap":        sf(mcap, 0),
+                "total_revenue":     sf(rev0, 0),
+            }
+
+    # ── Piotroski F inputs (current + prior) ──
+    if has_two_periods:
+        ta0, ta1 = _val(total_assets_row, 0), _val(total_assets_row, 1)
+        ni0, ni1 = _val(net_income_row, 0), _val(net_income_row, 1)
+        ocf0 = _val(ocf_row, 0)
+        ltd0, ltd1 = _val(ltd_row, 0), _val(ltd_row, 1)
+        ca0, ca1 = _val(current_assets_row, 0), _val(current_assets_row, 1)
+        cl0, cl1 = _val(current_liab_row, 0), _val(current_liab_row, 1)
+        sh0, sh1 = _val(shares_row, 0), _val(shares_row, 1)
+        gp0, gp1 = _val(gross_profit_row, 0), _val(gross_profit_row, 1)
+        rev0, rev1 = _val(revenue_row, 0), _val(revenue_row, 1)
+
+        required = [ta0, ta1, ni0, ni1, ocf0, ltd0, ltd1, ca0, ca1, cl0, cl1,
+                    sh0, sh1, gp0, gp1, rev0, rev1]
+        if all(x is not None for x in required) and ta0 != 0 and ta1 != 0 and rev0 != 0 and rev1 != 0:
+            piotroski_inputs = {
+                "net_income":                sf(ni0, 0),
+                "net_income_prior":          sf(ni1, 0),
+                "total_assets":              sf(ta0, 0),
+                "total_assets_prior":        sf(ta1, 0),
+                "operating_cash_flow":       sf(ocf0, 0),
+                "long_term_debt":            sf(ltd0, 0),
+                "long_term_debt_prior":      sf(ltd1, 0),
+                "current_assets":            sf(ca0, 0),
+                "current_assets_prior":      sf(ca1, 0),
+                "current_liabilities":       sf(cl0, 0),
+                "current_liabilities_prior": sf(cl1, 0),
+                "shares_outstanding":        sf(sh0, 0),
+                "shares_outstanding_prior":  sf(sh1, 0),
+                "gross_margin":              sf(gp0 / rev0, 6),
+                "gross_margin_prior":        sf(gp1 / rev1, 6),
+                "asset_turnover":            sf(rev0 / ta0, 6),
+                "asset_turnover_prior":      sf(rev1 / ta1, 6),
+            }
+            if any(v is None for v in piotroski_inputs.values()):
+                piotroski_inputs = None
+
+    # ── Beneish M inputs (current + prior) ──
+    if has_two_periods:
+        recv0, recv1 = _val(recv_row, 0), _val(recv_row, 1)
+        rev0, rev1 = _val(revenue_row, 0), _val(revenue_row, 1)
+        cogs0, cogs1 = _val(cogs_row, 0), _val(cogs_row, 1)
+        ca0, ca1 = _val(current_assets_row, 0), _val(current_assets_row, 1)
+        ppe0, ppe1 = _val(ppe_row, 0), _val(ppe_row, 1)
+        # securities can legitimately be absent for many firms — default 0
+        # rather than fail the whole model over a line item most companies
+        # don't carry
+        sec0 = _val(sec_row, 0)
+        sec1 = _val(sec_row, 1)
+        sec0 = sec0 if sec0 is not None else 0.0
+        sec1 = sec1 if sec1 is not None else 0.0
+        dep0, dep1 = _val(dep_row, 0), _val(dep_row, 1)
+        sga0, sga1 = _val(sga_row, 0), _val(sga_row, 1)
+        ta0, ta1 = _val(total_assets_row, 0), _val(total_assets_row, 1)
+        debt0, debt1 = _val(debt_row, 0), _val(debt_row, 1)
+        ni0 = _val(net_income_row, 0)
+        cfo0 = _val(ocf_row, 0)
+
+        required = [recv0, recv1, rev0, rev1, cogs0, cogs1, ca0, ca1, ppe0, ppe1,
+                    dep0, dep1, sga0, sga1, ta0, ta1, debt0, debt1, ni0, cfo0]
+        if all(x is not None for x in required) and rev0 != 0 and rev1 != 0 and ta0 != 0 and ta1 != 0:
+            beneish_inputs = {
+                "net_receivables":        sf(recv0, 0),
+                "net_receivables_prior":  sf(recv1, 0),
+                "sales":                  sf(rev0, 0),
+                "sales_prior":            sf(rev1, 0),
+                "cogs":                   sf(cogs0, 0),
+                "cogs_prior":             sf(cogs1, 0),
+                "current_assets":         sf(ca0, 0),
+                "current_assets_prior":   sf(ca1, 0),
+                "ppe":                    sf(ppe0, 0),
+                "ppe_prior":              sf(ppe1, 0),
+                "securities":             sf(sec0, 0),
+                "securities_prior":       sf(sec1, 0),
+                "depreciation":           sf(dep0, 0),
+                "depreciation_prior":     sf(dep1, 0),
+                "sga_expense":            sf(sga0, 0),
+                "sga_expense_prior":      sf(sga1, 0),
+                "total_assets":           sf(ta0, 0),
+                "total_assets_prior":     sf(ta1, 0),
+                "total_debt":             sf(debt0, 0),
+                "total_debt_prior":       sf(debt1, 0),
+                "net_income":             sf(ni0, 0),
+                "cash_flow_from_ops":     sf(cfo0, 0),
+            }
+            if any(v is None for v in beneish_inputs.values()):
+                beneish_inputs = None
+
+    return altman_inputs, piotroski_inputs, beneish_inputs
+
+
 # ── Existing endpoints ───────────────────────────────────────────
 
 @app.get("/api/search/{query}")
@@ -150,6 +340,10 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
         quote_type = info.get('quoteType', 'EQUITY')
 
         metrics = None
+        altman_inputs = None
+        piotroski_inputs = None
+        beneish_inputs = None
+
         if quote_type != 'ETF':
             cash = info.get('totalCash', 0)
             debt = info.get('totalDebt', 0)
@@ -190,6 +384,16 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
                 "five_yr_avg_pe":   sf(info.get('fiveYearAverageReturn')),
             }
 
+            # Altman Z / Piotroski F / Beneish M raw inputs — pulled from the
+            # two most recent annual balance_sheet/financials/cashflow columns.
+            # Each sub-object is None (not partially filled) if any required
+            # field for that model is unavailable.
+            try:
+                altman_inputs, piotroski_inputs, beneish_inputs = _build_quant_model_inputs(stock, info)
+            except Exception as e:
+                print(f"Error building quant model inputs for {ticker}: {e}")
+                altman_inputs = piotroski_inputs = beneish_inputs = None
+
         sector = normalise_sector(info.get('sector'))
 
         return {
@@ -198,6 +402,9 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
             "chart":       chart_data,
             "metrics":     metrics,
             "description": info.get('longBusinessSummary', ''),
+            "altman_inputs":    altman_inputs,
+            "piotroski_inputs": piotroski_inputs,
+            "beneish_inputs":   beneish_inputs,
         }
     except Exception as e:
         print(f"Error fetching data for {ticker}: {e}")
@@ -208,6 +415,9 @@ def get_market_data(ticker: str, timeframe: str = "1M"):
             "chart": [],
             "metrics": None,
             "description": "Data temporarily unavailable.",
+            "altman_inputs": None,
+            "piotroski_inputs": None,
+            "beneish_inputs": None,
         }
 
 
@@ -293,7 +503,7 @@ def get_etf_holdings(ticker: str):
         return []
 
 
-# ── NEW: Financial statements ─────────────────────────────────────────────────
+# ── Financial statements ─────────────────────────────────────────────────────
 
 @app.get("/api/technicals/{ticker}")
 def get_technicals(ticker: str):
@@ -352,7 +562,7 @@ def get_financials(ticker: str):
         return {"error": str(e), "ticker": ticker.upper()}
 
 
-# ── NEW: Macro data (VOO 200-DMA + RSI) ──────────────────────────────────────
+# ── Macro data (VOO 200-DMA + RSI) ──────────────────────────────────────────
 
 def _calc_rsi(closes: pd.Series, period: int = 14) -> float | None:
     if len(closes) < period + 1:
@@ -423,7 +633,7 @@ def get_macro_data():
         return {"error": str(e)}
 
 
-# ── NEW: Stock-specific news ──────────────────────────────────────────────────
+# ── Stock-specific news ──────────────────────────────────────────────────────
 
 @app.get("/api/news/{ticker}")
 def get_stock_news(ticker: str):
@@ -435,7 +645,7 @@ def get_stock_news(ticker: str):
         return {"ticker": ticker.upper(), "news": [], "error": str(e)}
 
 
-# ── NEW: Global / market-wide news ───────────────────────────────────────────
+# ── Global / market-wide news ────────────────────────────────────────────────
 
 @app.get("/api/market-news")
 def get_market_news():
@@ -472,7 +682,7 @@ def get_market_news():
     return {"news": all_news[:30]}
 
 
-# ── NEW: Valuation comparison ────────────────────────────────────────────────
+# ── Valuation comparison ─────────────────────────────────────────────────────
 
 @app.get("/api/valuation/{ticker}")
 def get_valuation_context(ticker: str):

@@ -7,6 +7,17 @@
  *   runTerminalRedFlagSweep(metrics) -> module B result or null
  *   runFundamentalSweep(metrics)     -> full 5-point sweep
  *   evaluateBuySignal(ticker)        -> module C (technical trigger), async boolean
+ *   calculateAltmanZScore(inputs)      -> Altman Z bankruptcy-risk model
+ *   calculatePiotroskiFScore(inputs)   -> Piotroski F fundamental-strength model
+ *   calculateBeneishMScore(inputs)     -> Beneish M earnings-manipulation model
+ *
+ * NOTE on the three quant models below: they are deliberately kept OUT of
+ * runFundamentalSweep()'s 0-100 weighted score. That score blends continuous
+ * metrics (margins, P/E, growth) using a linear weighted average — Z/F/M are
+ * categorical/binary composite models with their own internal weighting and
+ * threshold semantics (a Z-Score "Grey Zone" isn't a percentage point on the
+ * same scale as a P/E ratio). Folding them in would silently distort both.
+ * They're surfaced instead as standalone cards (see QuantModelsCards.jsx).
  */
 
 import { api } from './api'
@@ -415,4 +426,243 @@ export async function evaluateTechnicalSignal(ticker) {
 export async function evaluateBuySignal(ticker) {
   const result = await evaluateTechnicalSignal(ticker)
   return result.signal
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// module D: quant/academic composite models — Altman Z, Piotroski F, Beneish M
+//
+// Unlike modules A-C above, these are established third-party academic models
+// with fixed published coefficients (Altman 1968, Piotroski 2000, Beneish
+// 1999). Each function takes the raw *_inputs object returned by the backend
+// (see api/index.py's _build_quant_model_inputs) and returns null if that
+// object is null/incomplete — no partial calculations are ever surfaced.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Altman Z-Score — bankruptcy/distress risk, single period.
+ * Z = 1.2A + 1.4B + 3.3C + 0.6D + 1.0E
+ *   A = Working Capital / Total Assets
+ *   B = Retained Earnings / Total Assets
+ *   C = EBIT / Total Assets
+ *   D = Market Cap / Total Liabilities
+ *   E = Revenue / Total Assets
+ * Zones: Z > 2.99 Safe · 1.81-2.99 Grey · Z < 1.81 Distress
+ *
+ * @param {object|null} inputs - altman_inputs from the backend
+ */
+export function calculateAltmanZScore(inputs) {
+  if (!inputs) return null
+  const {
+    total_assets, total_liabilities, retained_earnings,
+    working_capital, ebit, market_cap, total_revenue,
+  } = inputs
+
+  const required = [total_assets, total_liabilities, retained_earnings, working_capital, ebit, market_cap, total_revenue]
+  if (required.some(v => v == null) || total_assets === 0 || total_liabilities === 0) return null
+
+  const A = working_capital / total_assets
+  const B = retained_earnings / total_assets
+  const C = ebit / total_assets
+  const D = market_cap / total_liabilities
+  const E = total_revenue / total_assets
+
+  const z = 1.2 * A + 1.4 * B + 3.3 * C + 0.6 * D + 1.0 * E
+
+  let zone, label, color, text
+  if (z > 2.99) {
+    zone = 'safe'; label = 'Safe Zone'; color = '#16a34a'
+    text = `A Z-Score of ${z.toFixed(2)} sits comfortably in the Safe Zone (above 2.99), indicating a low statistical probability of bankruptcy within the next two years based on Altman's original discriminant model.`
+  } else if (z >= 1.81) {
+    zone = 'grey'; label = 'Grey Zone'; color = '#ca8a04'
+    text = `A Z-Score of ${z.toFixed(2)} falls in the Grey Zone (1.81–2.99) — neither clearly safe nor clearly distressed. The model recommends closer scrutiny of liquidity and leverage trends rather than a binary read.`
+  } else {
+    zone = 'distress'; label = 'Distress Zone'; color = '#dc2626'
+    text = `A Z-Score of ${z.toFixed(2)} falls in the Distress Zone (below 1.81), the band Altman's model associates with meaningfully elevated bankruptcy risk over a two-year horizon.`
+  }
+
+  return {
+    score: Math.round(z * 100) / 100,
+    zone, label, color, text,
+    components: {
+      workingCapitalToAssets: A,
+      retainedEarningsToAssets: B,
+      ebitToAssets: C,
+      marketCapToLiabilities: D,
+      salesToAssets: E,
+    },
+  }
+}
+
+/**
+ * Piotroski F-Score — 9-point fundamental-strength checklist, current vs
+ * prior period. 1 point per passed test, summed 0-9.
+ *
+ * @param {object|null} inputs - piotroski_inputs from the backend
+ */
+export function calculatePiotroskiFScore(inputs) {
+  if (!inputs) return null
+  const {
+    net_income, net_income_prior,
+    total_assets, total_assets_prior,
+    operating_cash_flow,
+    long_term_debt, long_term_debt_prior,
+    current_assets, current_assets_prior,
+    current_liabilities, current_liabilities_prior,
+    shares_outstanding, shares_outstanding_prior,
+    gross_margin, gross_margin_prior,
+    asset_turnover, asset_turnover_prior,
+  } = inputs
+
+  const required = [
+    net_income, net_income_prior, total_assets, total_assets_prior, operating_cash_flow,
+    long_term_debt, long_term_debt_prior, current_assets, current_assets_prior,
+    current_liabilities, current_liabilities_prior, shares_outstanding, shares_outstanding_prior,
+    gross_margin, gross_margin_prior, asset_turnover, asset_turnover_prior,
+  ]
+  if (required.some(v => v == null) || total_assets === 0 || total_assets_prior === 0) return null
+  if (current_liabilities === 0 || current_liabilities_prior === 0) return null
+
+  const roa = net_income / total_assets
+  const roaPrior = net_income_prior / total_assets_prior
+  const ltdRatio = long_term_debt / total_assets
+  const ltdRatioPrior = long_term_debt_prior / total_assets_prior
+  const currentRatio = current_assets / current_liabilities
+  const currentRatioPrior = current_assets_prior / current_liabilities_prior
+
+  const tests = [
+    { key: 'positive_roa',       label: 'Positive Return on Assets',                       pass: roa > 0 },
+    { key: 'positive_ocf',       label: 'Positive Operating Cash Flow',                     pass: operating_cash_flow > 0 },
+    { key: 'roa_improving',      label: 'ROA Improving Year-over-Year',                     pass: roa > roaPrior },
+    { key: 'quality_earnings',   label: 'Operating Cash Flow Exceeds Net Income',           pass: operating_cash_flow > net_income },
+    { key: 'leverage_down',      label: 'Long-Term Debt Ratio Decreasing',                  pass: ltdRatio < ltdRatioPrior },
+    { key: 'liquidity_up',       label: 'Current Ratio Improving',                          pass: currentRatio > currentRatioPrior },
+    { key: 'no_dilution',        label: 'No New Share Issuance',                            pass: shares_outstanding <= shares_outstanding_prior },
+    { key: 'margin_improving',   label: 'Gross Margin Improving',                           pass: gross_margin > gross_margin_prior },
+    { key: 'turnover_improving', label: 'Asset Turnover Improving',                         pass: asset_turnover > asset_turnover_prior },
+  ]
+
+  const score = tests.filter(t => t.pass).length
+
+  let tier, color, text
+  if (score >= 8) {
+    tier = 'Strong'; color = '#16a34a'
+    text = `An F-Score of ${score}/9 places the company in Piotroski's strongest fundamental tier — the majority of profitability, leverage, liquidity, and efficiency signals improved year-over-year.`
+  } else if (score >= 6) {
+    tier = 'Above Average'; color = '#22c55e'
+    text = `An F-Score of ${score}/9 is above average — most fundamental signals moved in a favorable direction over the past year.`
+  } else if (score >= 4) {
+    tier = 'Average'; color = '#ca8a04'
+    text = `An F-Score of ${score}/9 is middling — roughly half of the underlying fundamental tests passed, with no dominant trend either direction.`
+  } else if (score >= 3) {
+    tier = 'Below Average'; color = '#ea580c'
+    text = `An F-Score of ${score}/9 is below average — most of the year-over-year fundamental checks failed, a pattern historically associated with underperformance.`
+  } else {
+    tier = 'Weak'; color = '#dc2626'
+    text = `An F-Score of ${score}/9 sits in Piotroski's weakest tier — nearly every profitability, leverage, liquidity, and efficiency signal deteriorated year-over-year.`
+  }
+
+  return { score, tier, color, text, tests }
+}
+
+/**
+ * Beneish M-Score — 8-variable earnings-manipulation probability model,
+ * current vs prior period.
+ * M = -4.84 + 0.92·DSRI + 0.528·GMI + 0.404·AQI + 0.892·SGI
+ *     + 0.115·DEPI - 0.172·SGAI + 4.679·TATA - 0.327·LVGI
+ * M > -1.78: statistically flagged as likely manipulator.
+ * M <= -1.78: unlikely.
+ *
+ * @param {object|null} inputs - beneish_inputs from the backend
+ */
+export function calculateBeneishMScore(inputs) {
+  if (!inputs) return null
+  const {
+    net_receivables, net_receivables_prior,
+    sales, sales_prior,
+    cogs, cogs_prior,
+    current_assets, current_assets_prior,
+    ppe, ppe_prior,
+    securities, securities_prior,
+    depreciation, depreciation_prior,
+    sga_expense, sga_expense_prior,
+    total_assets, total_assets_prior,
+    total_debt, total_debt_prior,
+    net_income, cash_flow_from_ops,
+  } = inputs
+
+  const required = [
+    net_receivables, net_receivables_prior, sales, sales_prior, cogs, cogs_prior,
+    current_assets, current_assets_prior, ppe, ppe_prior, depreciation, depreciation_prior,
+    sga_expense, sga_expense_prior, total_assets, total_assets_prior, total_debt, total_debt_prior,
+    net_income, cash_flow_from_ops,
+  ]
+  if (required.some(v => v == null)) return null
+  if (sales === 0 || sales_prior === 0 || total_assets === 0 || total_assets_prior === 0) return null
+
+  const sec0 = securities ?? 0
+  const sec1 = securities_prior ?? 0
+
+  // DSRI — Days Sales in Receivables Index: rising receivables relative to
+  // sales can indicate revenue manipulation via channel stuffing.
+  const dsri = (net_receivables / sales) / (net_receivables_prior / sales_prior)
+
+  // GMI — Gross Margin Index: deteriorating margins (GMI > 1) create pressure
+  // to manipulate.
+  const gm0 = (sales - cogs) / sales
+  const gm1 = (sales_prior - cogs_prior) / sales_prior
+  if (gm0 === 0) return null
+  const gmi = gm1 / gm0
+
+  // AQI — Asset Quality Index: rising non-current, non-PP&E "soft" assets
+  // relative to total assets.
+  const aq0 = 1 - (current_assets + ppe + sec0) / total_assets
+  const aq1 = 1 - (current_assets_prior + ppe_prior + sec1) / total_assets_prior
+  if (aq1 === 0) return null
+  const aqi = aq0 / aq1
+
+  // SGI — Sales Growth Index: high growth firms face more pressure to
+  // maintain the appearance of continued growth.
+  const sgi = sales / sales_prior
+
+  // DEPI — Depreciation Index: a slowing depreciation rate can indicate
+  // useful lives being stretched to inflate earnings.
+  const depRate0 = depreciation / (depreciation + ppe)
+  const depRate1 = depreciation_prior / (depreciation_prior + ppe_prior)
+  if (depRate0 === 0) return null
+  const depi = depRate1 / depRate0
+
+  // SGAI — SG&A Expense Index: disproportionate SG&A growth relative to
+  // sales is associated with deteriorating prospects and manipulation risk.
+  const sgai = (sga_expense / sales) / (sga_expense_prior / sales_prior)
+
+  // TATA — Total Accruals to Total Assets: the core accrual-quality measure —
+  // large positive accruals (earnings well above operating cash flow) are the
+  // single strongest predictor in the model.
+  const tata = (net_income - cash_flow_from_ops) / total_assets
+
+  // LVGI — Leverage Index: rising leverage creates covenant pressure that can
+  // motivate manipulation.
+  const lvg0 = total_debt / total_assets
+  const lvg1 = total_debt_prior / total_assets_prior
+  if (lvg1 === 0) return null
+  const lvgi = lvg0 / lvg1
+
+  const m = -4.84 + 0.92 * dsri + 0.528 * gmi + 0.404 * aqi + 0.892 * sgi
+    + 0.115 * depi - 0.172 * sgai + 4.679 * tata - 0.327 * lvgi
+
+  const flagged = m > -1.78
+
+  const text = flagged
+    ? `An M-Score of ${m.toFixed(2)} is above the -1.78 threshold Beneish's model uses to flag a statistically elevated probability of earnings manipulation. This is a screening signal based on accrual and growth patterns, not proof of wrongdoing — verify against the underlying accrual (TATA) and receivables (DSRI) components before drawing conclusions.`
+    : `An M-Score of ${m.toFixed(2)} is below the -1.78 threshold, indicating no elevated statistical signal of earnings manipulation under Beneish's model.`
+
+  return {
+    score: Math.round(m * 100) / 100,
+    flagged,
+    label: flagged ? 'Manipulation Risk Flagged' : 'No Manipulation Signal',
+    color: flagged ? '#dc2626' : '#16a34a',
+    text,
+    components: { dsri, gmi, aqi, sgi, depi, sgai, tata, lvgi },
+  }
 }

@@ -28,3 +28,6 @@ src.zip
 
 # jupyter 
 .ipynb_checkpoints/
+
+# patch files
+*.patch

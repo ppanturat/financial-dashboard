@@ -12,6 +12,13 @@ export function useStockData(ticker, timeframe) {
   const [loadingData, setLoadingData] = useState(false)
   const [loadingExtra, setLoadingExtra] = useState(false)
 
+  // raw inputs for the Altman Z / Piotroski F / Beneish M quant models —
+  // each is either a fully-populated object or null (see api/index.py's
+  // _build_quant_model_inputs, which never returns a partial object)
+  const [altmanInputs, setAltmanInputs]       = useState(null)
+  const [piotroskiInputs, setPiotroskiInputs] = useState(null)
+  const [beneishInputs, setBeneishInputs]     = useState(null)
+
   const prevTickerRef = useRef(null)
 
   useEffect(() => {
@@ -29,6 +36,9 @@ export function useStockData(ticker, timeframe) {
         setEtfHoldings(null)
         setCurrentPrice(null)
         setDescription('')
+        setAltmanInputs(null)
+        setPiotroskiInputs(null)
+        setBeneishInputs(null)
       }
 
       try {
@@ -42,6 +52,9 @@ export function useStockData(ticker, timeframe) {
           setQuoteType(data.quoteType ?? 'EQUITY')
           setMetrics(data.metrics ?? null)
           setDescription(cleanDescription(data.description ?? ''))
+          setAltmanInputs(data.altman_inputs ?? null)
+          setPiotroskiInputs(data.piotroski_inputs ?? null)
+          setBeneishInputs(data.beneish_inputs ?? null)
           setLoadingData(false)
 
           if (data.quoteType === 'ETF') {
@@ -78,6 +91,9 @@ export function useStockData(ticker, timeframe) {
     etfHoldings,
     loadingData,
     loadingExtra,
+    altmanInputs,
+    piotroskiInputs,
+    beneishInputs,
     graphColor:  isUp ? '#16a34a' : '#dc2626',
     priceChange: chartData.length > 1
       ? ((chartData[chartData.length - 1].price - chartData[0].price) / chartData[0].price * 100)
