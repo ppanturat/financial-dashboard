@@ -12,6 +12,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Vercel's serverless filesystem is read-only outside /tmp — yfinance's
+# default tz/cookie cache location falls under the user's home dir, which
+# fails there and logs a warning (harmless, but noisy) on every cold start.
+# Redirect it to /tmp, which is writable in serverless environments.
+try:
+    yf.set_tz_cache_location("/tmp/py-yfinance")
+except Exception:
+    pass
+
 app = FastAPI()
 
 app.add_middleware(
@@ -185,7 +194,9 @@ def _build_quant_model_inputs(stock, info):
     net_income_row         = _row(fin, 'Net Income')
     ocf_row                = _row(cf, 'Operating Cash Flow', 'Total Cash From Operating Activities')
     ltd_row                = _row(bs, 'Long Term Debt')
-    shares_row             = _row(bs, 'Share Issued', 'Ordinary Shares Number') or _row(fin, 'Basic Average Shares', 'Diluted Average Shares')
+    shares_row             = _row(bs, 'Share Issued', 'Ordinary Shares Number')
+    if shares_row is None:
+        shares_row = _row(fin, 'Basic Average Shares', 'Diluted Average Shares')
     gross_profit_row       = _row(fin, 'Gross Profit')
     recv_row                = _row(bs, 'Receivables', 'Accounts Receivable', 'Net Receivables')
     cogs_row                = _row(fin, 'Cost Of Revenue', 'Reconciled Cost Of Revenue')
