@@ -2,6 +2,14 @@ export const fmt = (num, type) => {
   if (num == null) return 'N/A'
   if (type === 'pct') return `${(num * 100).toFixed(1)}%`
   if (type === 'raw') return num >= 999 ? '∞' : num.toFixed(2)
+  if (type === 'runway') {
+    // num is either the string 'SELF_FUNDING' or a runway length in years
+    // (see deriveCashRunway below, which computes it the same way
+    // runTerminalRedFlagSweep does internally: total_cash / |fcf|)
+    if (num === 'SELF_FUNDING') return 'Self-funding'
+    const months = num * 12
+    return months < 24 ? `${months.toFixed(1)} months` : `${num.toFixed(1)} years`
+  }
   if (type === 'curr') {
     const abs = Math.abs(num)
     const sign = num < 0 ? '-' : ''
@@ -17,7 +25,28 @@ export const getMetricColor = (val, type) => {
   if (type === 'warChest') return val < 0.5 ? 'red' : val < 1.0 ? 'yellow' : 'green'
   if (type === 'fcf' || type === 'margin') return val > 0 ? 'green' : 'red'
   if (type === 'pe') return val > 40 ? 'red' : val < 15 ? 'green' : ''
+  if (type === 'runway') {
+    // same 1.5yr / 3yr thresholds runTerminalRedFlagSweep uses for
+    // danger/caution/pass, expressed here in years to match the raw value
+    if (val === 'SELF_FUNDING') return 'green'
+    return val < 1.5 ? 'red' : val < 3 ? 'yellow' : 'green'
+  }
   return ''
+}
+
+/**
+ * Derives the Cash Runway metric (in years, or the sentinel 'SELF_FUNDING')
+ * from the raw metrics payload, the same way runTerminalRedFlagSweep does
+ * internally in assessmentEngine.js — surfaced here as its own visible tile
+ * rather than only appearing inside that card's prose. Returns null when
+ * there isn't enough data to compute it.
+ */
+export function deriveCashRunway(metrics) {
+  if (!metrics) return null
+  const { total_cash, fcf } = metrics
+  if (total_cash == null || fcf == null) return null
+  if (fcf >= 0) return 'SELF_FUNDING'
+  return total_cash / Math.abs(fcf) // years
 }
 
 export const formatXAxis = (tickItem, timeframe) => {

@@ -72,6 +72,24 @@
     transform: translateX(0);
     box-shadow: 8px 0 32px rgba(0,0,0,.35);
   }
+
+  /* The desktop collapsed-rail affordance (64px icon-only rail + floating
+     expand bubble) doesn't apply to the mobile off-canvas drawer — the
+     drawer already has its own open/close mechanism via the hamburger.
+     If sidebarCollapsed is still true here (e.g. persisted from a prior
+     desktop session, before App.jsx's mobile guard runs), neutralize the
+     collapsed width so the drawer isn't squeezed to 64px, and hide the
+     collapse/expand buttons entirely rather than leaving a clipped,
+     unclickable button behind. See src/App.jsx for the matching JS guard
+     that forces sidebarCollapsed=false below this breakpoint. */
+  .sidebar.collapsed {
+    width: var(--sidebar-w) !important;
+  }
+  .sidebar-collapse-btn,
+  .sidebar-expand-btn {
+    display: none !important;
+  }
+
   /* always show vault actions on touch devices */
   .vault-actions { opacity: 1; }
 

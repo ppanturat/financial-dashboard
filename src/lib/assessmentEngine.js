@@ -294,7 +294,11 @@ export function runFundamentalSweep(metrics = {}) {
   const revWeight = rev != null ? (rev > 0.25 ? 2 : rev > 0.08 ? 1 : rev >= 0 ? 0 : -2) : 0
 
   const weightedNet = (fcfWeight * 1.5) + (gmWeight * 1.5) + wcrWeight + peWeight + revWeight
-  const weightedMax = 13.0
+  // max achievable weightedNet: fcfWeight(2×1.5=3) + gmWeight(2×1.5=3) +
+  // wcrWeight(2) + peWeight(2) + revWeight(2) = 12.0 — was previously
+  // hardcoded to 13.0, understating a "perfect" stock's score. Recalculate
+  // this if any new weighted factors are added to the sweep above.
+  const weightedMax = 12.0
   const rawScore = Math.round(50 + (weightedNet / weightedMax) * 45)
   const score = Math.min(97, Math.max(10, rawScore))
 

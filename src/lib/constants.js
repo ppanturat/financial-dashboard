@@ -122,6 +122,15 @@ export const METRIC_DEFS = [
     scale: '< 1.0 = Short-Term Stress (Red) · 1.0–1.5 = Tight · 1.5–3.0 = Healthy (Green) · > 3.0 = Excess Cash (may be inefficient)',
   },
   {
+    key: 'cash_runway',
+    label: 'Cash Runway',
+    type: 'runway',
+    colorType: 'runway',
+    category: 'Financial Health',
+    meaning: 'Total Cash ÷ |Free Cash Flow burn|, in months or years. Only meaningful when FCF is negative — measures how long the company can keep operating at its current cash-burn rate before needing to raise more capital. Shown as "Self-funding" when FCF is already positive. This is the same runway calculation the Terminal Red Flag Sweep uses internally, surfaced here as its own tile.',
+    scale: '< 18 months = Danger (Red) · 18–36 months = Caution (Yellow) · > 36 months or Self-funding = Healthy (Green)',
+  },
+  {
     key: 'roe',
     label: 'Return on Equity',
     type: 'pct',

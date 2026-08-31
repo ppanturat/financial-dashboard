@@ -75,6 +75,28 @@ export default function App() {
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
+  // The collapsed-rail sidebar (64px icon-only rail + floating expand
+  // button) is a desktop-only affordance — on mobile the sidebar is already
+  // an off-canvas drawer (see responsive.css's translateX-based .sidebar
+  // rules below 768px), toggled by the hamburger, not the collapse rail.
+  // A `sidebarCollapsed=true` state persisted from a previous desktop
+  // session would otherwise squeeze that drawer down to 64px wide with an
+  // expand button clipped/hidden by the drawer's own overflow, making it
+  // impossible to get the sidebar back to full width on mobile. Force it
+  // off whenever the viewport drops into mobile territory.
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const applyMobileState = e => {
+      if (e.matches) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSidebarCollapsed(false)
+      }
+    }
+    applyMobileState(mq)
+    mq.addEventListener('change', applyMobileState)
+    return () => mq.removeEventListener('change', applyMobileState)
+  }, [])
+
   const handleToggleCollapse = () => {
     setSidebarCollapsed(c => {
       const next = !c

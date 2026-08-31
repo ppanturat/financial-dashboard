@@ -36,6 +36,11 @@ body {
   color: var(--text);
   -webkit-font-smoothing: antialiased;
   min-height: 100svh; /* safe viewport on mobile */
+  /* safety net: a future mis-positioned absolute/fixed element (tooltips,
+     popovers, etc.) shouldn't be able to force page-wide horizontal
+     scroll — see MetricsGrid.jsx / dashboard.css for the specific mobile
+     tooltip-overflow bug this was added alongside */
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {

@@ -27,12 +27,56 @@ function ScaleBar({ scale }) {
 }
 
 // single metric card
-function MetricCard({ def, value, isEtf, loading, tooltipOpen, onToggleTip, cardRef }) {
+function MetricCard({ def, value, isEtf, loading, tooltipOpen, onToggleTip }) {
   const color = isEtf ? '' : getMetricColor(value, def.colorType)
+  const cardElRef = useRef(null)
+  const isTooltipOpen = tooltipOpen === def.key
+
+  // clamped horizontal shift (px) applied on top of the tooltip's default
+  // translateX(-50%) centering, so it never overflows the viewport on
+  // narrow (mobile) screens regardless of where the card sits in the grid —
+  // measured against the card's real position rather than relying on CSS
+  // :last-child/:nth-last-child selectors, which only cover grid-edge
+  // cards, not a card overflowing from the middle of a narrow grid.
+  const [tooltipShiftX, setTooltipShiftX] = useState(0)
+
+  useEffect(() => {
+    if (!isTooltipOpen) return
+
+    const recompute = () => {
+      const el = cardElRef.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const viewportWidth = window.innerWidth
+      const tooltipWidth = Math.min(220, viewportWidth - 32) // matches CSS's min(220px, calc(100vw - 32px))
+      const edgePadding = 8
+
+      const cardCenterX = rect.left + rect.width / 2
+      const naturalLeft = cardCenterX - tooltipWidth / 2
+      const naturalRight = cardCenterX + tooltipWidth / 2
+
+      let shift = 0
+      if (naturalLeft < edgePadding) {
+        shift = edgePadding - naturalLeft
+      } else if (naturalRight > viewportWidth - edgePadding) {
+        shift = (viewportWidth - edgePadding) - naturalRight
+      }
+      setTooltipShiftX(shift)
+    }
+
+    recompute()
+    window.addEventListener('resize', recompute)
+    return () => window.removeEventListener('resize', recompute)
+  }, [isTooltipOpen])
+
+  // keep the pointer arrow visually near the card even when the tooltip
+  // box itself has been shifted to stay on-screen — clamped so it can't
+  // slide outside the tooltip box's own bounds on extreme shifts
+  const arrowShiftX = Math.max(-90, Math.min(90, -tooltipShiftX))
 
   return (
     <div
-      ref={cardRef}
+      ref={cardElRef}
       className={`metric-card ${color}`}
       style={{ position: 'relative' }}
     >
@@ -72,7 +116,7 @@ function MetricCard({ def, value, isEtf, loading, tooltipOpen, onToggleTip, card
       </div>
 
       {/* Tooltip */}
-      {tooltipOpen === def.key && (
+      {isTooltipOpen && (
         <div
           className="metric-tooltip"
           role="tooltip"
@@ -80,20 +124,22 @@ function MetricCard({ def, value, isEtf, loading, tooltipOpen, onToggleTip, card
             position: 'absolute',
             top: 'calc(100% + 8px)',
             left: '50%',
-            transform: 'translateX(-50%)',
+            transform: `translateX(calc(-50% + ${tooltipShiftX}px))`,
             background: '#111',
             color: '#fff',
             borderRadius: 10,
             padding: '14px 16px',
-            width: 260,
+            width: 'min(220px, calc(100vw - 32px))',
             zIndex: 200,
             boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
             pointerEvents: 'none',
           }}
         >
-          {/* Arrow */}
+          {/* Arrow — shifted opposite the tooltip box so it stays visually
+              anchored over the card even when the box itself is clamped */}
           <div style={{
-            position: 'absolute', top: -5, left: '50%', transform: 'translateX(-50%)',
+            position: 'absolute', top: -5, left: '50%',
+            transform: `translateX(calc(-50% + ${arrowShiftX}px))`,
             width: 10, height: 10, background: '#111',
             clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
           }} />

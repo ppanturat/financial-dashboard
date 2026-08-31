@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../lib/api'
-import { cleanDescription } from '../lib/formatters'
+import { cleanDescription, deriveCashRunway } from '../lib/formatters'
 
 export function useStockData(ticker, timeframe) {
   const [chartData, setChartData]     = useState([])
@@ -50,7 +50,12 @@ export function useStockData(ticker, timeframe) {
 
         if (isNewTicker) {
           setQuoteType(data.quoteType ?? 'EQUITY')
-          setMetrics(data.metrics ?? null)
+          // augment with Cash Runway — computed client-side from
+          // total_cash/fcf (already in the metrics payload), the same way
+          // runTerminalRedFlagSweep does it internally, so it can be shown
+          // as its own tile in the Financial Health pill
+          const rawMetrics = data.metrics ?? null
+          setMetrics(rawMetrics ? { ...rawMetrics, cash_runway: deriveCashRunway(rawMetrics) } : null)
           setDescription(cleanDescription(data.description ?? ''))
           setAltmanInputs(data.altman_inputs ?? null)
           setPiotroskiInputs(data.piotroski_inputs ?? null)

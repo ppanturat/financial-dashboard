@@ -122,14 +122,32 @@
 .skeleton-val { color: var(--faint); }
 
 .metric-tooltip {
-  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  position: absolute; top: 100%; left: 50%;
+  /* base transform — MetricsGrid.jsx overrides this inline with a
+     JS-measured offset (translateX(-50% + Npx)) so the tooltip clamps to
+     the viewport instead of overflowing on narrow screens. This value is
+     just the pre-JS/no-JS fallback. */
+  transform: translateX(-50%);
   margin-top: 6px; background: #111; color: #fff;
-  border-radius: 8px; padding: 12px 14px; width: 220px;
+  border-radius: 8px; padding: 12px 14px;
+  /* was a fixed 220px — on mobile the metrics grid drops to 2 columns at
+     ~150-170px per card, so a fixed-width tooltip guaranteed overflow.
+     min() caps it to whatever fits with 16px of breathing room on each
+     side of the viewport. */
+  width: min(220px, calc(100vw - 32px));
   z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,.2); pointer-events: none;
 }
-/* flip tooltip left when near right edge */
-.metric-card:last-child .metric-tooltip,
-.metric-card:nth-last-child(2) .metric-tooltip { left: auto; right: 0; transform: none; }
+/* NOTE: the old edge-flip rule that lived here (`.metric-card:last-child
+   .metric-tooltip, .metric-card:nth-last-child(2) .metric-tooltip { left:
+   auto; right: 0; transform: none; }`) only handled cards at the very end
+   of the grid, not the actual failure case — a card in the *middle* of a
+   narrow 2-column mobile grid whose centered tooltip still overflows both
+   viewport edges. It was also silently dead code: MetricsGrid.jsx sets
+   `left`/`transform` via inline style on the tooltip element, and inline
+   styles always win over an external stylesheet rule without !important,
+   so this selector never actually fired. Replaced by JS-measured clamping
+   in MetricCard (uses the card's own bounding rect + window width) — see
+   MetricsGrid.jsx. */
 .tt-meaning { font-size: 12px; line-height: 1.5; margin-bottom: 8px; color: rgba(255,255,255,.9); }
 .tt-scale   { font-size: 11px; color: rgba(255,255,255,.5); font-family: var(--font-body), monospace; line-height: 1.6; }
 
